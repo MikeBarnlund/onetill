@@ -1,0 +1,398 @@
+-- ============================================================================
+-- OneTill SQLDelight Schema
+-- Local-first database: source of truth while the app is running.
+-- WooCommerce is the remote source of truth — conflicts resolve server-side.
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- Products
+-- ----------------------------------------------------------------------------
+
+CREATE TABLE product_cache (
+    id INTEGER NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    sku TEXT,
+    barcode TEXT,
+    price_cents INTEGER NOT NULL,
+    regular_price_cents INTEGER,
+    sale_price_cents INTEGER,
+    currency_code TEXT NOT NULL,
+    stock_quantity INTEGER,
+    manage_stock INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'PUBLISHED',
+    type TEXT NOT NULL DEFAULT 'SIMPLE',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
+CREATE INDEX idx_product_cache_sku ON product_cache(sku);
+CREATE INDEX idx_product_cache_barcode ON product_cache(barcode);
+CREATE INDEX idx_product_cache_updated_at ON product_cache(updated_at);
+
+-- ----------------------------------------------------------------------------
+-- Product Variants
+-- ----------------------------------------------------------------------------
+
+CREATE TABLE product_variant (
+    id INTEGER NOT NULL PRIMARY KEY,
+    product_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    sku TEXT,
+    barcode TEXT,
+    price_cents INTEGER NOT NULL,
+    regular_price_cents INTEGER,
+    sale_price_cents INTEGER,
+    currency_code TEXT NOT NULL,
+    stock_quantity INTEGER,
+    manage_stock INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (product_id) REFERENCES product_cache(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_product_variant_product_id ON product_variant(product_id);
+CREATE INDEX idx_product_variant_sku ON product_variant(sku);
+CREATE INDEX idx_product_variant_barcode ON product_variant(barcode);
+
+-- ----------------------------------------------------------------------------
+-- Variant Attributes (key-value pairs like "Size: Large", "Color: Red")
+-- ----------------------------------------------------------------------------
+
+CREATE TABLE variant_attribute (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    variant_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    value TEXT NOT NULL,
+    FOREIGN KEY (variant_id) REFERENCES product_variant(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_variant_attribute_variant_id ON variant_attribute(variant_id);
+
+-- ----------------------------------------------------------------------------
+-- Product Images
+-- ----------------------------------------------------------------------------
+
+CREATE TABLE product_image (
+    id INTEGER NOT NULL PRIMARY KEY,
+    product_id INTEGER NOT NULL,
+    url TEXT NOT NULL,
+    FOREIGN KEY (product_id) REFERENCES product_cache(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_product_image_product_id ON product_image(product_id);
+
+-- ----------------------------------------------------------------------------
+-- Categories
+-- ----------------------------------------------------------------------------
+
+CREATE TABLE product_category (
+    id INTEGER NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+CREATE TABLE product_category_join (
+    product_id INTEGER NOT NULL,
+    category_id INTEGER NOT NULL,
+    PRIMARY KEY (product_id, category_id),
+    FOREIGN KEY (product_id) REFERENCES product_cache(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES product_category(id) ON DELETE CASCADE
+);
+
+-- ----------------------------------------------------------------------------
+-- Orders
+-- ----------------------------------------------------------------------------
+
+CREATE TABLE offline_orders (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    remote_id INTEGER,
+    order_number TEXT,
+    status TEXT NOT NULL DEFAULT 'PENDING',
+    customer_id INTEGER,
+    total_cents INTEGER NOT NULL,
+    total_tax_cents INTEGER NOT NULL,
+    currency_code TEXT NOT NULL,
+    payment_method TEXT NOT NULL,
+    stripe_transaction_id TEXT,
+    idempotency_key TEXT NOT NULL UNIQUE,
+    note TEXT,
+    coupon_codes TEXT,
+    created_at INTEGER NOT NULL
+);
+
+CREATE INDEX idx_offline_orders_status ON offline_orders(status);
+CREATE INDEX idx_offline_orders_idempotency_key ON offline_orders(idempotency_key);
+CREATE INDEX idx_offline_orders_created_at ON offline_orders(created_at);
+
+-- ----------------------------------------------------------------------------
+-- Order Line Items
+-- ----------------------------------------------------------------------------
+
+CREATE TABLE order_line_item (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    variant_id INTEGER,
+    name TEXT NOT NULL,
+    sku TEXT,
+    quantity INTEGER NOT NULL,
+    unit_price_cents INTEGER NOT NULL,
+    total_price_cents INTEGER NOT NULL,
+    currency_code TEXT NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES offline_orders(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_order_line_item_order_id ON order_line_item(order_id);
+
+-- ----------------------------------------------------------------------------
+-- Customers
+-- ----------------------------------------------------------------------------
+
+CREATE TABLE customer (
+    id INTEGER NOT NULL PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    email TEXT,
+    phone TEXT
+);
+
+CREATE INDEX idx_customer_email ON customer(email);
+
+-- ----------------------------------------------------------------------------
+-- Tax Rates
+-- ----------------------------------------------------------------------------
+
+CREATE TABLE tax_rate (
+    id INTEGER NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    rate TEXT NOT NULL,
+    country TEXT NOT NULL,
+    state TEXT NOT NULL,
+    is_compound INTEGER NOT NULL DEFAULT 0,
+    is_shipping INTEGER NOT NULL DEFAULT 0
+);
+
+-- ----------------------------------------------------------------------------
+-- Sync State (tracks last sync per entity type)
+-- ----------------------------------------------------------------------------
+
+CREATE TABLE sync_state (
+    entity_type TEXT NOT NULL PRIMARY KEY,
+    last_synced_at INTEGER NOT NULL
+);
+
+-- ----------------------------------------------------------------------------
+-- Store Config (single-row table)
+-- ----------------------------------------------------------------------------
+
+CREATE TABLE store_config (
+    id INTEGER NOT NULL PRIMARY KEY DEFAULT 1,
+    site_url TEXT NOT NULL,
+    consumer_key TEXT NOT NULL,
+    consumer_secret TEXT NOT NULL,
+    currency TEXT NOT NULL
+);
+
+-- ============================================================================
+-- QUERIES: Products
+-- ============================================================================
+
+insertOrReplaceProduct:
+INSERT OR REPLACE INTO product_cache(
+    id, name, sku, barcode, price_cents, regular_price_cents, sale_price_cents,
+    currency_code, stock_quantity, manage_stock, status, type, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+selectAllProducts:
+SELECT * FROM product_cache ORDER BY name ASC;
+
+selectProductById:
+SELECT * FROM product_cache WHERE id = ?;
+
+selectProductByBarcode:
+SELECT * FROM product_cache WHERE barcode = ?
+UNION
+SELECT pc.* FROM product_cache pc
+INNER JOIN product_variant pv ON pv.product_id = pc.id
+WHERE pv.barcode = ?;
+
+selectProductBySku:
+SELECT * FROM product_cache WHERE sku = ?;
+
+searchProductsByName:
+SELECT * FROM product_cache WHERE name LIKE ('%' || ? || '%') ORDER BY name ASC;
+
+deleteProductById:
+DELETE FROM product_cache WHERE id = ?;
+
+deleteAllProducts:
+DELETE FROM product_cache;
+
+selectProductCount:
+SELECT COUNT(*) FROM product_cache;
+
+-- ============================================================================
+-- QUERIES: Product Variants
+-- ============================================================================
+
+insertOrReplaceVariant:
+INSERT OR REPLACE INTO product_variant(
+    id, product_id, name, sku, barcode, price_cents, regular_price_cents,
+    sale_price_cents, currency_code, stock_quantity, manage_stock
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+selectVariantsByProductId:
+SELECT * FROM product_variant WHERE product_id = ?;
+
+selectVariantByBarcode:
+SELECT * FROM product_variant WHERE barcode = ?;
+
+deleteVariantsByProductId:
+DELETE FROM product_variant WHERE product_id = ?;
+
+-- ============================================================================
+-- QUERIES: Variant Attributes
+-- ============================================================================
+
+insertVariantAttribute:
+INSERT INTO variant_attribute(variant_id, name, value) VALUES (?, ?, ?);
+
+selectAttributesByVariantId:
+SELECT * FROM variant_attribute WHERE variant_id = ?;
+
+deleteAttributesByVariantId:
+DELETE FROM variant_attribute WHERE variant_id = ?;
+
+-- ============================================================================
+-- QUERIES: Product Images
+-- ============================================================================
+
+insertOrReplaceImage:
+INSERT OR REPLACE INTO product_image(id, product_id, url) VALUES (?, ?, ?);
+
+selectImagesByProductId:
+SELECT * FROM product_image WHERE product_id = ?;
+
+deleteImagesByProductId:
+DELETE FROM product_image WHERE product_id = ?;
+
+-- ============================================================================
+-- QUERIES: Categories
+-- ============================================================================
+
+insertOrReplaceCategory:
+INSERT OR REPLACE INTO product_category(id, name) VALUES (?, ?);
+
+insertCategoryJoin:
+INSERT OR IGNORE INTO product_category_join(product_id, category_id) VALUES (?, ?);
+
+selectCategoriesByProductId:
+SELECT pc.* FROM product_category pc
+INNER JOIN product_category_join pcj ON pcj.category_id = pc.id
+WHERE pcj.product_id = ?;
+
+deleteCategoryJoinsByProductId:
+DELETE FROM product_category_join WHERE product_id = ?;
+
+-- ============================================================================
+-- QUERIES: Orders
+-- ============================================================================
+
+insertOrder:
+INSERT INTO offline_orders(
+    remote_id, order_number, status, customer_id, total_cents, total_tax_cents,
+    currency_code, payment_method, stripe_transaction_id, idempotency_key, note, coupon_codes, created_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+lastInsertOrderId:
+SELECT last_insert_rowid();
+
+selectAllOrders:
+SELECT * FROM offline_orders ORDER BY created_at DESC;
+
+selectOrderById:
+SELECT * FROM offline_orders WHERE id = ?;
+
+selectOrderByIdempotencyKey:
+SELECT * FROM offline_orders WHERE idempotency_key = ?;
+
+selectPendingSyncOrders:
+SELECT * FROM offline_orders WHERE status = 'PENDING_SYNC' ORDER BY created_at ASC;
+
+updateOrderStatus:
+UPDATE offline_orders SET status = ? WHERE id = ?;
+
+updateOrderRemoteId:
+UPDATE offline_orders SET remote_id = ?, order_number = ? WHERE id = ?;
+
+updateOrderStripeTransactionId:
+UPDATE offline_orders SET stripe_transaction_id = ? WHERE id = ?;
+
+selectRecentOrders:
+SELECT * FROM offline_orders ORDER BY created_at DESC LIMIT ?;
+
+-- ============================================================================
+-- QUERIES: Order Line Items
+-- ============================================================================
+
+insertOrderLineItem:
+INSERT INTO order_line_item(
+    order_id, product_id, variant_id, name, sku, quantity,
+    unit_price_cents, total_price_cents, currency_code
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+selectLineItemsByOrderId:
+SELECT * FROM order_line_item WHERE order_id = ?;
+
+-- ============================================================================
+-- QUERIES: Customers
+-- ============================================================================
+
+insertOrReplaceCustomer:
+INSERT OR REPLACE INTO customer(id, first_name, last_name, email, phone)
+VALUES (?, ?, ?, ?, ?);
+
+selectCustomerById:
+SELECT * FROM customer WHERE id = ?;
+
+searchCustomersByNameOrEmail:
+SELECT * FROM customer
+WHERE first_name LIKE ('%' || ? || '%')
+   OR last_name LIKE ('%' || ? || '%')
+   OR email LIKE ('%' || ? || '%')
+ORDER BY last_name ASC, first_name ASC;
+
+-- ============================================================================
+-- QUERIES: Tax Rates
+-- ============================================================================
+
+insertOrReplaceTaxRate:
+INSERT OR REPLACE INTO tax_rate(id, name, rate, country, state, is_compound, is_shipping)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+selectAllTaxRates:
+SELECT * FROM tax_rate;
+
+deleteAllTaxRates:
+DELETE FROM tax_rate;
+
+-- ============================================================================
+-- QUERIES: Sync State
+-- ============================================================================
+
+upsertSyncState:
+INSERT OR REPLACE INTO sync_state(entity_type, last_synced_at) VALUES (?, ?);
+
+selectSyncState:
+SELECT * FROM sync_state WHERE entity_type = ?;
+
+-- ============================================================================
+-- QUERIES: Store Config
+-- ============================================================================
+
+upsertStoreConfig:
+INSERT OR REPLACE INTO store_config(id, site_url, consumer_key, consumer_secret, currency)
+VALUES (1, ?, ?, ?, ?);
+
+selectStoreConfig:
+SELECT * FROM store_config WHERE id = 1;
+
+deleteStoreConfig:
+DELETE FROM store_config;

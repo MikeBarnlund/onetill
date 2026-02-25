@@ -16,6 +16,7 @@ data class Order(
     val stripeTransactionId: String?,
     val idempotencyKey: String,
     val note: String?,
+    val couponCodes: List<String>,
     val createdAt: Instant,
 )
 
