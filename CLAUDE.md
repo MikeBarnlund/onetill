@@ -45,7 +45,7 @@ If it's not UI or a platform API, it goes in `shared/commonMain/`. No exceptions
 ## Build & Test
 
 - `./gradlew :shared:check` — run shared module tests
-- `./gradlew :composeApp:assembleDebug` — build Android app
+- `./gradlew :android-app:assembleDebug` — build Android app
 - Shared tests use kotlin.test with fake ECommerceBackend implementations
 - Stripe integration: test mode only, requires DevKit for hardware testing
 

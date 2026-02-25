@@ -1,0 +1,9 @@
+{
+  "name": "onetill-dev",
+  "description": "Development guidelines and architectural rules for OneTill — a native WooCommerce POS app built with Kotlin Multiplatform for Stripe S700/S710 smart terminals.",
+  "version": "1.0.0",
+  "author": {
+    "name": "OneTill"
+  },
+  "license": "UNLICENSED"
+}
