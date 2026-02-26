@@ -4,6 +4,7 @@ import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.shared.data.model.Order
 import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.data.model.Product
+import com.onetill.shared.data.model.StoreConfig
 import com.onetill.shared.data.model.TaxRate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,12 +20,16 @@ class FakeLocalDataSource : LocalDataSource {
 
     private var nextOrderId = 1L
     private val _ordersFlow = MutableStateFlow<List<Order>>(emptyList())
+    private val _storeConfigFlow = MutableStateFlow<StoreConfig?>(null)
 
     // Track calls for verification
     var saveProductsCalls = 0
     var saveTaxRatesCalls = 0
+    var saveStoreConfigCalls = 0
+    var deleteStoreConfigCalls = 0
     var updateOrderStatusCalls = mutableListOf<Pair<Long, OrderStatus>>()
     var updateOrderRemoteIdCalls = mutableListOf<Triple<Long, Long, String>>()
+    var updateOrderStripeTransactionIdCalls = mutableListOf<Pair<Long, String>>()
 
     // Products
 
@@ -96,6 +101,18 @@ class FakeLocalDataSource : LocalDataSource {
         }
     }
 
+    override suspend fun updateOrderStripeTransactionId(localId: Long, stripeTransactionId: String) {
+        updateOrderStripeTransactionIdCalls.add(localId to stripeTransactionId)
+        val index = orders.indexOfFirst { it.id == localId }
+        if (index >= 0) {
+            orders[index] = orders[index].copy(stripeTransactionId = stripeTransactionId)
+            _ordersFlow.value = orders.toList()
+        }
+    }
+
+    override fun observeRecentOrders(limit: Int): Flow<List<Order>> =
+        _ordersFlow.map { list -> list.sortedByDescending { it.createdAt }.take(limit) }
+
     // Tax Rates
 
     override suspend fun saveTaxRates(rates: List<TaxRate>) {
@@ -115,6 +132,22 @@ class FakeLocalDataSource : LocalDataSource {
         syncTimestamps[entityType] = timestamp
     }
 
+    // Store Config
+
+    override fun observeStoreConfig(): Flow<StoreConfig?> = _storeConfigFlow
+
+    override suspend fun getStoreConfig(): StoreConfig? = _storeConfigFlow.value
+
+    override suspend fun saveStoreConfig(config: StoreConfig) {
+        saveStoreConfigCalls++
+        _storeConfigFlow.value = config
+    }
+
+    override suspend fun deleteStoreConfig() {
+        deleteStoreConfigCalls++
+        _storeConfigFlow.value = null
+    }
+
     fun reset() {
         products.clear()
         orders.clear()
@@ -123,8 +156,12 @@ class FakeLocalDataSource : LocalDataSource {
         nextOrderId = 1L
         saveProductsCalls = 0
         saveTaxRatesCalls = 0
+        saveStoreConfigCalls = 0
+        deleteStoreConfigCalls = 0
         updateOrderStatusCalls.clear()
         updateOrderRemoteIdCalls.clear()
+        updateOrderStripeTransactionIdCalls.clear()
         _ordersFlow.value = emptyList()
+        _storeConfigFlow.value = null
     }
 }

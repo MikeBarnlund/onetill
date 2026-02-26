@@ -9,6 +9,7 @@ import com.onetill.shared.data.model.Product
 import com.onetill.shared.data.model.ProductStatus
 import com.onetill.shared.data.model.ProductType
 import com.onetill.shared.data.model.ProductVariant
+import com.onetill.shared.data.model.StoreConfig
 import com.onetill.shared.data.model.TaxRate
 import com.onetill.shared.data.model.VariantAttribute
 import kotlinx.datetime.Instant
@@ -119,4 +120,16 @@ fun testTaxRate(
     state = "CA",
     isCompound = isCompound,
     isShipping = false,
+)
+
+fun testStoreConfig(
+    siteUrl: String = "https://mystore.com",
+    consumerKey: String = "ck_test123",
+    consumerSecret: String = "cs_test456",
+    currency: String = "USD",
+) = StoreConfig(
+    siteUrl = siteUrl,
+    consumerKey = consumerKey,
+    consumerSecret = consumerSecret,
+    currency = currency,
 )

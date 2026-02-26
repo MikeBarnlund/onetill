@@ -2,6 +2,7 @@ package com.onetill.shared.data.local
 
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
+import app.cash.sqldelight.coroutines.mapToOneOrNull
 import com.onetill.shared.data.model.LineItem
 import com.onetill.shared.data.model.Money
 import com.onetill.shared.data.model.Order
@@ -9,6 +10,7 @@ import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.data.model.PaymentMethod
 import com.onetill.shared.data.model.Product
 import com.onetill.shared.data.model.ProductCategory
+import com.onetill.shared.data.model.StoreConfig
 import com.onetill.shared.data.model.ProductImage
 import com.onetill.shared.data.model.ProductStatus
 import com.onetill.shared.data.model.ProductType
@@ -18,6 +20,7 @@ import com.onetill.shared.data.model.VariantAttribute
 import com.onetill.shared.db.OneTillDb
 import com.onetill.shared.db.Product_cache
 import com.onetill.shared.db.Offline_orders
+import com.onetill.shared.db.Store_config
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -251,6 +254,20 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
             )
         }
 
+    override suspend fun updateOrderStripeTransactionId(localId: Long, stripeTransactionId: String) =
+        withContext(Dispatchers.Default) {
+            queries.updateOrderStripeTransactionId(
+                stripe_transaction_id = stripeTransactionId,
+                id = localId,
+            )
+        }
+
+    override fun observeRecentOrders(limit: Int): Flow<List<Order>> =
+        queries.selectRecentOrders(limit.toLong())
+            .asFlow()
+            .mapToList(Dispatchers.Default)
+            .map { rows -> rows.map { assembleOrder(it) } }
+
     // ========================================================================
     // Tax Rates
     // ========================================================================
@@ -299,6 +316,33 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
         withContext(Dispatchers.Default) {
             queries.upsertSyncState(entityType, timestamp.toEpochMilliseconds())
         }
+
+    // ========================================================================
+    // Store Config
+    // ========================================================================
+
+    override fun observeStoreConfig(): Flow<StoreConfig?> =
+        queries.selectStoreConfig()
+            .asFlow()
+            .mapToOneOrNull(Dispatchers.Default)
+            .map { it?.let { row -> mapStoreConfigRow(row) } }
+
+    override suspend fun getStoreConfig(): StoreConfig? = withContext(Dispatchers.Default) {
+        queries.selectStoreConfig().executeAsOneOrNull()?.let { mapStoreConfigRow(it) }
+    }
+
+    override suspend fun saveStoreConfig(config: StoreConfig) = withContext(Dispatchers.Default) {
+        queries.upsertStoreConfig(
+            site_url = config.siteUrl,
+            consumer_key = config.consumerKey,
+            consumer_secret = config.consumerSecret,
+            currency = config.currency,
+        )
+    }
+
+    override suspend fun deleteStoreConfig() = withContext(Dispatchers.Default) {
+        queries.deleteStoreConfig()
+    }
 
     // ========================================================================
     // Private: Row → Domain Assembly
@@ -382,4 +426,11 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
             createdAt = Instant.fromEpochMilliseconds(row.created_at),
         )
     }
+
+    private fun mapStoreConfigRow(row: Store_config): StoreConfig = StoreConfig(
+        siteUrl = row.site_url,
+        consumerKey = row.consumer_key,
+        consumerSecret = row.consumer_secret,
+        currency = row.currency,
+    )
 }

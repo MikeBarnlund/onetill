@@ -20,11 +20,15 @@ class FakeECommerceBackend : ECommerceBackend {
     var fetchProductsSinceResult: AppResult<List<Product>> = AppResult.Success(emptyList())
     var createOrderResult: AppResult<Order>? = null
     var fetchTaxRatesResult: AppResult<List<TaxRate>> = AppResult.Success(emptyList())
+    var validateConnectionResult: ConnectionStatus = ConnectionStatus.Connected("Test Store")
+    var fetchStoreCurrencyResult: AppResult<String> = AppResult.Success("USD")
 
     // Call tracking
     var fetchProductsCalls = mutableListOf<Pair<Int, Int>>() // (page, perPage)
     var createOrderCalls = mutableListOf<OrderDraft>()
     var fetchTaxRatesCalls = 0
+    var validateConnectionCalls = 0
+    var fetchStoreCurrencyCalls = 0
 
     private var fetchProductsCallIndex = 0
 
@@ -69,20 +73,28 @@ class FakeECommerceBackend : ECommerceBackend {
         return fetchTaxRatesResult
     }
 
-    override suspend fun fetchStoreCurrency(): AppResult<String> =
-        AppResult.Success("USD")
+    override suspend fun fetchStoreCurrency(): AppResult<String> {
+        fetchStoreCurrencyCalls++
+        return fetchStoreCurrencyResult
+    }
 
-    override suspend fun validateConnection(): ConnectionStatus =
-        ConnectionStatus.Connected("Test Store")
+    override suspend fun validateConnection(): ConnectionStatus {
+        validateConnectionCalls++
+        return validateConnectionResult
+    }
 
     fun reset() {
         fetchProductsResults.clear()
         fetchProductsSinceResult = AppResult.Success(emptyList())
         createOrderResult = null
         fetchTaxRatesResult = AppResult.Success(emptyList())
+        validateConnectionResult = ConnectionStatus.Connected("Test Store")
+        fetchStoreCurrencyResult = AppResult.Success("USD")
         fetchProductsCalls.clear()
         createOrderCalls.clear()
         fetchTaxRatesCalls = 0
+        validateConnectionCalls = 0
+        fetchStoreCurrencyCalls = 0
         fetchProductsCallIndex = 0
     }
 }

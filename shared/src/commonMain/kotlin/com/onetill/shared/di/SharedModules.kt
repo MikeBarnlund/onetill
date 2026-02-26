@@ -9,6 +9,7 @@ import com.onetill.shared.ecommerce.ECommerceBackend
 import com.onetill.shared.ecommerce.woocommerce.WooCommerceBackend
 import com.onetill.shared.ecommerce.woocommerce.WooCommerceClient
 import com.onetill.shared.ecommerce.woocommerce.createWooCommerceHttpClient
+import com.onetill.shared.setup.SetupManager
 import com.onetill.shared.sync.OrderSyncManager
 import com.onetill.shared.sync.ProductSyncManager
 import com.onetill.shared.sync.SyncOrchestrator
@@ -17,6 +18,12 @@ import org.koin.dsl.module
 val databaseModule = module {
     single { createDatabase(get()) }
     single<LocalDataSource> { SqlDelightLocalDataSource(get()) }
+    single {
+        SetupManager(
+            localDataSource = get(),
+            backendFactory = { config -> WooCommerceBackend(config) },
+        )
+    }
 }
 
 fun backendModule(config: StoreConfig) = module {
