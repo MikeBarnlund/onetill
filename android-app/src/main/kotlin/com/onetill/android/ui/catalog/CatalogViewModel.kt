@@ -42,6 +42,34 @@ class CatalogViewModel : ViewModel() {
     private val _cartTotal = MutableStateFlow("$0.00")
     val cartTotal: StateFlow<String> = _cartTotal.asStateFlow()
 
+    private val _isDrawerOpen = MutableStateFlow(false)
+    val isDrawerOpen: StateFlow<Boolean> = _isDrawerOpen.asStateFlow()
+
+    private val _isSearchVisible = MutableStateFlow(false)
+    val isSearchVisible: StateFlow<Boolean> = _isSearchVisible.asStateFlow()
+
+    fun toggleDrawer() {
+        _isDrawerOpen.value = !_isDrawerOpen.value
+    }
+
+    fun closeDrawer() {
+        _isDrawerOpen.value = false
+    }
+
+    fun toggleSearch() {
+        _isSearchVisible.value = !_isSearchVisible.value
+        if (!_isSearchVisible.value) {
+            _searchQuery.value = ""
+            _searchResults.value = fakeProducts
+        }
+    }
+
+    fun dismissSearch() {
+        _isSearchVisible.value = false
+        _searchQuery.value = ""
+        _searchResults.value = fakeProducts
+    }
+
     fun onSearch(query: String) {
         _searchQuery.value = query
         _searchResults.value = if (query.isBlank()) {

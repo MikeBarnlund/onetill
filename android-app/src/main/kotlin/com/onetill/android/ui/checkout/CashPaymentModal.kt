@@ -54,7 +54,7 @@ fun CashPaymentModal(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface),
+            .background(colors.surface),
     ) {
         // Close button
         Row(
@@ -81,7 +81,7 @@ fun CashPaymentModal(
             Text(
                 text = "Total Due",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
             Text(
                 text = orderTotal,
@@ -95,7 +95,7 @@ fun CashPaymentModal(
             Text(
                 text = "Amount Received",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
             Text(
                 text = if (amountText.isEmpty()) "$0.00" else formatInput(amountText),
@@ -118,7 +118,7 @@ fun CashPaymentModal(
             Text(
                 text = "Quick amounts:",
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
             Spacer(modifier = Modifier.height(dimens.sm))
             FlowRow(

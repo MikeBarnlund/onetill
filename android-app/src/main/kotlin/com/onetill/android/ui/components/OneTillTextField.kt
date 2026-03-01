@@ -38,15 +38,15 @@ fun OneTillTextField(
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     singleLine: Boolean = true,
 ) {
-    val dimens = OneTillTheme.dimens
     val colors = OneTillTheme.colors
+    val dimens = OneTillTheme.dimens
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
 
     val borderColor = when {
-        isError -> MaterialTheme.colorScheme.error
-        isFocused -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.outline
+        isError -> colors.error
+        isFocused -> colors.accent
+        else -> colors.border
     }
     val borderWidth = if (isFocused || isError) 2.dp else 1.dp
     val shape = RoundedCornerShape(dimens.inputRadius)
@@ -56,7 +56,7 @@ fun OneTillTextField(
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
             Spacer(modifier = Modifier.height(dimens.xs))
         }
@@ -65,14 +65,14 @@ fun OneTillTextField(
             onValueChange = onValueChange,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 56.dp)
+                .heightIn(min = dimens.inputFieldHeight)
                 .border(borderWidth, borderColor, shape),
             placeholder = if (placeholder != null) {
                 {
                     Text(
                         text = placeholder,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = colors.disabled,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textTertiary,
                     )
                 }
             } else null,
@@ -85,21 +85,24 @@ fun OneTillTextField(
             interactionSource = interactionSource,
             shape = shape,
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                errorContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                focusedContainerColor = colors.surface,
+                unfocusedContainerColor = colors.surface,
+                errorContainerColor = colors.surface,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
                 errorIndicatorColor = Color.Transparent,
+                focusedTextColor = colors.textPrimary,
+                unfocusedTextColor = colors.textPrimary,
+                cursorColor = colors.accent,
             ),
-            textStyle = MaterialTheme.typography.bodyLarge,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.textPrimary),
         )
         if (isError && errorMessage != null) {
             Spacer(modifier = Modifier.height(dimens.xs))
             Text(
                 text = errorMessage,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
+                color = colors.error,
             )
         }
     }

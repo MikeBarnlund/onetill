@@ -13,7 +13,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.onetill.android.ui.theme.OneTillTheme
 
 enum class ButtonVariant {
@@ -31,9 +34,8 @@ fun OneTillButton(
     variant: ButtonVariant = ButtonVariant.Primary,
     enabled: Boolean = true,
 ) {
-    val dimens = OneTillTheme.dimens
     val colors = OneTillTheme.colors
-    val shape = RoundedCornerShape(dimens.buttonRadius)
+    val dimens = OneTillTheme.dimens
 
     when (variant) {
         ButtonVariant.Primary -> {
@@ -43,16 +45,24 @@ fun OneTillButton(
                     .fillMaxWidth()
                     .heightIn(min = dimens.buttonHeightPrimary),
                 enabled = enabled,
-                shape = shape,
+                shape = RoundedCornerShape(dimens.buttonRadiusPrimary),
                 contentPadding = PaddingValues(horizontal = dimens.lg),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 0.dp,
+                    pressedElevation = 0.dp,
+                ),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    disabledContainerColor = colors.disabledContainer,
-                    disabledContentColor = colors.disabled,
+                    containerColor = colors.accent,
+                    contentColor = colors.textPrimary,
+                    disabledContainerColor = colors.surface,
+                    disabledContentColor = colors.textTertiary,
                 ),
             ) {
-                Text(text = text, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = text,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
             }
         }
 
@@ -61,54 +71,60 @@ fun OneTillButton(
                 onClick = onClick,
                 modifier = modifier.heightIn(min = dimens.buttonHeightSecondary),
                 enabled = enabled,
-                shape = shape,
+                shape = RoundedCornerShape(dimens.buttonRadiusSecondary),
                 contentPadding = PaddingValues(horizontal = dimens.lg),
                 border = BorderStroke(
                     1.dp,
-                    if (enabled) MaterialTheme.colorScheme.primary else colors.disabled,
+                    if (enabled) colors.accent else colors.textTertiary,
                 ),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary,
-                    disabledContentColor = colors.disabled,
+                    containerColor = colors.surface,
+                    contentColor = colors.accent,
+                    disabledContentColor = colors.textTertiary,
                 ),
             ) {
-                Text(text = text, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = text,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                )
             }
         }
 
         ButtonVariant.Destructive -> {
-            OutlinedButton(
+            TextButton(
                 onClick = onClick,
-                modifier = modifier.heightIn(min = dimens.buttonHeightSecondary),
+                modifier = modifier.heightIn(min = dimens.touchTargetSecondary),
                 enabled = enabled,
-                shape = shape,
-                contentPadding = PaddingValues(horizontal = dimens.lg),
-                border = BorderStroke(
-                    1.dp,
-                    if (enabled) MaterialTheme.colorScheme.error else colors.disabled,
-                ),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.error,
-                    disabledContentColor = colors.disabled,
+                contentPadding = PaddingValues(horizontal = dimens.sm),
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = colors.error,
+                    disabledContentColor = colors.textTertiary,
                 ),
             ) {
-                Text(text = text, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = text,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                )
             }
         }
 
         ButtonVariant.Ghost -> {
             TextButton(
                 onClick = onClick,
-                modifier = modifier.heightIn(min = dimens.buttonHeightSecondary),
+                modifier = modifier.heightIn(min = dimens.touchTargetSecondary),
                 enabled = enabled,
-                shape = shape,
-                contentPadding = PaddingValues(horizontal = dimens.lg),
+                contentPadding = PaddingValues(horizontal = dimens.sm),
                 colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary,
-                    disabledContentColor = colors.disabled,
+                    contentColor = colors.accent,
+                    disabledContentColor = colors.textTertiary,
                 ),
             ) {
-                Text(text = text, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = text,
+                    fontWeight = FontWeight.Medium,
+                )
             }
         }
     }

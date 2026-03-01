@@ -31,17 +31,17 @@ fun VariationChip(
     val shape = RoundedCornerShape(dimens.inputRadius)
 
     val bgColor = when {
-        isOutOfStock -> colors.disabledContainer
-        isSelected -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.surfaceVariant
+        isOutOfStock -> colors.surface
+        isSelected -> colors.accent
+        else -> colors.surface
     }
     val textColor = when {
-        isOutOfStock -> colors.disabled
-        isSelected -> MaterialTheme.colorScheme.onPrimary
-        else -> MaterialTheme.colorScheme.onSurface
+        isOutOfStock -> colors.textTertiary
+        isSelected -> colors.textPrimary
+        else -> colors.textPrimary
     }
     val borderMod = if (!isSelected && !isOutOfStock) {
-        Modifier.border(1.dp, MaterialTheme.colorScheme.outline, shape)
+        Modifier.border(1.dp, colors.border, shape)
     } else Modifier
 
     Box(

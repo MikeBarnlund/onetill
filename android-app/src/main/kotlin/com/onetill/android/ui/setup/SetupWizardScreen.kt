@@ -69,6 +69,7 @@ fun SetupWizardScreen(
 @Composable
 private fun WelcomeStep(onGetStarted: () -> Unit) {
     val dimens = OneTillTheme.dimens
+    val colors = OneTillTheme.colors
 
     Column(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -83,13 +84,13 @@ private fun WelcomeStep(onGetStarted: () -> Unit) {
             Box(
                 modifier = Modifier
                     .size(120.dp)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+                    .background(colors.accent, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = "OT",
                     style = MaterialTheme.typography.displayLarge,
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    color = colors.textPrimary,
                 )
             }
 
@@ -106,7 +107,7 @@ private fun WelcomeStep(onGetStarted: () -> Unit) {
             Text(
                 text = "Sell in person. Stay in sync.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
                 textAlign = TextAlign.Center,
             )
         }
@@ -133,6 +134,7 @@ private fun StoreConnectionStep(
     onConnect: () -> Unit,
 ) {
     val dimens = OneTillTheme.dimens
+    val colors = OneTillTheme.colors
 
     Column(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -172,14 +174,14 @@ private fun StoreConnectionStep(
                 Text(
                     text = connectionError,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
+                    color = colors.error,
                 )
             }
 
             Text(
                 text = "Find your API keys in WooCommerce \u2192 Settings \u2192 Advanced \u2192 REST API",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
         }
 
@@ -215,7 +217,7 @@ private fun CatalogSyncStep(progress: SyncProgress?) {
                 Text(
                     text = "\u2713",
                     style = MaterialTheme.typography.displayMedium,
-                    color = colors.onSemantic,
+                    color = colors.textPrimary,
                 )
             }
             Spacer(modifier = Modifier.height(dimens.lg))
@@ -226,7 +228,7 @@ private fun CatalogSyncStep(progress: SyncProgress?) {
         } else {
             CircularProgressIndicator(
                 modifier = Modifier.size(64.dp),
-                color = MaterialTheme.colorScheme.primary,
+                color = colors.accent,
                 strokeWidth = 4.dp,
             )
             Spacer(modifier = Modifier.height(dimens.lg))
@@ -239,7 +241,7 @@ private fun CatalogSyncStep(progress: SyncProgress?) {
                 Text(
                     text = "${progress.current} of ${progress.total} products",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = colors.textSecondary,
                 )
             }
         }
@@ -274,7 +276,7 @@ private fun ReadyStep(
                 Text(
                     text = "\u2713",
                     style = MaterialTheme.typography.displayMedium,
-                    color = colors.onSemantic,
+                    color = colors.textPrimary,
                 )
             }
 
@@ -291,7 +293,7 @@ private fun ReadyStep(
             Text(
                 text = "$productsSynced products synced",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
 
             Spacer(modifier = Modifier.height(dimens.xl))

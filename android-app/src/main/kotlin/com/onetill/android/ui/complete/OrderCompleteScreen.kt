@@ -75,7 +75,7 @@ fun OrderCompleteScreen(
                 Text(
                     text = "\u2713",
                     style = MaterialTheme.typography.displayLarge,
-                    color = colors.onSemantic,
+                    color = colors.textPrimary,
                 )
             }
 
@@ -98,7 +98,7 @@ fun OrderCompleteScreen(
             Text(
                 text = paymentMethod,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
                 textAlign = TextAlign.Center,
             )
         }

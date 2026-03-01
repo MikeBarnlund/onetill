@@ -2,24 +2,33 @@ package com.onetill.android.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Core palette
-val Surface = Color(0xFFFFFFFF)
-val SurfaceVariant = Color(0xFFF5F5F5)
-val OnSurface = Color(0xFF1A1A1A)
-val OnSurfaceVariant = Color(0xFF666666)
-val Primary = Color(0xFF2563EB)
-val OnPrimary = Color(0xFFFFFFFF)
-val Outline = Color(0xFFE0E0E0)
-val OutlineVariant = Color(0xFFCCCCCC)
+// Core palette — dark theme with warm neutrals
+val Background = Color(0xFF000000)
+val BackgroundGradientStart = Color(0xFF1A1A18)
+val Drawer = Color(0xFF111110)
+val Surface = Color(0xFF1E1E1C)
+val TextPrimary = Color(0xFFFAF9F7)
+val TextSecondary = Color(0xFF9A9894)
+val TextTertiary = Color(0xFF6B6965)
+
+// Accent — single blue
+val Accent = Color(0xFF2A609C)
+val AccentLight = Color(0xFF3A7BC8)
+val AccentMuted = Color(0x332A609C) // 20% opacity
+
+// Borders
+val Border = Color(0xFF222220)
+val BorderSubtle = Color(0xFF1A1A18)
 
 // Semantic
-val Success = Color(0xFF16A34A)
-val Warning = Color(0xFFF59E0B)
-val Error = Color(0xFFDC2626)
-val OnSemantic = Color(0xFFFFFFFF)
+val Success = Color(0xFF3CB371)
+val Warning = Color(0xFFD4A843)
+val Error = Color(0xFFC85450)
 
-// State
-val Disabled = Color(0xFF9CA3AF)
-val DisabledContainer = Color(0xFFF3F4F6)
-val Highlight = Color(0xFFEFF6FF)
-val Scrim = Color(0x66000000) // 40% black
+// Status chip backgrounds — semantic color at 12% opacity
+val SuccessContainer = Color(0x1F3CB371)
+val WarningContainer = Color(0x1FD4A843)
+val ErrorContainer = Color(0x1FC85450)
+
+// Scrim
+val Scrim = Color(0x99000000) // 60% black

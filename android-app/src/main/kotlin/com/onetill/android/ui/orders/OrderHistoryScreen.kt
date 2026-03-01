@@ -40,6 +40,7 @@ fun OrderHistoryScreen(
     viewModel: OrdersViewModel = viewModel(),
 ) {
     val dimens = OneTillTheme.dimens
+    val colors = OneTillTheme.colors
     val orders by viewModel.orders.collectAsState()
     val selectedFilter by viewModel.selectedFilter.collectAsState()
     var showFilterMenu by remember { mutableStateOf(false) }
@@ -78,7 +79,7 @@ fun OrderHistoryScreen(
                 Text(
                     text = "${selectedFilter.name} \u25BC",
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = colors.accent,
                 )
             }
             DropdownMenu(
@@ -103,7 +104,7 @@ fun OrderHistoryScreen(
                 OrderRow(order = order)
                 HorizontalDivider(
                     modifier = Modifier.padding(horizontal = dimens.lg),
-                    color = MaterialTheme.colorScheme.outline,
+                    color = colors.border,
                 )
             }
         }
@@ -113,6 +114,7 @@ fun OrderHistoryScreen(
 @Composable
 private fun OrderRow(order: OrderUiModel) {
     val dimens = OneTillTheme.dimens
+    val colors = OneTillTheme.colors
 
     Column(
         modifier = Modifier
@@ -132,7 +134,7 @@ private fun OrderRow(order: OrderUiModel) {
             Text(
                 text = order.time,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
         }
         Row(
@@ -142,7 +144,7 @@ private fun OrderRow(order: OrderUiModel) {
             Text(
                 text = "${order.itemCount} items \u2022 ${order.paymentMethod}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
             Text(
                 text = order.totalFormatted,

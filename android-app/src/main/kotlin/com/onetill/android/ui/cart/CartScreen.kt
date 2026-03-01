@@ -48,6 +48,7 @@ fun CartScreen(
     viewModel: CartViewModel = viewModel(),
 ) {
     val dimens = OneTillTheme.dimens
+    val colors = OneTillTheme.colors
     val state by viewModel.cartState.collectAsState()
     var showCouponField by remember { mutableStateOf(false) }
     var couponInput by remember { mutableStateOf("") }
@@ -90,7 +91,7 @@ fun CartScreen(
                 Text(
                     text = "Clear All",
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.error,
+                    color = colors.error,
                 )
             }
         }
@@ -131,7 +132,7 @@ fun CartScreen(
                             TextButton(onClick = { viewModel.removeCoupon() }) {
                                 Text(
                                     text = "\u2715 Remove",
-                                    color = MaterialTheme.colorScheme.error,
+                                    color = colors.error,
                                 )
                             }
                         }
@@ -180,7 +181,7 @@ fun CartScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .background(colors.surface)
                 .padding(horizontal = dimens.lg, vertical = dimens.md),
         ) {
             TotalRow("Subtotal", CartViewModel.formatCents(state.subtotalCents))
@@ -194,7 +195,7 @@ fun CartScreen(
             TotalRow("Tax (10%)", CartViewModel.formatCents(state.taxCents))
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = dimens.sm),
-                color = MaterialTheme.colorScheme.outline,
+                color = colors.border,
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -225,6 +226,8 @@ private fun TotalRow(
     value: String,
     isDiscount: Boolean = false,
 ) {
+    val colors = OneTillTheme.colors
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -234,13 +237,13 @@ private fun TotalRow(
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = colors.textSecondary,
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            color = if (isDiscount) MaterialTheme.colorScheme.error
-            else MaterialTheme.colorScheme.onSurface,
+            color = if (isDiscount) colors.error
+            else colors.textPrimary,
         )
     }
 }

@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,17 +21,18 @@ fun BottomActionBar(
     content: @Composable () -> Unit,
 ) {
     val dimens = OneTillTheme.dimens
+    val colors = OneTillTheme.colors
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
+            .background(colors.surface)
             .windowInsetsPadding(WindowInsets.navigationBars),
     ) {
         HorizontalDivider(
             modifier = Modifier.align(Alignment.TopCenter),
             thickness = 1.dp,
-            color = MaterialTheme.colorScheme.outline,
+            color = colors.border,
         )
         Box(
             modifier = Modifier

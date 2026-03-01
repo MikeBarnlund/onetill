@@ -33,8 +33,8 @@ fun PaymentMethodCard(
     val colors = OneTillTheme.colors
     val shape = RoundedCornerShape(dimens.cardRadius)
 
-    val bgColor = if (isSelected) colors.highlight else MaterialTheme.colorScheme.surfaceVariant
-    val borderColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+    val bgColor = if (isSelected) colors.accentMuted else colors.surface
+    val borderColor = if (isSelected) colors.accent else colors.border
     val borderWidth = if (isSelected) 2.dp else 1.dp
 
     Row(
@@ -65,7 +65,7 @@ fun PaymentMethodCard(
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
         }
 
@@ -73,7 +73,7 @@ fun PaymentMethodCard(
         Text(
             text = "\u203A",
             style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = colors.textSecondary,
         )
     }
 }

@@ -70,10 +70,11 @@ private fun NumberPadKey(
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(OneTillTheme.dimens.inputRadius)
+    val colors = OneTillTheme.colors
     val bgColor = if (isBackspace) {
-        MaterialTheme.colorScheme.surface
+        colors.surface
     } else {
-        MaterialTheme.colorScheme.surfaceVariant
+        colors.surface
     }
 
     Box(
@@ -91,7 +92,7 @@ private fun NumberPadKey(
         Text(
             text = label,
             style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = colors.textPrimary,
         )
     }
 }

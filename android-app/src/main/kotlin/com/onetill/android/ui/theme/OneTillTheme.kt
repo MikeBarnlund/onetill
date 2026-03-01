@@ -1,50 +1,68 @@
 package com.onetill.android.ui.theme
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 
-private val LightColorScheme = lightColorScheme(
-    primary = Primary,
-    onPrimary = OnPrimary,
+private val DarkColorScheme = darkColorScheme(
+    primary = Accent,
+    onPrimary = TextPrimary,
     surface = Surface,
-    onSurface = OnSurface,
-    surfaceVariant = SurfaceVariant,
-    onSurfaceVariant = OnSurfaceVariant,
-    outline = Outline,
-    outlineVariant = OutlineVariant,
+    onSurface = TextPrimary,
+    surfaceVariant = Surface,
+    onSurfaceVariant = TextSecondary,
+    background = Background,
+    onBackground = TextPrimary,
+    outline = Border,
+    outlineVariant = BorderSubtle,
     error = Error,
-    onError = OnSemantic,
+    onError = TextPrimary,
     scrim = Scrim,
 )
 
 @Immutable
-data class OneTillExtendedColors(
-    val success: androidx.compose.ui.graphics.Color = Success,
-    val warning: androidx.compose.ui.graphics.Color = Warning,
-    val error: androidx.compose.ui.graphics.Color = Error,
-    val onSemantic: androidx.compose.ui.graphics.Color = OnSemantic,
-    val disabled: androidx.compose.ui.graphics.Color = Disabled,
-    val disabledContainer: androidx.compose.ui.graphics.Color = DisabledContainer,
-    val highlight: androidx.compose.ui.graphics.Color = Highlight,
-    val scrim: androidx.compose.ui.graphics.Color = Scrim,
+data class OneTillColors(
+    val background: Color = Background,
+    val backgroundGradientStart: Color = BackgroundGradientStart,
+    val drawer: Color = Drawer,
+    val surface: Color = Surface,
+    val textPrimary: Color = TextPrimary,
+    val textSecondary: Color = TextSecondary,
+    val textTertiary: Color = TextTertiary,
+    val accent: Color = Accent,
+    val accentLight: Color = AccentLight,
+    val accentMuted: Color = AccentMuted,
+    val border: Color = Border,
+    val borderSubtle: Color = BorderSubtle,
+    val success: Color = Success,
+    val warning: Color = Warning,
+    val error: Color = Error,
+    val successContainer: Color = SuccessContainer,
+    val warningContainer: Color = WarningContainer,
+    val errorContainer: Color = ErrorContainer,
+    val scrim: Color = Scrim,
 )
 
-val LocalOneTillColors = staticCompositionLocalOf { OneTillExtendedColors() }
+val LocalOneTillColors = staticCompositionLocalOf { OneTillColors() }
 val LocalOneTillDimens = staticCompositionLocalOf { OneTillDimens() }
+val LocalOneTillExtraTypography = staticCompositionLocalOf { OneTillExtraTypography() }
 
 @Composable
 fun OneTillTheme(content: @Composable () -> Unit) {
     CompositionLocalProvider(
-        LocalOneTillColors provides OneTillExtendedColors(),
+        LocalOneTillColors provides OneTillColors(),
         LocalOneTillDimens provides OneTillDimens(),
+        LocalOneTillExtraTypography provides OneTillExtraTypography(),
     ) {
         MaterialTheme(
-            colorScheme = LightColorScheme,
+            colorScheme = DarkColorScheme,
             typography = OneTillTypography,
             content = content,
         )
@@ -52,7 +70,7 @@ fun OneTillTheme(content: @Composable () -> Unit) {
 }
 
 object OneTillTheme {
-    val colors: OneTillExtendedColors
+    val colors: OneTillColors
         @Composable
         @ReadOnlyComposable
         get() = LocalOneTillColors.current
@@ -61,4 +79,16 @@ object OneTillTheme {
         @Composable
         @ReadOnlyComposable
         get() = LocalOneTillDimens.current
+
+    val extraTypography: OneTillExtraTypography
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalOneTillExtraTypography.current
 }
+
+/** 135-degree diagonal gradient used as the screen background. */
+fun screenGradient(widthPx: Float, heightPx: Float): Brush = Brush.linearGradient(
+    colors = listOf(BackgroundGradientStart, Background),
+    start = Offset(0f, 0f),
+    end = Offset(widthPx, heightPx),
+)

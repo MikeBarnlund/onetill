@@ -75,24 +75,24 @@ fun DailySummaryScreen(
             Text(
                 text = "Total Sales",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
             Text(
                 text = summary.totalSalesFormatted,
                 style = MaterialTheme.typography.displayMedium,
             )
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+            HorizontalDivider(color = colors.border)
 
             SummaryRow("Transactions", summary.transactionCount.toString())
             SummaryRow("Average Order", summary.averageOrderFormatted)
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+            HorizontalDivider(color = colors.border)
 
             SummaryRow("Card Payments", summary.cardPaymentsFormatted)
             SummaryRow("Cash Payments", summary.cashPaymentsFormatted)
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+            HorizontalDivider(color = colors.border)
 
             SummaryRow("Items Sold", summary.itemsSold.toString())
 
@@ -110,6 +110,8 @@ fun DailySummaryScreen(
 
 @Composable
 private fun SummaryRow(label: String, value: String) {
+    val colors = OneTillTheme.colors
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -117,7 +119,7 @@ private fun SummaryRow(label: String, value: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = colors.textSecondary,
         )
         Text(
             text = value,

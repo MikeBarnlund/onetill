@@ -85,7 +85,7 @@ fun ToastHost(
                     .fillMaxWidth()
                     .heightIn(min = 48.dp)
                     .background(
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
+                        colors.surface.copy(alpha = 0.9f),
                         RoundedCornerShape(dimens.inputRadius),
                     )
                     .padding(horizontal = dimens.lg, vertical = dimens.md),
@@ -104,7 +104,7 @@ fun ToastHost(
                 Text(
                     text = toast.message,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    color = colors.textPrimary,
                 )
             }
         }

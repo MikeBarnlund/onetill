@@ -41,6 +41,7 @@ fun CheckoutScreen(
     viewModel: CheckoutViewModel = viewModel(),
 ) {
     val dimens = OneTillTheme.dimens
+    val colors = OneTillTheme.colors
     val orderTotal by viewModel.orderTotal.collectAsState()
     val selectedMethod by viewModel.selectedPaymentMethod.collectAsState()
     val isOnline by viewModel.isOnline.collectAsState()
@@ -132,7 +133,7 @@ fun CheckoutScreen(
             Text(
                 text = "\u2713 Guest checkout",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = colors.textSecondary,
             )
         }
 
@@ -200,6 +201,8 @@ fun CheckoutScreen(
 
 @Composable
 private fun OrderSummaryRow(name: String, price: String) {
+    val colors = OneTillTheme.colors
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -207,7 +210,7 @@ private fun OrderSummaryRow(name: String, price: String) {
         Text(
             text = name,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = colors.textSecondary,
         )
         Text(
             text = price,

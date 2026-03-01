@@ -82,7 +82,8 @@ fun OneTillNavGraph(
             CatalogScreen(
                 onNavigateToCart = { navController.navigate(Routes.CART) },
                 onNavigateToOrders = { navController.navigate(Routes.ORDER_HISTORY) },
-                onNavigateToDailySummary = { navController.navigate(Routes.DAILY_SUMMARY) },
+                onNavigateToSummary = { navController.navigate(Routes.DAILY_SUMMARY) },
+                onNavigateToSettings = { /* Settings screen not yet built */ },
             )
         }
 

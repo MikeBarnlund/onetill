@@ -32,6 +32,7 @@ fun CartLineItem(
     modifier: Modifier = Modifier,
 ) {
     val dimens = OneTillTheme.dimens
+    val colors = OneTillTheme.colors
 
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -66,7 +67,7 @@ fun CartLineItem(
                     Text(
                         text = variationInfo,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = colors.textSecondary,
                     )
                 }
                 QuantityStepper(
@@ -85,7 +86,7 @@ fun CartLineItem(
         HorizontalDivider(
             modifier = Modifier.padding(horizontal = dimens.lg),
             thickness = 1.dp,
-            color = MaterialTheme.colorScheme.outline,
+            color = colors.border,
         )
     }
 }
