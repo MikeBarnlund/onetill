@@ -1,5 +1,6 @@
 package com.onetill.android.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,9 +17,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.onetill.android.R
 import com.onetill.android.ui.theme.OneTillTheme
 
 @Composable
@@ -43,20 +46,11 @@ fun NavigationDrawer(
             modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 20.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Logo placeholder — 36×36dp circle with accent
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .background(colors.accent, androidx.compose.foundation.shape.CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "O",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.textPrimary,
-                )
-            }
+            Image(
+                painter = painterResource(R.drawable.onetill_logo),
+                contentDescription = "OneTill logo",
+                modifier = Modifier.size(36.dp),
+            )
             Spacer(modifier = Modifier.width(10.dp))
             Text(
                 text = "OneTill",
