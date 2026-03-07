@@ -23,12 +23,31 @@ defined( 'ABSPATH' ) || exit;
 class Webhooks {
 
 	/**
+	 * Guard against recursive parent touches.
+	 *
+	 * When we call $parent->save() to touch date_modified, it fires
+	 * woocommerce_update_product again. This flag prevents infinite loops.
+	 *
+	 * @var bool
+	 */
+	private $touching_parent = false;
+
+	/**
 	 * Handle product updated hook.
 	 *
 	 * @param int $product_id The product ID.
 	 */
 	public function on_product_updated( $product_id ) {
-		// TODO: Insert 'product.updated' into change log.
+		if ( $this->touching_parent ) {
+			return;
+		}
+
+		$product = wc_get_product( $product_id );
+		if ( ! $product || $product->is_type( 'variation' ) ) {
+			return;
+		}
+
+		$this->log_change( 'product.updated', $product_id );
 	}
 
 	/**
@@ -37,19 +56,35 @@ class Webhooks {
 	 * @param int $product_id The product ID.
 	 */
 	public function on_product_created( $product_id ) {
-		// TODO: Insert 'product.created' into change log.
+		$product = wc_get_product( $product_id );
+		if ( ! $product || $product->is_type( 'variation' ) ) {
+			return;
+		}
+
+		$this->log_change( 'product.created', $product_id );
 	}
 
 	/**
 	 * Handle product trashed/deleted hook.
 	 *
-	 * Also records the deletion in wp_onetill_deleted_products for delta sync.
+	 * Records the deletion in wp_onetill_deleted_products for delta sync.
 	 *
 	 * @param int $product_id The product ID.
 	 */
 	public function on_product_deleted( $product_id ) {
-		// TODO: Insert 'product.deleted' into change log.
-		// TODO: Insert into wp_onetill_deleted_products table.
+		$this->log_change( 'product.deleted', $product_id );
+
+		global $wpdb;
+
+		// Track deletion for delta sync. Use REPLACE to handle re-deletes.
+		$wpdb->replace(
+			$wpdb->prefix . 'onetill_deleted_products',
+			array(
+				'product_id' => $product_id,
+				'deleted_at' => current_time( 'mysql', true ),
+			),
+			array( '%d', '%s' )
+		);
 	}
 
 	/**
@@ -58,7 +93,19 @@ class Webhooks {
 	 * @param \WC_Product $product The product whose stock changed.
 	 */
 	public function on_product_stock_changed( $product ) {
-		// TODO: Insert 'product.stock_changed' into change log.
+		if ( is_numeric( $product ) ) {
+			$product = wc_get_product( $product );
+		}
+		if ( ! $product ) {
+			return;
+		}
+
+		// For variations, this is handled by on_variation_stock_changed.
+		if ( $product->is_type( 'variation' ) ) {
+			return;
+		}
+
+		$this->log_change( 'product.stock_changed', $product->get_id() );
 	}
 
 	/**
@@ -72,11 +119,17 @@ class Webhooks {
 	 * @param \WC_Product_Variation|int $variation The variation or variation ID.
 	 */
 	public function on_variation_stock_changed( $variation ) {
-		// TODO: Implement:
-		// 1. Resolve variation to WC_Product if int
-		// 2. Get parent_id
-		// 3. Insert 'product.stock_changed' with parent_id as resource_id
-		// 4. Touch parent date_modified: $parent->set_date_modified(...); $parent->save();
+		if ( is_numeric( $variation ) ) {
+			$variation = wc_get_product( $variation );
+		}
+		if ( ! $variation || ! $variation->get_parent_id() ) {
+			return;
+		}
+
+		$parent_id = $variation->get_parent_id();
+
+		$this->log_change( 'product.stock_changed', $parent_id );
+		$this->touch_parent_modified( $parent_id );
 	}
 
 	/**
@@ -89,11 +142,15 @@ class Webhooks {
 	 * @param int $loop_index   The variation loop index.
 	 */
 	public function on_variation_saved( $variation_id, $loop_index ) {
-		// TODO: Implement:
-		// 1. Get variation product
-		// 2. Get parent_id
-		// 3. Insert 'product.updated' with parent_id as resource_id
-		// 4. Touch parent date_modified
+		$variation = wc_get_product( $variation_id );
+		if ( ! $variation || ! $variation->get_parent_id() ) {
+			return;
+		}
+
+		$parent_id = $variation->get_parent_id();
+
+		$this->log_change( 'product.updated', $parent_id );
+		$this->touch_parent_modified( $parent_id );
 	}
 
 	/**
@@ -102,7 +159,7 @@ class Webhooks {
 	 * @param int $order_id The order ID.
 	 */
 	public function on_order_created( $order_id ) {
-		// TODO: Insert 'order.created' into change log.
+		$this->log_change( 'order.created', $order_id );
 	}
 
 	/**
@@ -113,7 +170,18 @@ class Webhooks {
 	 * @param string|null $payload     Optional JSON payload.
 	 */
 	private function log_change( $event_type, $resource_id, $payload = null ) {
-		// TODO: Insert into wp_onetill_change_log using $wpdb->insert().
+		global $wpdb;
+
+		$wpdb->insert(
+			$wpdb->prefix . 'onetill_change_log',
+			array(
+				'event_type'  => $event_type,
+				'resource_id' => $resource_id,
+				'timestamp'   => current_time( 'mysql', true ),
+				'payload'     => $payload,
+			),
+			array( '%s', '%d', '%s', '%s' )
+		);
 	}
 
 	/**
@@ -125,38 +193,79 @@ class Webhooks {
 	 * @param int $parent_id The parent product ID.
 	 */
 	private function touch_parent_modified( $parent_id ) {
-		// TODO: $parent->set_date_modified(current_time('timestamp', true)); $parent->save();
+		$parent = wc_get_product( $parent_id );
+		if ( ! $parent ) {
+			return;
+		}
+
+		$this->touching_parent = true;
+		$parent->set_date_modified( current_time( 'timestamp', true ) );
+		$parent->save();
+		$this->touching_parent = false;
 	}
 
 	/**
 	 * Get the count of pending changes since a given timestamp.
 	 *
-	 * Used by the heartbeat endpoint to tell the S700 whether a delta
-	 * sync is needed.
-	 *
-	 * @param string $since ISO 8601 timestamp.
+	 * @param string $since MySQL datetime string (UTC).
 	 * @return int Number of pending changes.
 	 */
 	public function get_pending_changes_count( $since ) {
-		// TODO: COUNT(*) from wp_onetill_change_log WHERE timestamp > $since.
-		return 0;
+		global $wpdb;
+
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->prefix}onetill_change_log WHERE timestamp > %s",
+				$since
+			)
+		);
 	}
 
 	/**
 	 * Clean up old change log entries (older than 7 days).
 	 *
-	 * Called by WP-Cron daily.
+	 * Called by WP-Cron daily. Also cleans up deleted products (30 days)
+	 * and expired idempotency keys (24 hours).
 	 */
 	public function cleanup_change_log() {
-		// TODO: DELETE FROM wp_onetill_change_log WHERE timestamp < NOW() - 7 days.
+		global $wpdb;
+
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->prefix}onetill_change_log WHERE timestamp < %s",
+				gmdate( 'Y-m-d H:i:s', time() - ( 7 * DAY_IN_SECONDS ) )
+			)
+		);
+
+		$this->cleanup_deleted_products();
+		$this->cleanup_idempotency();
 	}
 
 	/**
 	 * Clean up old deleted product records (older than 30 days).
-	 *
-	 * Called alongside change log cleanup.
 	 */
 	public function cleanup_deleted_products() {
-		// TODO: DELETE FROM wp_onetill_deleted_products WHERE deleted_at < NOW() - 30 days.
+		global $wpdb;
+
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->prefix}onetill_deleted_products WHERE deleted_at < %s",
+				gmdate( 'Y-m-d H:i:s', time() - ( 30 * DAY_IN_SECONDS ) )
+			)
+		);
+	}
+
+	/**
+	 * Clean up expired idempotency keys (older than 24 hours).
+	 */
+	public function cleanup_idempotency() {
+		global $wpdb;
+
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->prefix}onetill_idempotency WHERE created_at < %s",
+				gmdate( 'Y-m-d H:i:s', time() - DAY_IN_SECONDS )
+			)
+		);
 	}
 }

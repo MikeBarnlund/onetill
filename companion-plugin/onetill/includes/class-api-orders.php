@@ -295,7 +295,14 @@ class API_Orders {
 	 * Called by WP-Cron daily.
 	 */
 	public function cleanup_idempotency() {
-		// TODO: Delete rows from wp_onetill_idempotency where created_at < NOW() - 24 hours.
+		global $wpdb;
+
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->prefix}onetill_idempotency WHERE created_at < %s",
+				gmdate( 'Y-m-d H:i:s', time() - DAY_IN_SECONDS )
+			)
+		);
 	}
 
 	/**
