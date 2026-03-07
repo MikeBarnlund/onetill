@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 private const val DELTA_SYNC_INTERVAL_MS = 30_000L
 
@@ -28,6 +30,7 @@ class SyncOrchestrator(
 
     val isOnline: StateFlow<Boolean> = connectivityMonitor.isOnline
 
+    private val syncMutex = Mutex()
     private var deltaSyncJob: Job? = null
     private var connectivityJob: Job? = null
 
@@ -42,6 +45,31 @@ class SyncOrchestrator(
             is AppResult.Error -> SyncStatus.Error(result.message)
         }
         return result
+    }
+
+    /**
+     * Run a delta sync — fetch only products modified since the last sync.
+     * Use for pull-to-refresh after initial setup is complete.
+     */
+    suspend fun performDeltaSync(): AppResult<Unit> {
+        if (!syncMutex.tryLock()) {
+            Napier.d("Delta sync already in progress — skipping")
+            return AppResult.Success(Unit)
+        }
+        return try {
+            _syncStatus.value = SyncStatus.Syncing
+            val result = productSyncManager.performDeltaSync()
+            _syncStatus.value = when (result) {
+                is AppResult.Success -> SyncStatus.Idle
+                is AppResult.Error -> {
+                    Napier.w("Delta sync error: ${result.message}")
+                    SyncStatus.Error(result.message)
+                }
+            }
+            result
+        } finally {
+            syncMutex.unlock()
+        }
     }
 
     /**
@@ -85,14 +113,22 @@ class SyncOrchestrator(
     }
 
     private suspend fun runDeltaSync() {
-        _syncStatus.value = SyncStatus.Syncing
-        val result = productSyncManager.performDeltaSync()
-        _syncStatus.value = when (result) {
-            is AppResult.Success -> SyncStatus.Idle
-            is AppResult.Error -> {
-                Napier.w("Delta sync error: ${result.message}")
-                SyncStatus.Error(result.message)
+        if (!syncMutex.tryLock()) {
+            Napier.d("Background sync skipped — sync already in progress")
+            return
+        }
+        try {
+            _syncStatus.value = SyncStatus.Syncing
+            val result = productSyncManager.performDeltaSync()
+            _syncStatus.value = when (result) {
+                is AppResult.Success -> SyncStatus.Idle
+                is AppResult.Error -> {
+                    Napier.w("Delta sync error: ${result.message}")
+                    SyncStatus.Error(result.message)
+                }
             }
+        } finally {
+            syncMutex.unlock()
         }
 
         // Also drain pending orders during each sync cycle

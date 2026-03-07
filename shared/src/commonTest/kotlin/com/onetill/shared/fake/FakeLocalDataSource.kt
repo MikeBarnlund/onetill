@@ -4,6 +4,7 @@ import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.shared.data.model.Order
 import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.data.model.Product
+import com.onetill.shared.data.model.ProductType
 import com.onetill.shared.data.model.StoreConfig
 import com.onetill.shared.data.model.TaxRate
 import kotlinx.coroutines.flow.Flow
@@ -48,6 +49,28 @@ class FakeLocalDataSource : LocalDataSource {
         products.filter { it.name.contains(query, ignoreCase = true) }
 
     override suspend fun getProductCount(): Long = products.size.toLong()
+
+    override suspend fun getVariableProductIds(): List<Long> =
+        products.filter { it.type == ProductType.VARIABLE }.map { it.id }
+
+    override suspend fun decrementStock(productId: Long, variantId: Long?, quantity: Int) {
+        val idx = products.indexOfFirst { it.id == productId }
+        if (idx >= 0) {
+            val p = products[idx]
+            if (variantId != null) {
+                val updatedVariants = p.variants.map { v ->
+                    if (v.id == variantId && v.manageStock && v.stockQuantity != null) {
+                        v.copy(stockQuantity = (v.stockQuantity!! - quantity).coerceAtLeast(0))
+                    } else {
+                        v
+                    }
+                }
+                products[idx] = p.copy(variants = updatedVariants)
+            } else if (p.manageStock && p.stockQuantity != null) {
+                products[idx] = p.copy(stockQuantity = (p.stockQuantity!! - quantity).coerceAtLeast(0))
+            }
+        }
+    }
 
     override suspend fun saveProduct(product: Product) {
         products.removeAll { it.id == product.id }

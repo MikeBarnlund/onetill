@@ -67,6 +67,14 @@ data class PickerOption(
     val label: String,
     val available: Boolean,
     val priceAdjustment: String? = null,
+    val stockCount: Int = 0,
+)
+
+data class PickerVariant(
+    val attributes: Map<String, String>,
+    val priceFormatted: String,
+    val stockCount: Int,
+    val manageStock: Boolean,
 )
 
 data class PickerProduct(
@@ -76,6 +84,7 @@ data class PickerProduct(
     val attributes: List<PickerAttributeGroup>,
     val resolvedPriceFormatted: String,
     val stockCount: Int,
+    val variants: List<PickerVariant> = emptyList(),
 )
 
 /**
@@ -347,6 +356,14 @@ fun VariationPickerSheet(
                     }
 
                     // Selected variant summary strip
+                    val matchedVariant = product.variants.firstOrNull { variant ->
+                        selections.all { (attrName, attrValue) ->
+                            variant.attributes[attrName] == attrValue
+                        }
+                    }
+                    val resolvedStock = matchedVariant?.stockCount ?: product.stockCount
+                    val resolvedPrice = matchedVariant?.priceFormatted ?: product.resolvedPriceFormatted
+
                     HorizontalDivider(thickness = 1.dp, color = colors.border)
                     Row(
                         modifier = Modifier
@@ -371,16 +388,16 @@ fun VariationPickerSheet(
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                text = "${product.stockCount} in stock",
+                                text = "$resolvedStock in stock",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = colors.success,
+                                color = if (resolvedStock > 0) colors.success else colors.error,
                             )
                         }
 
                         // Right: resolved price
                         Text(
-                            text = product.resolvedPriceFormatted,
+                            text = resolvedPrice,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = colors.textPrimary,

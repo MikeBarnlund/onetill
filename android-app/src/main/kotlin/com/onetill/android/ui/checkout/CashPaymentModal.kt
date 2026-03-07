@@ -1,21 +1,16 @@
 package com.onetill.android.ui.checkout
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -25,26 +20,33 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.onetill.android.ui.components.BottomActionBar
-import com.onetill.android.ui.components.ButtonVariant
+import androidx.compose.ui.unit.sp
+import com.onetill.android.ui.components.ConnectivityState
+import com.onetill.shared.util.formatCents
+import org.koin.androidx.compose.koinViewModel
+import com.onetill.android.ui.components.HeaderNavAction
 import com.onetill.android.ui.components.NumberPad
 import com.onetill.android.ui.components.OneTillButton
+import com.onetill.android.ui.components.ScreenHeader
+import com.onetill.android.ui.components.StatusBar
 import com.onetill.android.ui.theme.OneTillTheme
+import com.onetill.android.ui.theme.screenGradient
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CashPaymentModal(
     onClose: () -> Unit,
     onPaymentComplete: (String) -> Unit,
-    viewModel: CheckoutViewModel = viewModel(),
+    viewModel: CheckoutViewModel = koinViewModel(),
 ) {
-    val dimens = OneTillTheme.dimens
     val colors = OneTillTheme.colors
-    val orderTotal by viewModel.orderTotal.collectAsState()
+    val dimens = OneTillTheme.dimens
+
+    val orderTotalFormatted by viewModel.orderTotalFormatted.collectAsState()
     val orderTotalCents by viewModel.orderTotalCents.collectAsState()
+
     var amountText by remember { mutableStateOf("") }
 
     val amountCents = parseAmountCents(amountText)
@@ -54,113 +56,135 @@ fun CashPaymentModal(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.surface),
+            .drawBehind { drawRect(brush = screenGradient(size.width, size.height)) },
     ) {
-        // Close button
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = dimens.sm, vertical = dimens.sm),
-        ) {
-            IconButton(
-                onClick = onClose,
-                modifier = Modifier.size(dimens.touchTargetPrimary),
-            ) {
-                Text(text = "\u2715", style = MaterialTheme.typography.headlineMedium)
-            }
-        }
+        // Status bar
+        StatusBar(
+            connectivityState = ConnectivityState.Online,
+            syncStatusText = "Synced",
+            batteryPercent = 85,
+            currentTime = "3:42",
+        )
 
+        // Header — Close X + "Cash Payment"
+        ScreenHeader(
+            title = "Cash Payment",
+            navAction = HeaderNavAction.Close,
+            onNavAction = onClose,
+        )
+
+        // Total Due — centered
         Column(
             modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = dimens.lg),
+                .fillMaxWidth()
+                .padding(horizontal = dimens.md, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Total due
             Text(
-                text = "Total Due",
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.textSecondary,
+                text = "TOTAL DUE",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = colors.textTertiary,
+                letterSpacing = 0.6.sp,
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = orderTotal,
-                style = MaterialTheme.typography.displayLarge,
-                modifier = Modifier.padding(vertical = dimens.sm),
+                text = orderTotalFormatted,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = colors.textPrimary,
             )
-
-            Spacer(modifier = Modifier.height(dimens.xl))
-
-            // Amount received display
-            Text(
-                text = "Amount Received",
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.textSecondary,
-            )
-            Text(
-                text = if (amountText.isEmpty()) "$0.00" else formatInput(amountText),
-                style = MaterialTheme.typography.displayLarge,
-                modifier = Modifier.padding(vertical = dimens.sm),
-            )
-
-            Spacer(modifier = Modifier.height(dimens.lg))
-
-            // Number pad
-            NumberPad(
-                onDigit = { amountText += it },
-                onDot = { if (!amountText.contains('.')) amountText += '.' },
-                onBackspace = { if (amountText.isNotEmpty()) amountText = amountText.dropLast(1) },
-            )
-
-            Spacer(modifier = Modifier.height(dimens.lg))
-
-            // Quick amounts
-            Text(
-                text = "Quick amounts:",
-                style = MaterialTheme.typography.labelMedium,
-                color = colors.textSecondary,
-            )
-            Spacer(modifier = Modifier.height(dimens.sm))
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(dimens.sm),
-                verticalArrangement = Arrangement.spacedBy(dimens.sm),
-            ) {
-                OneTillButton(
-                    text = "Exact",
-                    onClick = { amountText = formatExact(orderTotalCents) },
-                    variant = ButtonVariant.Secondary,
-                    modifier = Modifier.weight(1f),
-                )
-                quickAmounts(orderTotalCents).forEach { quickCents ->
-                    OneTillButton(
-                        text = formatCentsShort(quickCents),
-                        onClick = { amountText = formatExact(quickCents) },
-                        variant = ButtonVariant.Secondary,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(dimens.lg))
-
-            // Change due
-            if (canComplete) {
-                Text(
-                    text = "Change due: ${formatCentsDisplay(changeCents)}",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = colors.success,
-                    textAlign = TextAlign.Center,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(dimens.lg))
         }
 
-        // Complete sale button
-        BottomActionBar {
+        // Amount Received — centered display box
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = dimens.md, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "AMOUNT RECEIVED",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = colors.textTertiary,
+                letterSpacing = 0.6.sp,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .widthIn(max = 220.dp)
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .background(colors.surface, RoundedCornerShape(12.dp))
+                    .border(1.dp, colors.border, RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = formatAmountDisplay(amountText),
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textPrimary,
+                )
+            }
+        }
+
+        // Change Due — appears when overpaid
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = dimens.md, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (canComplete && changeCents > 0) {
+                Text(
+                    text = "Change due: ${formatCents(changeCents)}",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = colors.success,
+                )
+            } else {
+                // Reserve space so layout doesn't shift
+                Spacer(modifier = Modifier.height(17.dp))
+            }
+        }
+
+        // Number Pad — centered in remaining flex space
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .padding(horizontal = dimens.xl),
+            contentAlignment = Alignment.Center,
+        ) {
+            NumberPad(
+                onDigit = { digit ->
+                    amountText = appendDigit(amountText, digit)
+                },
+                onDot = {
+                    if (!amountText.contains('.')) {
+                        amountText = if (amountText.isEmpty()) "0." else "$amountText."
+                    }
+                },
+                onBackspace = {
+                    if (amountText.isNotEmpty()) {
+                        amountText = amountText.dropLast(1)
+                    }
+                },
+            )
+        }
+
+        // Complete Sale — primary CTA pinned at bottom
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = dimens.md, end = dimens.md, top = 10.dp, bottom = 14.dp),
+        ) {
             OneTillButton(
                 text = "Complete Sale",
-                onClick = { onPaymentComplete(orderTotal) },
+                onClick = {
+                    viewModel.submitCashPayment { amount -> onPaymentComplete(amount) }
+                },
                 enabled = canComplete,
             )
         }
@@ -173,29 +197,30 @@ private fun parseAmountCents(text: String): Long {
     return (value * 100).toLong()
 }
 
-private fun formatInput(text: String): String {
+private fun formatAmountDisplay(text: String): String {
+    if (text.isEmpty()) return "$0.00"
     val value = text.toDoubleOrNull() ?: return "$$text"
-    return "$${String.format("%.2f", value)}"
+    // If user is still typing decimals, show what they've typed
+    return if (text.contains('.')) {
+        val parts = text.split('.')
+        val decPart = parts.getOrElse(1) { "" }
+        when (decPart.length) {
+            0 -> "$$text"
+            1 -> "$$text"
+            else -> "$${String.format("%.2f", value)}"
+        }
+    } else {
+        "$$text"
+    }
 }
 
-private fun formatExact(cents: Long): String {
-    val d = cents / 100
-    val r = cents % 100
-    return "$d.${r.toString().padStart(2, '0')}"
-}
-
-private fun formatCentsDisplay(cents: Long): String {
-    val d = cents / 100
-    val r = cents % 100
-    return "$${d}.${r.toString().padStart(2, '0')}"
-}
-
-private fun formatCentsShort(cents: Long): String {
-    val d = cents / 100
-    return "$$d"
-}
-
-private fun quickAmounts(totalCents: Long): List<Long> {
-    val bills = listOf(500L, 1000L, 2000L, 5000L, 10000L)
-    return bills.filter { it > totalCents }.take(2)
+private fun appendDigit(current: String, digit: Char): String {
+    // Limit to 2 decimal places
+    if (current.contains('.')) {
+        val decPart = current.substringAfter('.')
+        if (decPart.length >= 2) return current
+    }
+    // Prevent leading zeros (except "0.")
+    if (current == "0" && digit != '.') return digit.toString()
+    return current + digit
 }

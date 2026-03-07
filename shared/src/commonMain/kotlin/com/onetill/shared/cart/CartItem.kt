@@ -13,6 +13,7 @@ data class CartItem(
     val unitPrice: Money,
     val quantity: Int,
     val imageUrl: String?,
+    val maxQuantity: Int? = null,
 ) {
     val totalPrice: Money get() = unitPrice * quantity
 
@@ -36,6 +37,7 @@ fun Product.toCartItem(quantity: Int = 1): CartItem = CartItem(
     unitPrice = price,
     quantity = quantity,
     imageUrl = images.firstOrNull()?.url,
+    maxQuantity = if (manageStock) stockQuantity else null,
 )
 
 fun ProductVariant.toCartItem(product: Product, quantity: Int = 1): CartItem = CartItem(
@@ -46,4 +48,5 @@ fun ProductVariant.toCartItem(product: Product, quantity: Int = 1): CartItem = C
     unitPrice = price,
     quantity = quantity,
     imageUrl = product.images.firstOrNull()?.url,
+    maxQuantity = if (manageStock) stockQuantity else null,
 )

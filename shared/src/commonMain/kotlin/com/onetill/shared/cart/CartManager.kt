@@ -15,6 +15,8 @@ import kotlinx.coroutines.launch
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
+enum class AddResult { Added, StockLimitReached }
+
 class CartManager(
     private val localDataSource: LocalDataSource,
     private val currency: String,
@@ -35,7 +37,7 @@ class CartManager(
         scope.launch { refreshTaxRates() }
     }
 
-    fun addProduct(product: Product, variant: ProductVariant? = null) {
+    fun addProduct(product: Product, variant: ProductVariant? = null): AddResult {
         val newItem = if (variant != null) {
             variant.toCartItem(product)
         } else {
@@ -48,12 +50,21 @@ class CartManager(
 
         if (existingIndex >= 0) {
             val existing = items[existingIndex]
+            val maxQty = existing.maxQuantity
+            if (maxQty != null && existing.quantity >= maxQty) {
+                return AddResult.StockLimitReached
+            }
             items[existingIndex] = existing.copy(quantity = existing.quantity + 1)
         } else {
+            val maxQty = newItem.maxQuantity
+            if (maxQty != null && maxQty <= 0) {
+                return AddResult.StockLimitReached
+            }
             items.add(newItem)
         }
 
         emitState()
+        return AddResult.Added
     }
 
     fun removeItem(productId: Long, variantId: Long? = null) {
@@ -71,7 +82,9 @@ class CartManager(
             it.productId == productId && it.variantId == variantId
         }
         if (index >= 0) {
-            items[index] = items[index].copy(quantity = newQuantity)
+            val item = items[index]
+            val clamped = item.maxQuantity?.let { newQuantity.coerceAtMost(it) } ?: newQuantity
+            items[index] = item.copy(quantity = clamped)
             emitState()
         }
     }
@@ -100,6 +113,15 @@ class CartManager(
     }
 
     fun clearCart() {
+        // Decrement local stock immediately so the catalog reflects the sale
+        val soldItems = items.toList()
+        scope.launch {
+            for (item in soldItems) {
+                if (item.maxQuantity != null) {
+                    localDataSource.decrementStock(item.productId, item.variantId, item.quantity)
+                }
+            }
+        }
         items.clear()
         couponCodes.clear()
         customerId = null

@@ -8,7 +8,10 @@ import io.ktor.client.plugins.auth.providers.basic
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.HttpTimeout
+import io.github.aakira.napier.Napier
 import io.ktor.http.URLProtocol
 import io.ktor.http.path
 import io.ktor.serialization.kotlinx.json.json
@@ -18,6 +21,8 @@ fun createWooCommerceHttpClient(config: StoreConfig): HttpClient {
     val baseUrl = config.siteUrl.trimEnd('/')
 
     return HttpClient {
+        expectSuccess = true
+
         install(ContentNegotiation) {
             json(Json {
                 ignoreUnknownKeys = true
@@ -38,11 +43,23 @@ fun createWooCommerceHttpClient(config: StoreConfig): HttpClient {
             }
         }
 
+        install(HttpTimeout) {
+            connectTimeoutMillis = 15_000
+            requestTimeoutMillis = 30_000
+            socketTimeoutMillis = 15_000
+        }
+
         install(Logging) {
-            level = LogLevel.NONE
+            level = LogLevel.HEADERS
+            logger = object : Logger {
+                override fun log(message: String) {
+                    Napier.d(message, tag = "WooHTTP")
+                }
+            }
         }
 
         defaultRequest {
+            headers.append("ngrok-skip-browser-warning", "true")
             url {
                 val parsed = io.ktor.http.Url(baseUrl)
                 protocol = parsed.protocol

@@ -17,6 +17,7 @@ data class WooProductDto(
     @SerialName("stock_quantity") val stockQuantity: Int? = null,
     val images: List<WooProductImageDto> = emptyList(),
     val categories: List<WooCategoryDto> = emptyList(),
+    val tags: List<WooTagDto> = emptyList(),
     val variations: List<Long> = emptyList(),
     @SerialName("meta_data") val metaData: List<WooMetaDataDto> = emptyList(),
     @SerialName("date_created") val dateCreated: String = "",
@@ -31,6 +32,12 @@ data class WooProductImageDto(
 
 @Serializable
 data class WooCategoryDto(
+    val id: Long,
+    val name: String = "",
+)
+
+@Serializable
+data class WooTagDto(
     val id: Long,
     val name: String = "",
 )

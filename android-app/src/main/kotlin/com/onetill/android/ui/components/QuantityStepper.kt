@@ -30,6 +30,8 @@ import kotlinx.coroutines.launch
 fun QuantityStepper(
     quantity: Int,
     onQuantityChange: (Int) -> Unit,
+    onRemove: (() -> Unit)? = null,
+    maxQuantity: Int? = null,
     modifier: Modifier = Modifier,
 ) {
     val colors = OneTillTheme.colors
@@ -45,14 +47,19 @@ fun QuantityStepper(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
-        // Minus button
-        val minusEnabled = quantity > 1
+        // Minus / Trash button
+        val isTrash = quantity == 1 && onRemove != null
+        val minusEnabled = quantity > 1 || isTrash
         Box(
             modifier = Modifier
                 .size(width = dimens.stepperWidth, height = dimens.stepperHeight)
                 .background(colors.surface)
                 .then(
-                    if (minusEnabled) {
+                    if (isTrash) {
+                        Modifier.pointerInput(Unit) {
+                            detectTapGestures(onTap = { onRemove!!() })
+                        }
+                    } else if (minusEnabled) {
                         Modifier.pointerInput(quantity) {
                             detectTapGestures(
                                 onTap = { onQuantityChange(quantity - 1) },
@@ -73,10 +80,17 @@ fun QuantityStepper(
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            StepperMinusIcon(
-                color = if (minusEnabled) colors.textSecondary else colors.textTertiary,
-                modifier = Modifier.size(dimens.stepperIconSize),
-            )
+            if (isTrash) {
+                StepperTrashIcon(
+                    color = colors.error,
+                    modifier = Modifier.size(dimens.stepperIconSize),
+                )
+            } else {
+                StepperMinusIcon(
+                    color = if (minusEnabled) colors.textSecondary else colors.textTertiary,
+                    modifier = Modifier.size(dimens.stepperIconSize),
+                )
+            }
         }
 
         // Count display
@@ -96,30 +110,36 @@ fun QuantityStepper(
         }
 
         // Plus button
+        val plusEnabled = maxQuantity == null || quantity < maxQuantity
         Box(
             modifier = Modifier
                 .size(width = dimens.stepperWidth, height = dimens.stepperHeight)
                 .background(colors.surface)
-                .pointerInput(quantity) {
-                    detectTapGestures(
-                        onTap = { onQuantityChange(quantity + 1) },
-                        onLongPress = {
-                            scope.launch {
-                                delay(250)
-                                var current = quantity
-                                while (true) {
-                                    current++
-                                    onQuantityChange(current)
-                                    delay(100)
-                                }
-                            }
-                        },
-                    )
-                },
+                .then(
+                    if (plusEnabled) {
+                        Modifier.pointerInput(quantity, maxQuantity) {
+                            detectTapGestures(
+                                onTap = { onQuantityChange(quantity + 1) },
+                                onLongPress = {
+                                    scope.launch {
+                                        delay(250)
+                                        var current = quantity
+                                        val limit = maxQuantity ?: Int.MAX_VALUE
+                                        while (current < limit) {
+                                            current++
+                                            onQuantityChange(current)
+                                            delay(100)
+                                        }
+                                    }
+                                },
+                            )
+                        }
+                    } else Modifier,
+                ),
             contentAlignment = Alignment.Center,
         ) {
             StepperPlusIcon(
-                color = colors.textSecondary,
+                color = if (plusEnabled) colors.textSecondary else colors.textTertiary,
                 modifier = Modifier.size(dimens.stepperIconSize),
             )
         }
@@ -160,6 +180,67 @@ private fun StepperPlusIcon(color: Color, modifier: Modifier = Modifier) {
             start = androidx.compose.ui.geometry.Offset(cx, pad),
             end = androidx.compose.ui.geometry.Offset(cx, size.height - pad),
             strokeWidth = strokeW,
+            cap = androidx.compose.ui.graphics.StrokeCap.Round,
+        )
+    }
+}
+
+@Composable
+private fun StepperTrashIcon(color: Color, modifier: Modifier = Modifier) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val s = 1.4.dp.toPx()
+        val w = size.width
+        val h = size.height
+        val stroke = androidx.compose.ui.graphics.drawscope.Stroke(
+            width = s,
+            cap = androidx.compose.ui.graphics.StrokeCap.Round,
+            join = androidx.compose.ui.graphics.StrokeJoin.Round,
+        )
+        // Lid line
+        drawLine(
+            color = color,
+            start = androidx.compose.ui.geometry.Offset(w * 0.2f, h * 0.22f),
+            end = androidx.compose.ui.geometry.Offset(w * 0.8f, h * 0.22f),
+            strokeWidth = s,
+            cap = androidx.compose.ui.graphics.StrokeCap.Round,
+        )
+        // Handle nub
+        drawLine(
+            color = color,
+            start = androidx.compose.ui.geometry.Offset(w * 0.38f, h * 0.22f),
+            end = androidx.compose.ui.geometry.Offset(w * 0.38f, h * 0.14f),
+            strokeWidth = s,
+            cap = androidx.compose.ui.graphics.StrokeCap.Round,
+        )
+        drawLine(
+            color = color,
+            start = androidx.compose.ui.geometry.Offset(w * 0.38f, h * 0.14f),
+            end = androidx.compose.ui.geometry.Offset(w * 0.62f, h * 0.14f),
+            strokeWidth = s,
+            cap = androidx.compose.ui.graphics.StrokeCap.Round,
+        )
+        drawLine(
+            color = color,
+            start = androidx.compose.ui.geometry.Offset(w * 0.62f, h * 0.14f),
+            end = androidx.compose.ui.geometry.Offset(w * 0.62f, h * 0.22f),
+            strokeWidth = s,
+            cap = androidx.compose.ui.graphics.StrokeCap.Round,
+        )
+        // Body (tapered trapezoid)
+        val body = androidx.compose.ui.graphics.Path().apply {
+            moveTo(w * 0.25f, h * 0.28f)
+            lineTo(w * 0.30f, h * 0.88f)
+            lineTo(w * 0.70f, h * 0.88f)
+            lineTo(w * 0.75f, h * 0.28f)
+            close()
+        }
+        drawPath(path = body, color = color, style = stroke)
+        // Inner vertical lines
+        drawLine(
+            color = color,
+            start = androidx.compose.ui.geometry.Offset(w * 0.5f, h * 0.36f),
+            end = androidx.compose.ui.geometry.Offset(w * 0.5f, h * 0.78f),
+            strokeWidth = s,
             cap = androidx.compose.ui.graphics.StrokeCap.Round,
         )
     }

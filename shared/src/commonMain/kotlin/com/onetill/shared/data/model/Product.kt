@@ -17,6 +17,7 @@ data class Product(
     val status: ProductStatus,
     val images: List<ProductImage>,
     val categories: List<ProductCategory>,
+    val tags: List<ProductTag>,
     val variants: List<ProductVariant>,
     val type: ProductType,
     val createdAt: Instant,
@@ -52,6 +53,12 @@ data class ProductImage(
 
 @Serializable
 data class ProductCategory(
+    val id: Long,
+    val name: String,
+)
+
+@Serializable
+data class ProductTag(
     val id: Long,
     val name: String,
 )

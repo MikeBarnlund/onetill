@@ -35,8 +35,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.onetill.android.R
+import org.koin.androidx.compose.koinViewModel
 import com.onetill.android.ui.components.OneTillButton
 import com.onetill.android.ui.components.OneTillTextField
 import com.onetill.android.ui.theme.OneTillTheme
@@ -46,7 +46,7 @@ import com.onetill.android.ui.theme.screenGradient
 @Composable
 fun SetupWizardScreen(
     onSetupComplete: () -> Unit,
-    viewModel: SetupViewModel = viewModel(),
+    viewModel: SetupViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
 
@@ -72,7 +72,8 @@ fun SetupWizardScreen(
                 onConnect = { viewModel.onConnect() },
             )
             SetupStep.CatalogSync -> CatalogSyncStep(
-                progress = state.syncProgress,
+                productsSynced = state.productsSynced,
+                isComplete = state.syncComplete,
             )
             SetupStep.Ready -> ReadyStep(
                 productsSynced = state.productsSynced,
@@ -272,7 +273,7 @@ private fun StoreConnectionStep(
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun CatalogSyncStep(progress: SyncProgress?) {
+private fun CatalogSyncStep(productsSynced: Int, isComplete: Boolean) {
     val colors = OneTillTheme.colors
 
     Column(
@@ -282,7 +283,7 @@ private fun CatalogSyncStep(progress: SyncProgress?) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        if (progress != null && progress.isComplete) {
+        if (isComplete) {
             // Completion — green checkmark with scale-in
             val scale = remember { Animatable(0f) }
             LaunchedEffect(Unit) {
@@ -344,10 +345,10 @@ private fun CatalogSyncStep(progress: SyncProgress?) {
                 color = colors.textPrimary,
             )
 
-            if (progress != null) {
+            if (productsSynced > 0) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "${progress.current} of ${progress.total} products",
+                    text = "$productsSynced products synced",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Normal,
                     color = colors.textSecondary,

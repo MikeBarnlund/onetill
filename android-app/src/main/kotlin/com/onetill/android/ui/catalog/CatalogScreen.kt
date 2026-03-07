@@ -57,17 +57,22 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.onetill.android.ui.components.BarcodeIcon
+import com.onetill.android.ui.components.ButtonVariant
+import org.koin.androidx.compose.koinViewModel
 import com.onetill.android.ui.components.CartPreviewPill
 import com.onetill.android.ui.components.CloseIcon
 import com.onetill.android.ui.components.ConnectivityState
 import com.onetill.android.ui.components.HeaderActionButton
 import com.onetill.android.ui.components.HeaderNavAction
 import com.onetill.android.ui.components.NavigationDrawer
+import com.onetill.android.ui.components.OneTillButton
 import com.onetill.android.ui.components.ProductCard
 import com.onetill.android.ui.components.SearchIcon
 import com.onetill.android.ui.components.StatusBar
+import com.onetill.android.ui.components.ToastHost
+import com.onetill.shared.data.model.ProductType
+import com.onetill.shared.util.formatDisplay
 import com.onetill.android.ui.theme.Background
 import com.onetill.android.ui.theme.BackgroundGradientStart
 import com.onetill.android.ui.theme.OneTillTheme
@@ -80,7 +85,7 @@ fun CatalogScreen(
     onNavigateToOrders: () -> Unit,
     onNavigateToSummary: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    viewModel: CatalogViewModel = viewModel(),
+    viewModel: CatalogViewModel = koinViewModel(),
 ) {
     val colors = OneTillTheme.colors
     val dimens = OneTillTheme.dimens
@@ -91,7 +96,9 @@ fun CatalogScreen(
     val cartTotal by viewModel.cartTotal.collectAsState()
     val isDrawerOpen by viewModel.isDrawerOpen.collectAsState()
     val isSearchVisible by viewModel.isSearchVisible.collectAsState()
-    var isRefreshing by remember { mutableStateOf(false) }
+    val pickerProduct by viewModel.pickerProduct.collectAsState()
+    val isPickerVisible by viewModel.isPickerVisible.collectAsState()
+    val isSyncing by viewModel.isSyncing.collectAsState()
 
     val drawerWidthPx = with(LocalDensity.current) { dimens.drawerWidth.roundToPx() }
 
@@ -148,39 +155,67 @@ fun CatalogScreen(
 
                 // Product grid
                 PullToRefreshBox(
-                    isRefreshing = isRefreshing,
-                    onRefresh = { isRefreshing = false },
+                    isRefreshing = isSyncing,
+                    onRefresh = { viewModel.syncProducts() },
                     modifier = Modifier.weight(1f),
                 ) {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        contentPadding = PaddingValues(
-                            start = dimens.md,
-                            end = dimens.md,
-                            top = 6.dp,
-                            bottom = 72.dp,
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(dimens.md),
-                        verticalArrangement = Arrangement.spacedBy(dimens.md),
-                    ) {
-                        items(
-                            items = products,
-                            key = { it.id },
-                        ) { product ->
-                            val stock = product.stockQuantity ?: 0
-                            val isOutOfStock = product.manageStock && stock <= 0
-                            ProductCard(
-                                name = product.name,
-                                priceFormatted = CatalogViewModel.formatCents(product.price.amountCents),
-                                stockText = "$stock left",
-                                imageUrl = product.images.firstOrNull()?.url,
-                                isOutOfStock = isOutOfStock,
-                                onClick = { viewModel.onProductTap(product) },
-                            )
+                    if (products.isEmpty()) {
+                        EmptyCatalogState(
+                            isSyncing = isSyncing,
+                            onSyncProducts = { viewModel.syncProducts() },
+                            onNavigateToSettings = onNavigateToSettings,
+                        )
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            contentPadding = PaddingValues(
+                                start = dimens.md,
+                                end = dimens.md,
+                                top = 6.dp,
+                                bottom = 72.dp,
+                            ),
+                            horizontalArrangement = Arrangement.spacedBy(dimens.md),
+                            verticalArrangement = Arrangement.spacedBy(dimens.md),
+                        ) {
+                            items(
+                                items = products,
+                                key = { it.id },
+                            ) { product ->
+                                val stock = if (product.type == ProductType.VARIABLE) {
+                                    product.variants.sumOf { it.stockQuantity ?: 0 }
+                                } else {
+                                    product.stockQuantity ?: 0
+                                }
+                                val hasStockManagement = if (product.type == ProductType.VARIABLE) {
+                                    product.variants.any { it.manageStock }
+                                } else {
+                                    product.manageStock
+                                }
+                                val isOutOfStock = hasStockManagement && stock <= 0
+                                val priceFormatted = if (product.type == ProductType.VARIABLE) {
+                                    "From ${product.price.formatDisplay()}"
+                                } else {
+                                    product.price.formatDisplay()
+                                }
+                                ProductCard(
+                                    name = product.name,
+                                    priceFormatted = priceFormatted,
+                                    stockText = "$stock left",
+                                    imageUrl = product.images.firstOrNull()?.url,
+                                    isOutOfStock = isOutOfStock,
+                                    onClick = { viewModel.onProductTap(product) },
+                                )
+                            }
                         }
                     }
                 }
             }
+
+            // Stock-limit toast
+            ToastHost(
+                state = viewModel.toastState,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
 
             // Cart preview pill — floating at bottom, aligned with grid margins
             CartPreviewPill(
@@ -206,6 +241,67 @@ fun CatalogScreen(
                 )
             }
         }
+
+        // Variation picker sheet overlay
+        val currentPickerProduct = pickerProduct
+        if (currentPickerProduct != null) {
+            VariationPickerSheet(
+                product = currentPickerProduct.toPickerProduct(),
+                visible = isPickerVisible,
+                onDismiss = { viewModel.dismissPicker() },
+                onAddToCart = { selections -> viewModel.onVariantAddToCart(selections) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyCatalogState(
+    isSyncing: Boolean,
+    onSyncProducts: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+) {
+    val colors = OneTillTheme.colors
+    val dimens = OneTillTheme.dimens
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = dimens.lg),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = "No products yet",
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.textPrimary,
+        )
+
+        Spacer(modifier = Modifier.height(dimens.sm))
+
+        Text(
+            text = "Sync your WooCommerce catalog or check your store settings.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textSecondary,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+
+        Spacer(modifier = Modifier.height(dimens.xl))
+
+        OneTillButton(
+            text = if (isSyncing) "Syncing..." else "Sync Products",
+            onClick = onSyncProducts,
+            enabled = !isSyncing,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Spacer(modifier = Modifier.height(dimens.sm))
+
+        OneTillButton(
+            text = "Store Settings",
+            onClick = onNavigateToSettings,
+            variant = ButtonVariant.Ghost,
+        )
     }
 }
 

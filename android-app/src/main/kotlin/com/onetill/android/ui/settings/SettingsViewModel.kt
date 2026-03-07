@@ -1,13 +1,13 @@
-package com.onetill.android.ui.setup
+package com.onetill.android.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.onetill.android.di.loadPostWizardModules
+import com.onetill.android.di.reloadPostWizardModules
 import com.onetill.shared.data.AppResult
+import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.shared.setup.SetupManager
 import com.onetill.shared.setup.SetupState
 import com.onetill.shared.sync.SyncOrchestrator
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,59 +16,58 @@ import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
-enum class SetupStep {
-    Welcome,
-    StoreConnection,
-    CatalogSync,
-    Ready,
-}
-
-data class SetupUiState(
-    val currentStep: SetupStep = SetupStep.Welcome,
+data class SettingsUiState(
     val siteUrl: String = "",
     val consumerKey: String = "",
     val consumerSecret: String = "",
-    val registerName: String = "Register 1",
-    val syncProgressCurrent: Int = 0,
-    val syncProgressTotal: Int = 0,
-    val syncComplete: Boolean = false,
+    val currentStoreUrl: String = "",
     val isConnecting: Boolean = false,
     val isConnected: Boolean = false,
     val connectionError: String? = null,
-    val productsSynced: Int = 0,
+    val isSyncing: Boolean = false,
+    val syncError: String? = null,
+    val hasChanges: Boolean = false,
 )
 
-class SetupViewModel(
+class SettingsViewModel(
     private val setupManager: SetupManager,
-    private val localDataSource: com.onetill.shared.data.local.LocalDataSource,
+    private val localDataSource: LocalDataSource,
 ) : ViewModel(), KoinComponent {
 
-    private val _state = MutableStateFlow(SetupUiState())
-    val state: StateFlow<SetupUiState> = _state.asStateFlow()
+    private val _state = MutableStateFlow(SettingsUiState())
+    val state: StateFlow<SettingsUiState> = _state.asStateFlow()
 
-    fun onGetStarted() {
-        _state.update { it.copy(currentStep = SetupStep.StoreConnection) }
+    init {
+        viewModelScope.launch {
+            val config = localDataSource.getStoreConfig()
+            if (config != null) {
+                _state.update {
+                    it.copy(
+                        siteUrl = config.siteUrl,
+                        consumerKey = config.consumerKey,
+                        consumerSecret = config.consumerSecret,
+                        currentStoreUrl = config.siteUrl,
+                    )
+                }
+            }
+        }
     }
 
     fun onSiteUrlChange(url: String) {
-        _state.update { it.copy(siteUrl = url, connectionError = null) }
+        _state.update { it.copy(siteUrl = url, hasChanges = true, connectionError = null, syncError = null) }
     }
 
     fun onConsumerKeyChange(key: String) {
-        _state.update { it.copy(consumerKey = key, connectionError = null) }
+        _state.update { it.copy(consumerKey = key, hasChanges = true, connectionError = null, syncError = null) }
     }
 
     fun onConsumerSecretChange(secret: String) {
-        _state.update { it.copy(consumerSecret = secret, connectionError = null) }
+        _state.update { it.copy(consumerSecret = secret, hasChanges = true, connectionError = null, syncError = null) }
     }
 
-    fun onRegisterNameChange(name: String) {
-        _state.update { it.copy(registerName = name) }
-    }
-
-    fun onConnect() {
+    fun onSaveAndSync() {
         viewModelScope.launch {
-            _state.update { it.copy(isConnecting = true, connectionError = null) }
+            _state.update { it.copy(isConnecting = true, connectionError = null, syncError = null) }
 
             setupManager.validateCredentials(
                 siteUrl = _state.value.siteUrl,
@@ -80,67 +79,43 @@ class SetupViewModel(
                 is SetupState.Validated -> {
                     _state.update { it.copy(isConnecting = false, isConnected = true) }
 
-                    // Save the validated configuration
                     setupManager.saveConfiguration()
 
                     val config = (setupManager.state.value as? SetupState.Complete)?.config
                         ?: return@launch
 
-                    // Load post-wizard Koin modules (backend, sync, cart, VMs)
-                    loadPostWizardModules(config)
+                    // Stop old sync, reload modules with new config
+                    try {
+                        val oldSync: SyncOrchestrator by inject()
+                        oldSync.stopSync()
+                    } catch (_: Exception) { }
 
-                    // Brief pause to show success checkmark
-                    delay(1200)
+                    reloadPostWizardModules(config)
 
-                    // Transition to sync step
-                    _state.update { it.copy(currentStep = SetupStep.CatalogSync) }
+                    // Clear stale products
+                    localDataSource.deleteAllProducts()
 
-                    // Get SyncOrchestrator from Koin (now available after loadPostWizardModules)
+                    _state.update { it.copy(isSyncing = true, currentStoreUrl = config.siteUrl) }
+
+                    // Get fresh SyncOrchestrator from reloaded modules
                     val syncOrchestrator: SyncOrchestrator by inject()
 
-                    // Observe sync progress in background
-                    val progressJob = launch {
-                        syncOrchestrator.initialSyncProgress.collect { progress ->
-                            _state.update {
-                                it.copy(
-                                    syncProgressCurrent = progress.totalProducts,
-                                    syncProgressTotal = progress.totalProducts,
-                                    syncComplete = progress.isComplete,
-                                    productsSynced = progress.totalProducts,
-                                )
-                            }
-                        }
-                    }
-
-                    // Run the initial sync
-                    val result = syncOrchestrator.performInitialSync()
-
-                    progressJob.cancel()
-
-                    when (result) {
+                    when (val result = syncOrchestrator.performInitialSync()) {
                         is AppResult.Success -> {
-                            // Get final product count from DB
-                            val productCount = localDataSource.getProductCount()
+                            syncOrchestrator.startSync()
                             _state.update {
                                 it.copy(
-                                    syncComplete = true,
-                                    productsSynced = productCount.toInt(),
+                                    isSyncing = false,
+                                    hasChanges = false,
+                                    syncError = null,
                                 )
                             }
-
-                            // Start background delta sync
-                            syncOrchestrator.startSync()
-
-                            // Auto-advance after brief pause
-                            delay(1500)
-                            _state.update { it.copy(currentStep = SetupStep.Ready) }
                         }
                         is AppResult.Error -> {
                             _state.update {
                                 it.copy(
-                                    currentStep = SetupStep.StoreConnection,
-                                    isConnected = false,
-                                    connectionError = "Sync failed: ${result.message}",
+                                    isSyncing = false,
+                                    syncError = friendlyError(result.message),
                                 )
                             }
                         }

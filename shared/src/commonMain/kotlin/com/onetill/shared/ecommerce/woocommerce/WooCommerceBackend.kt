@@ -17,9 +17,14 @@ import com.onetill.shared.ecommerce.woocommerce.dto.WooCreateRefundDto
 import com.onetill.shared.ecommerce.woocommerce.mapper.toDomain
 import com.onetill.shared.ecommerce.woocommerce.mapper.toWooDto
 import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.plugins.ServerResponseException
 import io.ktor.http.HttpStatusCode
+import io.github.aakira.napier.Napier
+import io.ktor.http.URLBuilder
+import io.ktor.http.Url
 import kotlinx.datetime.Instant
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -32,6 +37,24 @@ class WooCommerceBackend(
 
     private val currency: String get() = config.currency
 
+    private val siteOrigin: String by lazy {
+        val url = Url(config.siteUrl)
+        URLBuilder(url).apply { encodedPathSegments = listOf("") }.buildString().trimEnd('/')
+    }
+
+    private fun rewriteImageUrls(product: Product): Product {
+        val rewritten = product.images.map { image ->
+            val imgUrl = Url(image.url)
+            val imgOrigin = URLBuilder(imgUrl).apply { encodedPathSegments = listOf("") }.buildString().trimEnd('/')
+            if (imgOrigin != siteOrigin) {
+                image.copy(url = image.url.replaceFirst(imgOrigin, siteOrigin))
+            } else {
+                image
+            }
+        }
+        return if (rewritten !== product.images) product.copy(images = rewritten) else product
+    }
+
     // -- Catalog --
 
     override suspend fun fetchProducts(page: Int, perPage: Int): AppResult<List<Product>> =
@@ -43,21 +66,27 @@ class WooCommerceBackend(
                 } else {
                     emptyList()
                 }
-                dto.toDomain(currency, variations)
+                rewriteImageUrls(dto.toDomain(currency, variations))
             }
         }
 
     override suspend fun fetchProductsSince(modifiedAfter: Instant): AppResult<List<Product>> =
         apiCall {
             val isoDate = modifiedAfter.toString()
+            Napier.d("fetchProductsSince: requesting modified_after=$isoDate", tag = "WooSync")
             val dtos = client.getProductsSince(isoDate)
+            Napier.d("fetchProductsSince: got ${dtos.size} DTOs", tag = "WooSync")
             dtos.map { dto ->
+                Napier.d("fetchProductsSince: mapping '${dto.name}' (id=${dto.id}, type=${dto.type}, variationIds=${dto.variations})", tag = "WooSync")
                 val variations = if (dto.variations.isNotEmpty()) {
-                    client.getProductVariations(dto.id)
+                    Napier.d("fetchProductsSince: fetching ${dto.variations.size} variations for '${dto.name}'...", tag = "WooSync")
+                    val v = client.getProductVariations(dto.id)
+                    Napier.d("fetchProductsSince: got ${v.size} variations for '${dto.name}'", tag = "WooSync")
+                    v
                 } else {
                     emptyList()
                 }
-                dto.toDomain(currency, variations)
+                rewriteImageUrls(dto.toDomain(currency, variations))
             }
         }
 
@@ -69,7 +98,7 @@ class WooCommerceBackend(
             } else {
                 emptyList()
             }
-            dto.toDomain(currency, variations)
+            rewriteImageUrls(dto.toDomain(currency, variations))
         }
 
     // -- Orders --
@@ -105,7 +134,7 @@ class WooCommerceBackend(
             } else {
                 emptyList()
             }
-            dto.toDomain(currency, variations)
+            rewriteImageUrls(dto.toDomain(currency, variations))
         }
 
     // -- Customers --
@@ -165,18 +194,49 @@ class WooCommerceBackend(
         return try {
             AppResult.Success(block())
         } catch (e: ClientRequestException) {
-            AppResult.Error(
-                message = "API error ${e.response.status.value}: ${e.response.status.description}",
-                cause = e,
-            )
+            val message = when (e.response.status) {
+                HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden ->
+                    "Invalid API credentials — check your consumer key/secret permissions in WooCommerce"
+                HttpStatusCode.NotFound ->
+                    "API endpoint not found — check your store URL"
+                else ->
+                    "API error ${e.response.status.value}: ${e.response.status.description}"
+            }
+            AppResult.Error(message = message, cause = e)
         } catch (e: ServerResponseException) {
             AppResult.Error(
                 message = "Server error ${e.response.status.value}: ${e.response.status.description}",
                 cause = e,
             )
-        } catch (e: Exception) {
+        } catch (e: SerializationException) {
+            val msg = e.message.orEmpty()
+            val message = when {
+                msg.contains("woocommerce_rest_cannot_view") ||
+                    msg.contains("woocommerce_rest_cannot_read") ->
+                    "Invalid API credentials — check your consumer key/secret permissions in WooCommerce"
+                msg.contains("woocommerce_rest_authentication_error") ->
+                    "Authentication failed — check your consumer key and secret"
+                else ->
+                    "Unexpected response from store: ${msg.take(120)}"
+            }
+            AppResult.Error(message = message, cause = e)
+        } catch (e: HttpRequestTimeoutException) {
             AppResult.Error(
-                message = e.message ?: "Unknown error",
+                message = "Request timed out — check your internet connection",
+                cause = e,
+            )
+        } catch (e: Exception) {
+            val msg = e.message.orEmpty()
+            val message = when {
+                msg.contains("UnknownHostException") || msg.contains("Unable to resolve") ->
+                    "Unable to reach store — check your internet connection"
+                msg.contains("ConnectException") || msg.contains("Connection refused") ->
+                    "Could not connect to store — check your store URL"
+                else ->
+                    msg.ifEmpty { "Unknown error" }
+            }
+            AppResult.Error(
+                message = message,
                 cause = e,
             )
         }

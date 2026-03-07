@@ -82,23 +82,32 @@ class ProductSyncManager(
     /**
      * Delta sync — fetch only products modified since the last sync.
      * Called periodically by SyncOrchestrator (default every 30s).
+     *
+     * Note: WooCommerce's `modified_after` filter only applies to the parent
+     * product's `date_modified`. Variation-only changes (e.g. stock updates)
+     * don't update the parent, so they won't be picked up here. The companion
+     * plugin will solve this via webhooks on variation stock changes.
      */
     suspend fun performDeltaSync(): AppResult<Unit> {
         val lastSynced = localDataSource.getLastSyncedAt(SYNC_ENTITY_TYPE)
-            ?: return performInitialSync()
+        if (lastSynced == null) {
+            Napier.i("No prior sync state — falling back to initial sync")
+            return performInitialSync()
+        }
 
+        Napier.i("Delta sync starting — fetching products modified after $lastSynced")
         val result = backend.fetchProductsSince(lastSynced)
 
         return when (result) {
             is AppResult.Error -> {
-                Napier.w("Delta sync failed: ${result.message}")
+                Napier.e("Delta sync FAILED: ${result.message}", result.cause)
                 result
             }
             is AppResult.Success -> {
                 val products = result.data
+                Napier.i("Delta sync returned ${products.size} products")
                 if (products.isNotEmpty()) {
                     localDataSource.saveProducts(products)
-                    Napier.d("Delta sync: ${products.size} products updated")
                 }
                 localDataSource.updateLastSyncedAt(SYNC_ENTITY_TYPE, Clock.System.now())
                 AppResult.Success(Unit)

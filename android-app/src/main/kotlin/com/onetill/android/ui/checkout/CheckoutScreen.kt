@@ -12,9 +12,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -24,179 +24,225 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.unit.sp
+import com.onetill.android.ui.components.CardPaymentIcon
+import org.koin.androidx.compose.koinViewModel
+import com.onetill.android.ui.components.CashPaymentIcon
+import com.onetill.android.ui.components.CheckmarkIcon
+import com.onetill.android.ui.components.ChevronDownIcon
+import com.onetill.android.ui.components.ChevronUpIcon
 import com.onetill.android.ui.components.ConnectivityState
+import com.onetill.android.ui.components.HeaderNavAction
+import com.onetill.android.ui.components.MailIcon
 import com.onetill.android.ui.components.OneTillTextField
 import com.onetill.android.ui.components.PaymentMethodCard
+import com.onetill.android.ui.components.ScreenHeader
 import com.onetill.android.ui.components.StatusBar
 import com.onetill.android.ui.theme.OneTillTheme
+import com.onetill.android.ui.theme.screenGradient
 
 @Composable
 fun CheckoutScreen(
     onBack: () -> Unit,
     onCashPayment: () -> Unit,
     onCardPaymentComplete: (String) -> Unit,
-    viewModel: CheckoutViewModel = viewModel(),
+    viewModel: CheckoutViewModel = koinViewModel(),
 ) {
-    val dimens = OneTillTheme.dimens
     val colors = OneTillTheme.colors
-    val orderTotal by viewModel.orderTotal.collectAsState()
+    val dimens = OneTillTheme.dimens
+
+    val orderTotal by viewModel.orderTotalFormatted.collectAsState()
+    val items by viewModel.items.collectAsState()
+    val itemCount by viewModel.itemCount.collectAsState()
     val selectedMethod by viewModel.selectedPaymentMethod.collectAsState()
     val isOnline by viewModel.isOnline.collectAsState()
-    var emailReceipt by remember { mutableStateOf("") }
+
+    var emailInput by remember { mutableStateOf("") }
     var orderSummaryExpanded by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
+            .drawBehind { drawRect(brush = screenGradient(size.width, size.height)) },
     ) {
-        // Status bar
         StatusBar(
             connectivityState = if (isOnline) ConnectivityState.Online else ConnectivityState.Offline,
             syncStatusText = "Synced",
             batteryPercent = 85,
-            currentTime = "3:42 PM",
+            currentTime = "3:42",
         )
 
-        // Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(dimens.screenHeaderHeight)
-                .padding(horizontal = dimens.sm),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.size(dimens.touchTargetPrimary),
-            ) {
-                Text(text = "\u2190", style = MaterialTheme.typography.headlineMedium)
-            }
-            Text(
-                text = "Checkout",
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center,
-            )
-            Spacer(modifier = Modifier.size(dimens.touchTargetPrimary))
-        }
+        ScreenHeader(
+            title = "Checkout",
+            navAction = HeaderNavAction.Back,
+            onNavAction = onBack,
+        )
 
-        // Payment methods
+        // Scrollable content
         Column(
-            modifier = Modifier.padding(horizontal = dimens.lg),
-            verticalArrangement = Arrangement.spacedBy(dimens.md),
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = dimens.md),
         ) {
-            Text(
-                text = "Payment Method",
-                style = MaterialTheme.typography.titleMedium,
+            // ── Customer Email (optional) ──
+            SectionLabel(text = "Customer email (optional)")
+            Spacer(modifier = Modifier.height(8.dp))
+            OneTillTextField(
+                value = emailInput,
+                onValueChange = { emailInput = it },
+                placeholder = "customer@email.com",
+                leadingIcon = {
+                    MailIcon(
+                        color = colors.textTertiary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // ── Payment Method ──
+            SectionLabel(text = "Payment Method")
+            Spacer(modifier = Modifier.height(10.dp))
 
             PaymentMethodCard(
-                icon = "\uD83D\uDCB3",
                 title = "Card Payment",
                 subtitle = if (isOnline) "Tap, chip, or swipe" else "Requires internet",
+                icon = {
+                    CardPaymentIcon(
+                        color = colors.textPrimary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                },
                 isSelected = selectedMethod == PaymentMethodUi.Card,
                 onClick = {
                     viewModel.selectPaymentMethod(PaymentMethodUi.Card)
                     if (isOnline) {
-                        onCardPaymentComplete(viewModel.submitCardPayment())
+                        viewModel.submitCardPayment { amount -> onCardPaymentComplete(amount) }
                     }
                 },
             )
 
+            Spacer(modifier = Modifier.height(8.dp))
+
             PaymentMethodCard(
-                icon = "\uD83D\uDCB5",
                 title = "Cash Payment",
                 subtitle = "Enter amount received",
+                icon = {
+                    CashPaymentIcon(
+                        color = colors.textPrimary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                },
                 isSelected = selectedMethod == PaymentMethodUi.Cash,
                 onClick = {
                     viewModel.selectPaymentMethod(PaymentMethodUi.Cash)
                     onCashPayment()
                 },
             )
-        }
 
-        Spacer(modifier = Modifier.height(dimens.xl))
+            Spacer(modifier = Modifier.height(20.dp))
 
-        // Customer section
-        Column(
-            modifier = Modifier.padding(horizontal = dimens.lg),
-            verticalArrangement = Arrangement.spacedBy(dimens.sm),
-        ) {
-            Text(
-                text = "Customer (optional)",
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = "\u2713 Guest checkout",
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textSecondary,
-            )
-        }
-
-        Spacer(modifier = Modifier.height(dimens.xl))
-
-        // Email receipt
-        Column(
-            modifier = Modifier.padding(horizontal = dimens.lg),
-            verticalArrangement = Arrangement.spacedBy(dimens.sm),
-        ) {
-            Text(
-                text = "Send receipt? (optional)",
-                style = MaterialTheme.typography.titleMedium,
-            )
-            OneTillTextField(
-                value = emailReceipt,
-                onValueChange = { emailReceipt = it },
-                placeholder = "customer@email.com",
-            )
-        }
-
-        Spacer(modifier = Modifier.height(dimens.xl))
-
-        // Order summary (collapsible)
-        Column(
-            modifier = Modifier
-                .padding(horizontal = dimens.lg)
-                .animateContentSize(),
-        ) {
+            // ── Customer (optional) ──
+            SectionLabel(text = "Customer (optional)")
+            Spacer(modifier = Modifier.height(8.dp))
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { orderSummaryExpanded = !orderSummaryExpanded }
-                    .padding(vertical = dimens.md),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = "Order Summary (3 items)",
-                    style = MaterialTheme.typography.titleMedium,
+                CheckmarkIcon(
+                    color = colors.success,
+                    modifier = Modifier.size(14.dp),
                 )
-                Row {
+                Text(
+                    text = "Guest checkout",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = colors.textSecondary,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // ── Order Summary (collapsible) ──
+            HorizontalDivider(thickness = 1.dp, color = colors.border)
+
+            Column(modifier = Modifier.animateContentSize()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { orderSummaryExpanded = !orderSummaryExpanded }
+                        .padding(vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(
-                        text = orderTotal,
-                        style = MaterialTheme.typography.titleMedium,
+                        text = "Order Summary ($itemCount items)",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = colors.textPrimary,
                     )
-                    Text(
-                        text = if (orderSummaryExpanded) " \u25B2" else " \u25BC",
-                        style = MaterialTheme.typography.titleMedium,
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = orderTotal,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colors.textPrimary,
+                        )
+                        if (orderSummaryExpanded) {
+                            ChevronUpIcon(
+                                color = colors.textSecondary,
+                                modifier = Modifier.size(14.dp),
+                            )
+                        } else {
+                            ChevronDownIcon(
+                                color = colors.textSecondary,
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
+                    }
+                }
+
+                if (orderSummaryExpanded) {
+                    Column(
+                        modifier = Modifier.padding(bottom = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items.forEach { item ->
+                            val label = if (item.quantity > 1) {
+                                "${item.name} ×${item.quantity}"
+                            } else {
+                                item.name
+                            }
+                            OrderSummaryRow(name = label, price = item.totalFormatted)
+                        }
+                    }
                 }
             }
 
-            if (orderSummaryExpanded) {
-                Column(verticalArrangement = Arrangement.spacedBy(dimens.sm)) {
-                    OrderSummaryRow("Organic Honey 500g x2", "$29.98")
-                    OrderSummaryRow("Sourdough Bread Loaf", "$8.99")
-                    OrderSummaryRow("Artisan Cheese Wheel", "$24.99")
-                }
-            }
+            Spacer(modifier = Modifier.height(dimens.xxl))
         }
-
-        Spacer(modifier = Modifier.height(dimens.xxl))
     }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text.uppercase(),
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Medium,
+        color = OneTillTheme.colors.textSecondary,
+        letterSpacing = 0.6.sp,
+    )
 }
 
 @Composable
@@ -209,12 +255,15 @@ private fun OrderSummaryRow(name: String, price: String) {
     ) {
         Text(
             text = name,
-            style = MaterialTheme.typography.bodyMedium,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Normal,
             color = colors.textSecondary,
         )
         Text(
             text = price,
-            style = MaterialTheme.typography.bodyMedium,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            color = colors.textPrimary,
         )
     }
 }

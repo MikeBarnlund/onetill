@@ -13,6 +13,7 @@ import com.onetill.shared.data.model.ProductCategory
 import com.onetill.shared.data.model.StoreConfig
 import com.onetill.shared.data.model.ProductImage
 import com.onetill.shared.data.model.ProductStatus
+import com.onetill.shared.data.model.ProductTag
 import com.onetill.shared.data.model.ProductType
 import com.onetill.shared.data.model.ProductVariant
 import com.onetill.shared.data.model.TaxRate
@@ -61,6 +62,19 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
         queries.selectProductCount().executeAsOne()
     }
 
+    override suspend fun getVariableProductIds(): List<Long> = withContext(Dispatchers.Default) {
+        queries.selectVariableProductIds().executeAsList()
+    }
+
+    override suspend fun decrementStock(productId: Long, variantId: Long?, quantity: Int) =
+        withContext(Dispatchers.Default) {
+            if (variantId != null) {
+                queries.decrementVariantStock(quantity.toLong(), variantId)
+            } else {
+                queries.decrementProductStock(quantity.toLong(), productId)
+            }
+        }
+
     override suspend fun saveProduct(product: Product) = withContext(Dispatchers.Default) {
         db.transaction {
             queries.insertOrReplaceProduct(
@@ -83,6 +97,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
             queries.deleteVariantsByProductId(product.id)
             queries.deleteImagesByProductId(product.id)
             queries.deleteCategoryJoinsByProductId(product.id)
+            queries.deleteTagJoinsByProductId(product.id)
 
             for (variant in product.variants) {
                 queries.insertOrReplaceVariant(
@@ -118,7 +133,14 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
 
             for (category in product.categories) {
                 queries.insertOrReplaceCategory(id = category.id, name = category.name)
+                    queries.updateCategoryName(name = category.name, id = category.id)
                 queries.insertCategoryJoin(product_id = product.id, category_id = category.id)
+            }
+
+            for (tag in product.tags) {
+                queries.insertOrReplaceTag(id = tag.id, name = tag.name)
+                    queries.updateTagName(name = tag.name, id = tag.id)
+                queries.insertTagJoin(product_id = product.id, tag_id = tag.id)
             }
         }
     }
@@ -146,6 +168,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
                 queries.deleteVariantsByProductId(product.id)
                 queries.deleteImagesByProductId(product.id)
                 queries.deleteCategoryJoinsByProductId(product.id)
+                queries.deleteTagJoinsByProductId(product.id)
 
                 for (variant in product.variants) {
                     queries.insertOrReplaceVariant(
@@ -177,7 +200,14 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
 
                 for (category in product.categories) {
                     queries.insertOrReplaceCategory(id = category.id, name = category.name)
+                    queries.updateCategoryName(name = category.name, id = category.id)
                     queries.insertCategoryJoin(product_id = product.id, category_id = category.id)
+                }
+
+                for (tag in product.tags) {
+                    queries.insertOrReplaceTag(id = tag.id, name = tag.name)
+                    queries.updateTagName(name = tag.name, id = tag.id)
+                    queries.insertTagJoin(product_id = product.id, tag_id = tag.id)
                 }
             }
         }
@@ -376,6 +406,10 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
             ProductCategory(id = it.id, name = it.name)
         }
 
+        val tags = queries.selectTagsByProductId(row.id).executeAsList().map {
+            ProductTag(id = it.id, name = it.name)
+        }
+
         return Product(
             id = row.id,
             name = row.name,
@@ -389,6 +423,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
             status = ProductStatus.valueOf(row.status),
             images = images,
             categories = categories,
+            tags = tags,
             variants = variants,
             type = ProductType.valueOf(row.type),
             createdAt = Instant.fromEpochMilliseconds(row.created_at),

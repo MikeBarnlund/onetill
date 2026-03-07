@@ -36,6 +36,7 @@ fun testProduct(
     status = ProductStatus.PUBLISHED,
     images = emptyList(),
     categories = emptyList(),
+    tags = emptyList(),
     variants = variants,
     type = type,
     createdAt = Instant.fromEpochMilliseconds(0),

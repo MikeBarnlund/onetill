@@ -68,8 +68,13 @@ fun ScreenHeader(
             modifier = Modifier.weight(1f),
         )
 
-        // Right: action slot or empty spacer
-        Box(contentAlignment = Alignment.CenterEnd) {
+        // Right: action slot — min width matches left side to keep title centered
+        Box(
+            modifier = Modifier.sizeIn(
+                minWidth = if (navAction != null) dimens.touchTargetPrimary else dimens.headerActionSize,
+            ),
+            contentAlignment = Alignment.CenterEnd,
+        ) {
             rightActions()
         }
     }

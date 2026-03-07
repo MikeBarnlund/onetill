@@ -1,13 +1,26 @@
 package com.onetill.android.ui.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideIn
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.onetill.android.di.loadPostWizardModules
 import com.onetill.android.ui.cart.CartScreen
 import com.onetill.android.ui.catalog.CatalogScreen
 import com.onetill.android.ui.checkout.CashPaymentModal
@@ -15,7 +28,11 @@ import com.onetill.android.ui.checkout.CheckoutScreen
 import com.onetill.android.ui.complete.OrderCompleteScreen
 import com.onetill.android.ui.orders.DailySummaryScreen
 import com.onetill.android.ui.orders.OrderHistoryScreen
+import com.onetill.android.ui.settings.SettingsScreen
 import com.onetill.android.ui.setup.SetupWizardScreen
+import com.onetill.shared.data.local.LocalDataSource
+import com.onetill.shared.sync.SyncOrchestrator
+import org.koin.compose.koinInject
 
 object Routes {
     const val SETUP = "setup"
@@ -26,48 +43,82 @@ object Routes {
     const val ORDER_COMPLETE = "order_complete/{amount}/{method}"
     const val ORDER_HISTORY = "order_history"
     const val DAILY_SUMMARY = "daily_summary"
+    const val SETTINGS = "settings"
 
     fun orderComplete(amount: String, method: String) = "order_complete/$amount/$method"
 }
 
-private const val SLIDE_DURATION = 200
+private const val SLIDE_DURATION = 300
 private const val MODAL_DURATION = 250
+
+private val slideEasing = FastOutSlowInEasing
 
 @Composable
 fun OneTillNavGraph(
     modifier: Modifier = Modifier,
-    navController: NavHostController = rememberNavController(),
-    startDestination: String = Routes.SETUP,
 ) {
+    val localDataSource: LocalDataSource = koinInject()
+
+    var startDestination by remember { mutableStateOf<String?>(null) }
+
+    // Check if store is already configured (fast SQLite read)
+    LaunchedEffect(Unit) {
+        val config = localDataSource.getStoreConfig()
+        if (config != null) {
+            loadPostWizardModules(config)
+            // Start background sync on app restart
+            try {
+                val syncOrchestrator = org.koin.core.context.GlobalContext.get().get<SyncOrchestrator>()
+                syncOrchestrator.startSync()
+            } catch (_: Exception) {
+                // SyncOrchestrator not yet available — will start after setup
+            }
+            startDestination = Routes.CATALOG
+        } else {
+            startDestination = Routes.SETUP
+        }
+    }
+
+    val dest = startDestination
+    if (dest == null) {
+        // Brief loading state while checking config
+        Box(modifier = Modifier.fillMaxSize())
+        return
+    }
+
+    val navController: NavHostController = rememberNavController()
+
     NavHost(
         navController = navController,
-        startDestination = startDestination,
+        startDestination = dest,
         modifier = modifier,
+        // Default transitions — slide left/right with parallax pop-back
         enterTransition = {
             slideIntoContainer(
                 AnimatedContentTransitionScope.SlideDirection.Left,
-                tween(SLIDE_DURATION),
+                tween(SLIDE_DURATION, easing = slideEasing),
             )
         },
         exitTransition = {
             slideOutOfContainer(
                 AnimatedContentTransitionScope.SlideDirection.Left,
-                tween(SLIDE_DURATION),
+                tween(SLIDE_DURATION, easing = slideEasing),
             )
         },
         popEnterTransition = {
-            slideIntoContainer(
-                AnimatedContentTransitionScope.SlideDirection.Right,
-                tween(SLIDE_DURATION),
+            slideIn(
+                initialOffset = { IntOffset(-it.width / 3, 0) },
+                animationSpec = tween(SLIDE_DURATION, easing = slideEasing),
             )
         },
         popExitTransition = {
             slideOutOfContainer(
                 AnimatedContentTransitionScope.SlideDirection.Right,
-                tween(SLIDE_DURATION),
+                tween(SLIDE_DURATION, easing = slideEasing),
             )
         },
     ) {
+        // Setup Wizard — first-launch only, replaced by Catalog on completion
         composable(Routes.SETUP) {
             SetupWizardScreen(
                 onSetupComplete = {
@@ -78,15 +129,17 @@ fun OneTillNavGraph(
             )
         }
 
+        // Catalog — primary screen, hub for all navigation
         composable(Routes.CATALOG) {
             CatalogScreen(
                 onNavigateToCart = { navController.navigate(Routes.CART) },
                 onNavigateToOrders = { navController.navigate(Routes.ORDER_HISTORY) },
                 onNavigateToSummary = { navController.navigate(Routes.DAILY_SUMMARY) },
-                onNavigateToSettings = { /* Settings screen not yet built */ },
+                onNavigateToSettings = { navController.navigate(Routes.SETTINGS) },
             )
         }
 
+        // Cart
         composable(Routes.CART) {
             CartScreen(
                 onBack = { navController.popBackStack() },
@@ -94,6 +147,7 @@ fun OneTillNavGraph(
             )
         }
 
+        // Checkout
         composable(Routes.CHECKOUT) {
             CheckoutScreen(
                 onBack = { navController.popBackStack() },
@@ -106,18 +160,31 @@ fun OneTillNavGraph(
             )
         }
 
+        // Cash Payment — modal slide up/down (250ms)
         composable(
             Routes.CASH_PAYMENT,
             enterTransition = {
                 slideIntoContainer(
                     AnimatedContentTransitionScope.SlideDirection.Up,
-                    tween(MODAL_DURATION),
+                    tween(MODAL_DURATION, easing = slideEasing),
+                )
+            },
+            exitTransition = {
+                slideOutOfContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Down,
+                    tween(MODAL_DURATION, easing = slideEasing),
+                )
+            },
+            popEnterTransition = {
+                slideIntoContainer(
+                    AnimatedContentTransitionScope.SlideDirection.Up,
+                    tween(MODAL_DURATION, easing = slideEasing),
                 )
             },
             popExitTransition = {
                 slideOutOfContainer(
                     AnimatedContentTransitionScope.SlideDirection.Down,
-                    tween(MODAL_DURATION),
+                    tween(MODAL_DURATION, easing = slideEasing),
                 )
             },
         ) {
@@ -131,7 +198,14 @@ fun OneTillNavGraph(
             )
         }
 
-        composable(Routes.ORDER_COMPLETE) { backStackEntry ->
+        // Payment Complete — fade in/out (celebration screen, no slide)
+        composable(
+            Routes.ORDER_COMPLETE,
+            enterTransition = { fadeIn(tween(200)) },
+            exitTransition = { fadeOut(tween(200)) },
+            popEnterTransition = { fadeIn(tween(200)) },
+            popExitTransition = { fadeOut(tween(200)) },
+        ) { backStackEntry ->
             val amount = backStackEntry.arguments?.getString("amount") ?: "$0.00"
             val method = backStackEntry.arguments?.getString("method") ?: "Card"
             OrderCompleteScreen(
@@ -145,14 +219,23 @@ fun OneTillNavGraph(
             )
         }
 
+        // Order History
         composable(Routes.ORDER_HISTORY) {
             OrderHistoryScreen(
                 onBack = { navController.popBackStack() },
             )
         }
 
+        // Daily Summary
         composable(Routes.DAILY_SUMMARY) {
             DailySummaryScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        // Settings
+        composable(Routes.SETTINGS) {
+            SettingsScreen(
                 onBack = { navController.popBackStack() },
             )
         }

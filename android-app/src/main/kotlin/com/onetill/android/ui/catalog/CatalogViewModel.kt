@@ -1,52 +1,106 @@
 package com.onetill.android.ui.catalog
 
 import androidx.lifecycle.ViewModel
-import com.onetill.shared.data.model.Money
+import androidx.lifecycle.viewModelScope
+import com.onetill.android.ui.components.ToastState
+import com.onetill.android.ui.components.ToastType
+import com.onetill.shared.cart.AddResult
+import com.onetill.shared.cart.CartManager
+import com.onetill.shared.data.AppResult
+import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.shared.data.model.Product
-import com.onetill.shared.data.model.ProductStatus
 import com.onetill.shared.data.model.ProductType
+import com.onetill.shared.sync.SyncOrchestrator
+import com.onetill.shared.util.formatDisplay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.datetime.Instant
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
-class CatalogViewModel : ViewModel() {
+class CatalogViewModel(
+    private val localDataSource: LocalDataSource,
+    private val cartManager: CartManager,
+    private val syncOrchestrator: SyncOrchestrator,
+) : ViewModel() {
 
-    private val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
-
-    private val fakeProducts = listOf(
-        fakeProduct(1, "Organic Honey 500g", 1499, 24),
-        fakeProduct(2, "Sourdough Bread Loaf", 899, 12),
-        fakeProduct(3, "Free Range Eggs (Dozen)", 699, 36),
-        fakeProduct(4, "Handmade Candle - Lavender", 1999, 8),
-        fakeProduct(5, "Fresh Basil Bunch", 349, 0),
-        fakeProduct(6, "Artisan Cheese Wheel", 2499, 5),
-        fakeProduct(7, "Mixed Berry Jam 250ml", 799, 18),
-        fakeProduct(8, "Beeswax Food Wraps (3pk)", 1599, 15),
-        fakeProduct(9, "Roasted Coffee Beans 250g", 1899, 22),
-        fakeProduct(10, "Ceramic Mug - Blue", 2199, 3),
-    )
-
-    private val _products = MutableStateFlow(fakeProducts)
-    val products: StateFlow<List<Product>> = _products.asStateFlow()
+    private val allProducts: StateFlow<List<Product>> =
+        localDataSource.observeAllProducts()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    private val _searchResults = MutableStateFlow(fakeProducts)
-    val searchResults: StateFlow<List<Product>> = _searchResults.asStateFlow()
+    val searchResults: StateFlow<List<Product>> =
+        combine(allProducts, _searchQuery) { products, query ->
+            if (query.isBlank()) products
+            else {
+                val nameMatches = mutableListOf<Product>()
+                val categoryMatches = mutableListOf<Product>()
+                val tagMatches = mutableListOf<Product>()
+                for (product in products) {
+                    when {
+                        product.name.contains(query, ignoreCase = true) ->
+                            nameMatches.add(product)
+                        product.categories.any { it.name.contains(query, ignoreCase = true) } ->
+                            categoryMatches.add(product)
+                        product.tags.any { it.name.contains(query, ignoreCase = true) } ->
+                            tagMatches.add(product)
+                    }
+                }
+                nameMatches + categoryMatches + tagMatches
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _cartItemCount = MutableStateFlow(0)
-    val cartItemCount: StateFlow<Int> = _cartItemCount.asStateFlow()
+    val cartItemCount: StateFlow<Int> =
+        cartManager.cartState
+            .map { it.itemCount }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
-    private val _cartTotal = MutableStateFlow("$0.00")
-    val cartTotal: StateFlow<String> = _cartTotal.asStateFlow()
+    val cartTotal: StateFlow<String> =
+        cartManager.cartState
+            .map { it.estimatedTotal.formatDisplay() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "$0.00")
+
+    val toastState = ToastState()
 
     private val _isDrawerOpen = MutableStateFlow(false)
     val isDrawerOpen: StateFlow<Boolean> = _isDrawerOpen.asStateFlow()
 
     private val _isSearchVisible = MutableStateFlow(false)
     val isSearchVisible: StateFlow<Boolean> = _isSearchVisible.asStateFlow()
+
+    private val _pickerProduct = MutableStateFlow<Product?>(null)
+    val pickerProduct: StateFlow<Product?> = _pickerProduct.asStateFlow()
+
+    private val _isPickerVisible = MutableStateFlow(false)
+    val isPickerVisible: StateFlow<Boolean> = _isPickerVisible.asStateFlow()
+
+    private val _isSyncing = MutableStateFlow(false)
+    val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
+
+    fun syncProducts() {
+        if (_isSyncing.value) return
+        viewModelScope.launch {
+            _isSyncing.value = true
+            try {
+                val result = withTimeout(10_000) {
+                    syncOrchestrator.performDeltaSync()
+                }
+                if (result is AppResult.Error) {
+                    toastState.show(result.message, ToastType.Error)
+                }
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                toastState.show("Sync timed out — check your connection", ToastType.Error)
+            } finally {
+                _isSyncing.value = false
+            }
+        }
+    }
 
     fun toggleDrawer() {
         _isDrawerOpen.value = !_isDrawerOpen.value
@@ -60,64 +114,61 @@ class CatalogViewModel : ViewModel() {
         _isSearchVisible.value = !_isSearchVisible.value
         if (!_isSearchVisible.value) {
             _searchQuery.value = ""
-            _searchResults.value = fakeProducts
         }
     }
 
     fun dismissSearch() {
         _isSearchVisible.value = false
         _searchQuery.value = ""
-        _searchResults.value = fakeProducts
     }
 
     fun onSearch(query: String) {
         _searchQuery.value = query
-        _searchResults.value = if (query.isBlank()) {
-            fakeProducts
-        } else {
-            fakeProducts.filter { it.name.contains(query, ignoreCase = true) }
-        }
     }
 
     fun onProductTap(product: Product) {
-        _cartItemCount.value += 1
-        _cartTotal.value = formatCents((_cartItemCount.value * 1499).toLong())
+        when (product.type) {
+            ProductType.SIMPLE -> {
+                val result = cartManager.addProduct(product)
+                if (result == AddResult.StockLimitReached) {
+                    val stock = product.stockQuantity ?: 0
+                    toastState.show("Only $stock in stock", ToastType.Warning)
+                }
+            }
+            ProductType.VARIABLE -> {
+                _pickerProduct.value = product
+                _isPickerVisible.value = true
+            }
+        }
+    }
+
+    fun dismissPicker() {
+        _isPickerVisible.value = false
+    }
+
+    fun onVariantAddToCart(selections: Map<String, String>) {
+        val product = _pickerProduct.value ?: return
+        val matchingVariant = product.variants.find { variant ->
+            selections.all { (attrName, attrValue) ->
+                variant.attributes.any { it.name == attrName && it.value == attrValue }
+            }
+        }
+        val result = if (matchingVariant != null) {
+            cartManager.addProduct(product, matchingVariant)
+        } else {
+            cartManager.addProduct(product)
+        }
+        if (result == AddResult.StockLimitReached) {
+            val stock = matchingVariant?.stockQuantity ?: product.stockQuantity ?: 0
+            toastState.show("Only $stock in stock", ToastType.Warning)
+        }
+        _isPickerVisible.value = false
     }
 
     fun onBarcodeScan(barcode: String) {
-        val product = fakeProducts.find { it.barcode == barcode }
-        if (product != null) onProductTap(product)
-    }
-
-    private fun fakeProduct(
-        id: Long,
-        name: String,
-        priceCents: Long,
-        stock: Int,
-    ) = Product(
-        id = id,
-        name = name,
-        sku = "SKU-$id",
-        barcode = "BAR-$id",
-        price = Money(priceCents, "AUD"),
-        regularPrice = Money(priceCents, "AUD"),
-        salePrice = null,
-        stockQuantity = stock,
-        manageStock = true,
-        status = ProductStatus.PUBLISHED,
-        images = emptyList(),
-        categories = emptyList(),
-        variants = emptyList(),
-        type = ProductType.SIMPLE,
-        createdAt = now,
-        updatedAt = now,
-    )
-
-    companion object {
-        fun formatCents(cents: Long): String {
-            val dollars = cents / 100
-            val remainder = cents % 100
-            return "$${dollars}.${remainder.toString().padStart(2, '0')}"
+        viewModelScope.launch {
+            val product = localDataSource.getProductByBarcode(barcode)
+            if (product != null) onProductTap(product)
         }
     }
 }

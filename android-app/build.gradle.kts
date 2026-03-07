@@ -79,4 +79,7 @@ dependencies {
     // Coil
     implementation(libs.coil.compose)
     implementation(libs.coil.network.ktor)
+
+    // Ktor engine for Coil network image loading
+    implementation(libs.ktor.client.okhttp)
 }

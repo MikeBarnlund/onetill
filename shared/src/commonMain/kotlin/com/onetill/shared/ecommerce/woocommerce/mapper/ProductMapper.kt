@@ -5,6 +5,7 @@ import com.onetill.shared.data.model.Product
 import com.onetill.shared.data.model.ProductCategory
 import com.onetill.shared.data.model.ProductImage
 import com.onetill.shared.data.model.ProductStatus
+import com.onetill.shared.data.model.ProductTag
 import com.onetill.shared.data.model.ProductType
 import com.onetill.shared.data.model.ProductVariant
 import com.onetill.shared.data.model.VariantAttribute
@@ -32,6 +33,7 @@ fun WooProductDto.toDomain(
     status = mapStatus(status),
     images = images.map { ProductImage(id = it.id, url = it.src) },
     categories = categories.map { ProductCategory(id = it.id, name = it.name) },
+    tags = tags.map { ProductTag(id = it.id, name = it.name) },
     variants = fetchedVariations.map { it.toDomain(id, currency) },
     type = mapType(type),
     createdAt = parseWooDateTime(dateCreated),

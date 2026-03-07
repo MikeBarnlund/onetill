@@ -116,7 +116,9 @@ onetill/
 - **Stripe handles all payment UI.** We hand off to Stripe's PCI-scoped payment screen. No card data touches our code. No PCI scope for us.
 - **Stripe Connect (Standard accounts).** Merchants keep their own Stripe account. OneTill collects a small application fee per transaction via Connect.
 
-**WordPress companion plugin:** A lightweight WP plugin installed on the merchant's site that provides the REST API endpoints and webhook handlers OneTill needs. This is our distribution mechanism — listed free on WordPress.org and WooCommerce Marketplace.
+**WordPress companion plugin:** A lightweight WP plugin installed on the merchant's site that provides the REST API endpoints and webhook handlers OneTill needs. This is our distribution mechanism — listed free on WordPress.org and WooCommerce Marketplace. Critical requirements for the companion plugin:
+- **Variation stock change notifications:** WooCommerce's `modified_after` product filter does not update when only a variation's stock changes (the parent product's `date_modified` stays unchanged). The companion plugin must fire a webhook or expose a lightweight endpoint (e.g. `/onetill/v1/variation-changes?since=...`) so the app can detect variation-level stock/price changes without polling every variation individually.
+- **Order idempotency enforcement:** The app sends an `_onetill_idempotency_key` in order metadata. The companion plugin must check this key before creating an order — if an order with the same key already exists, return the existing order instead of creating a duplicate. This prevents duplicate orders when a POST succeeds server-side but the response times out and the app retries.
 
 ## MVP Feature Set
 

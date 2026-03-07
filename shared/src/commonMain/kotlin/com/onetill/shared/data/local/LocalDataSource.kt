@@ -17,8 +17,10 @@ interface LocalDataSource {
     suspend fun getProductByBarcode(barcode: String): Product?
     suspend fun searchProducts(query: String): List<Product>
     suspend fun getProductCount(): Long
+    suspend fun getVariableProductIds(): List<Long>
     suspend fun saveProduct(product: Product)
     suspend fun saveProducts(products: List<Product>)
+    suspend fun decrementStock(productId: Long, variantId: Long?, quantity: Int)
     suspend fun deleteAllProducts()
 
     // Orders

@@ -1,0 +1,4 @@
+-- Migration: Fix category/tag joins broken by INSERT OR REPLACE cascade bug.
+-- Clear the products sync timestamp so the next sync does a full re-fetch,
+-- which re-saves all products and rebuilds the join tables correctly.
+DELETE FROM sync_state WHERE entity_type = 'products';

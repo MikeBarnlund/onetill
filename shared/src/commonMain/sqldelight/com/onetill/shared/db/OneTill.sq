@@ -97,6 +97,23 @@ CREATE TABLE product_category_join (
 );
 
 -- ----------------------------------------------------------------------------
+-- Tags
+-- ----------------------------------------------------------------------------
+
+CREATE TABLE product_tag (
+    id INTEGER NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+CREATE TABLE product_tag_join (
+    product_id INTEGER NOT NULL,
+    tag_id INTEGER NOT NULL,
+    PRIMARY KEY (product_id, tag_id),
+    FOREIGN KEY (product_id) REFERENCES product_cache(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES product_tag(id) ON DELETE CASCADE
+);
+
+-- ----------------------------------------------------------------------------
 -- Orders
 -- ----------------------------------------------------------------------------
 
@@ -228,6 +245,13 @@ DELETE FROM product_cache;
 selectProductCount:
 SELECT COUNT(*) FROM product_cache;
 
+selectVariableProductIds:
+SELECT id FROM product_cache WHERE type = 'VARIABLE';
+
+decrementProductStock:
+UPDATE product_cache SET stock_quantity = stock_quantity - ?
+WHERE id = ? AND manage_stock = 1 AND stock_quantity IS NOT NULL;
+
 -- ============================================================================
 -- QUERIES: Product Variants
 -- ============================================================================
@@ -243,6 +267,10 @@ SELECT * FROM product_variant WHERE product_id = ?;
 
 selectVariantByBarcode:
 SELECT * FROM product_variant WHERE barcode = ?;
+
+decrementVariantStock:
+UPDATE product_variant SET stock_quantity = stock_quantity - ?
+WHERE id = ? AND manage_stock = 1 AND stock_quantity IS NOT NULL;
 
 deleteVariantsByProductId:
 DELETE FROM product_variant WHERE product_id = ?;
@@ -278,7 +306,10 @@ DELETE FROM product_image WHERE product_id = ?;
 -- ============================================================================
 
 insertOrReplaceCategory:
-INSERT OR REPLACE INTO product_category(id, name) VALUES (?, ?);
+INSERT OR IGNORE INTO product_category(id, name) VALUES (?, ?);
+
+updateCategoryName:
+UPDATE product_category SET name = ? WHERE id = ?;
 
 insertCategoryJoin:
 INSERT OR IGNORE INTO product_category_join(product_id, category_id) VALUES (?, ?);
@@ -290,6 +321,27 @@ WHERE pcj.product_id = ?;
 
 deleteCategoryJoinsByProductId:
 DELETE FROM product_category_join WHERE product_id = ?;
+
+-- ============================================================================
+-- QUERIES: Tags
+-- ============================================================================
+
+insertOrReplaceTag:
+INSERT OR IGNORE INTO product_tag(id, name) VALUES (?, ?);
+
+updateTagName:
+UPDATE product_tag SET name = ? WHERE id = ?;
+
+insertTagJoin:
+INSERT OR IGNORE INTO product_tag_join(product_id, tag_id) VALUES (?, ?);
+
+selectTagsByProductId:
+SELECT pt.* FROM product_tag pt
+INNER JOIN product_tag_join ptj ON ptj.tag_id = pt.id
+WHERE ptj.product_id = ?;
+
+deleteTagJoinsByProductId:
+DELETE FROM product_tag_join WHERE product_id = ?;
 
 -- ============================================================================
 -- QUERIES: Orders
