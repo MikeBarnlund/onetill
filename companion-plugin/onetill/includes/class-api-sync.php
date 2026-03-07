@@ -153,7 +153,8 @@ class API_Sync {
 					'product_id'   => $product_id,
 					'variation_id' => $variation_id,
 					'success'      => false,
-					'error'        => 'Invalid product_id or quantity_change.',
+					'error'        => 'validation_error',
+					'message'      => 'Invalid product_id or quantity_change.',
 				);
 				continue;
 			}
@@ -167,7 +168,8 @@ class API_Sync {
 					'product_id'   => $product_id,
 					'variation_id' => $variation_id,
 					'success'      => false,
-					'error'        => 'Product not found.',
+					'error'        => 'product_not_found',
+					'message'      => 'Product not found.',
 				);
 				continue;
 			}
@@ -177,7 +179,8 @@ class API_Sync {
 					'product_id'   => $product_id,
 					'variation_id' => $variation_id,
 					'success'      => false,
-					'error'        => 'Stock management not enabled for this product.',
+					'error'        => 'stock_not_managed',
+					'message'      => 'Stock management not enabled for this product.',
 				);
 				continue;
 			}
@@ -193,7 +196,8 @@ class API_Sync {
 					'product_id'   => $product_id,
 					'variation_id' => $variation_id,
 					'success'      => false,
-					'error'        => 'Failed to update stock.',
+					'error'        => 'stock_update_failed',
+					'message'      => 'Failed to update stock.',
 				);
 				continue;
 			}
@@ -287,7 +291,7 @@ class API_Sync {
 			$decoded = base64_decode( substr( $auth_header, 6 ) );
 			if ( $decoded && strpos( $decoded, ':' ) !== false ) {
 				list( $key ) = explode( ':', $decoded, 2 );
-				return $key;
+				return sanitize_text_field( $key );
 			}
 		}
 
