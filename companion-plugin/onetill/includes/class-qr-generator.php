@@ -15,6 +15,10 @@ namespace OneTill;
 
 defined( 'ABSPATH' ) || exit;
 
+use chillerlan\QRCode\QRCode;
+use chillerlan\QRCode\QROptions;
+use chillerlan\QRCode\Common\EccLevel;
+
 /**
  * Class QR_Generator
  */
@@ -27,10 +31,19 @@ class QR_Generator {
 	 * @return string SVG markup.
 	 */
 	public function generate_svg( $data ) {
-		// TODO: Implement using chillerlan/php-qrcode:
-		// - Error correction level M
-		// - SVG output (inline, no external file)
-		// - Appropriate module size for admin page display
-		return '';
+		require_once ONETILL_PLUGIN_DIR . 'vendor/autoload.php';
+
+		$options = new QROptions( array(
+			'eccLevel'         => EccLevel::M,
+			'outputBase64'     => false,
+			'addQuietzone'     => true,
+			'quietzoneSize'    => 2,
+			'scale'            => 1,
+			'drawLightModules' => false,
+		) );
+
+		$qrcode = new QRCode( $options );
+
+		return $qrcode->render( $data );
 	}
 }
