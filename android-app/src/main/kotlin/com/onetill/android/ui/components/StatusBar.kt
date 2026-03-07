@@ -16,6 +16,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,11 +26,43 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.onetill.android.ui.theme.OneTillTheme
+import com.onetill.shared.sync.ConnectivityMonitor
+import com.onetill.shared.sync.SyncOrchestrator
+import com.onetill.shared.sync.SyncStatus
+import org.koin.compose.koinInject
 
 enum class ConnectivityState {
     Online,
     Offline,
     Syncing,
+}
+
+@Composable
+fun AppStatusBar(
+    modifier: Modifier = Modifier,
+    syncOrchestrator: SyncOrchestrator = koinInject(),
+    connectivityMonitor: ConnectivityMonitor = koinInject(),
+) {
+    val syncStatus by syncOrchestrator.syncStatus.collectAsState()
+    val pendingOrderCount by syncOrchestrator.pendingOrderCount.collectAsState(initial = 0L)
+    val isOnline by connectivityMonitor.isOnline.collectAsState()
+
+    val connectivityState = if (isOnline) ConnectivityState.Online else ConnectivityState.Offline
+
+    val syncStatusText = when {
+        syncStatus is SyncStatus.Syncing -> "Syncing..."
+        syncStatus is SyncStatus.Error -> "Sync failed"
+        pendingOrderCount > 0 -> "Pending sync ($pendingOrderCount)"
+        else -> "Synced"
+    }
+
+    StatusBar(
+        connectivityState = connectivityState,
+        syncStatusText = syncStatusText,
+        batteryPercent = 85,
+        currentTime = "3:42",
+        modifier = modifier,
+    )
 }
 
 @Composable

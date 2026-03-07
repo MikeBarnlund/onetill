@@ -62,14 +62,13 @@ import com.onetill.android.ui.components.ButtonVariant
 import org.koin.androidx.compose.koinViewModel
 import com.onetill.android.ui.components.CartPreviewPill
 import com.onetill.android.ui.components.CloseIcon
-import com.onetill.android.ui.components.ConnectivityState
+import com.onetill.android.ui.components.AppStatusBar
 import com.onetill.android.ui.components.HeaderActionButton
 import com.onetill.android.ui.components.HeaderNavAction
 import com.onetill.android.ui.components.NavigationDrawer
 import com.onetill.android.ui.components.OneTillButton
 import com.onetill.android.ui.components.ProductCard
 import com.onetill.android.ui.components.SearchIcon
-import com.onetill.android.ui.components.StatusBar
 import com.onetill.android.ui.components.ToastHost
 import com.onetill.shared.data.model.ProductType
 import com.onetill.shared.util.formatDisplay
@@ -136,12 +135,7 @@ fun CatalogScreen(
                 .screenGradientBackground(),
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                StatusBar(
-                    connectivityState = ConnectivityState.Online,
-                    syncStatusText = "Synced",
-                    batteryPercent = 85,
-                    currentTime = "3:42",
-                )
+                AppStatusBar()
 
                 CatalogHeader(
                     isSearchVisible = isSearchVisible,

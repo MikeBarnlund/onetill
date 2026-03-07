@@ -6,6 +6,7 @@ import com.onetill.shared.cart.CartManager
 import com.onetill.shared.data.model.PaymentMethod
 import com.onetill.shared.sync.ConnectivityMonitor
 import com.onetill.shared.sync.OrderSyncManager
+import com.onetill.shared.sync.SyncOrchestrator
 import com.onetill.shared.util.formatDisplay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,6 +31,7 @@ class CheckoutViewModel(
     private val cartManager: CartManager,
     private val orderSyncManager: OrderSyncManager,
     private val connectivityMonitor: ConnectivityMonitor,
+    private val syncOrchestrator: SyncOrchestrator,
 ) : ViewModel() {
 
     val items: StateFlow<List<OrderSummaryItem>> =
@@ -68,6 +70,7 @@ class CheckoutViewModel(
     }
 
     fun submitCashPayment(onComplete: (String) -> Unit) {
+        if (_isSubmitting.value) return
         viewModelScope.launch {
             _isSubmitting.value = true
             val totalFormatted = orderTotalFormatted.value
@@ -75,12 +78,14 @@ class CheckoutViewModel(
             val draft = cartManager.buildOrderDraft(PaymentMethod.CASH)
             orderSyncManager.submitOrder(draft, currency)
             cartManager.clearCart()
+            syncOrchestrator.triggerOrderDrain()
             _isSubmitting.value = false
             onComplete(totalFormatted)
         }
     }
 
     fun submitCardPayment(onComplete: (String) -> Unit) {
+        if (_isSubmitting.value) return
         viewModelScope.launch {
             _isSubmitting.value = true
             val totalFormatted = orderTotalFormatted.value
@@ -90,6 +95,7 @@ class CheckoutViewModel(
             val draft = cartManager.buildOrderDraft(PaymentMethod.CARD)
             orderSyncManager.submitOrder(draft, currency)
             cartManager.clearCart()
+            syncOrchestrator.triggerOrderDrain()
             _isSubmitting.value = false
             onComplete(totalFormatted)
         }

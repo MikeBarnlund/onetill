@@ -32,31 +32,15 @@ class OrderSyncManagerTest {
     )
 
     @Test
-    fun submitOrderSuccessUpdatesLocalOrder() = runTest {
-        val remoteOrder = testOrder(id = 500, number = "WC-500")
-        fakeBackend.createOrderResult = AppResult.Success(remoteOrder)
-
+    fun submitOrderSavesLocallyWithPendingStatus() = runTest {
         val localId = syncManager.submitOrder(sampleDraft, "USD")
 
         assertEquals(1L, localId)
-        // Verify remote ID was updated
-        assertEquals(1, fakeLocal.updateOrderRemoteIdCalls.size)
-        assertEquals(500L, fakeLocal.updateOrderRemoteIdCalls[0].second)
-        // Verify status updated to PROCESSING
-        assertEquals(1, fakeLocal.updateOrderStatusCalls.size)
-        assertEquals(OrderStatus.PROCESSING, fakeLocal.updateOrderStatusCalls[0].second)
-    }
-
-    @Test
-    fun submitOrderFailureKeepsPendingSync() = runTest {
-        fakeBackend.createOrderResult = AppResult.Error("Network error")
-
-        val localId = syncManager.submitOrder(sampleDraft, "USD")
-
-        assertEquals(1L, localId)
-        // Order saved locally
+        // Order saved locally with PENDING_SYNC
         assertEquals(1, fakeLocal.orders.size)
-        // No remote ID update or status change
+        assertEquals(OrderStatus.PENDING_SYNC, fakeLocal.orders[0].status)
+        // No remote calls — sync happens asynchronously via drainPendingOrders
+        assertEquals(0, fakeBackend.createOrderCalls.size)
         assertEquals(0, fakeLocal.updateOrderRemoteIdCalls.size)
         assertEquals(0, fakeLocal.updateOrderStatusCalls.size)
     }

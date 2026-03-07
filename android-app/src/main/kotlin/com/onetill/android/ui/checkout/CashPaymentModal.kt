@@ -24,14 +24,13 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.onetill.android.ui.components.ConnectivityState
+import com.onetill.android.ui.components.AppStatusBar
 import com.onetill.shared.util.formatCents
 import org.koin.androidx.compose.koinViewModel
 import com.onetill.android.ui.components.HeaderNavAction
 import com.onetill.android.ui.components.NumberPad
 import com.onetill.android.ui.components.OneTillButton
 import com.onetill.android.ui.components.ScreenHeader
-import com.onetill.android.ui.components.StatusBar
 import com.onetill.android.ui.theme.OneTillTheme
 import com.onetill.android.ui.theme.screenGradient
 
@@ -46,6 +45,7 @@ fun CashPaymentModal(
 
     val orderTotalFormatted by viewModel.orderTotalFormatted.collectAsState()
     val orderTotalCents by viewModel.orderTotalCents.collectAsState()
+    val isSubmitting by viewModel.isSubmitting.collectAsState()
 
     var amountText by remember { mutableStateOf("") }
 
@@ -59,12 +59,7 @@ fun CashPaymentModal(
             .drawBehind { drawRect(brush = screenGradient(size.width, size.height)) },
     ) {
         // Status bar
-        StatusBar(
-            connectivityState = ConnectivityState.Online,
-            syncStatusText = "Synced",
-            batteryPercent = 85,
-            currentTime = "3:42",
-        )
+        AppStatusBar()
 
         // Header — Close X + "Cash Payment"
         ScreenHeader(
@@ -185,7 +180,7 @@ fun CashPaymentModal(
                 onClick = {
                     viewModel.submitCashPayment { amount -> onPaymentComplete(amount) }
                 },
-                enabled = canComplete,
+                enabled = canComplete && !isSubmitting,
             )
         }
     }

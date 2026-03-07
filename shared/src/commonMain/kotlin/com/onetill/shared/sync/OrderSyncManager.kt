@@ -24,11 +24,8 @@ class OrderSyncManager(
     val pendingOrderCount: Flow<Long> = localDataSource.observePendingSyncOrderCount()
 
     /**
-     * Saves an order locally and attempts to POST it to the backend.
-     *
-     * If the backend call succeeds, the local order is updated with the remote ID
-     * and status set to PROCESSING. If the call fails (offline), the order stays
-     * as PENDING_SYNC and will be drained on reconnect.
+     * Saves an order locally as PENDING_SYNC and returns immediately.
+     * Remote sync is handled asynchronously by [drainPendingOrders].
      *
      * @return the local database ID of the saved order.
      */
@@ -53,20 +50,8 @@ class OrderSyncManager(
         val localId = localDataSource.saveOrder(localOrder)
         Napier.d("Order saved locally with id=$localId, idempotencyKey=${draft.idempotencyKey}")
 
-        // Attempt immediate sync
-        when (val result = backend.createOrder(draft)) {
-            is AppResult.Success -> {
-                val remoteOrder = result.data
-                localDataSource.updateOrderRemoteId(localId, remoteOrder.id, remoteOrder.number)
-                localDataSource.updateOrderStatus(localId, OrderStatus.PROCESSING)
-                Napier.i("Order synced: local=$localId, remote=${remoteOrder.id}")
-            }
-            is AppResult.Error -> {
-                Napier.w("Order sync failed (will retry): ${result.message}")
-                // Stays as PENDING_SYNC — will be picked up by drainPendingOrders()
-            }
-        }
-
+        // Remote sync happens via drainPendingOrders() in the background.
+        // The status bar shows "Pending sync (N)" until it completes.
         return localId
     }
 

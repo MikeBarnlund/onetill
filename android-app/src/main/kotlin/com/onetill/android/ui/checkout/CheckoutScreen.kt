@@ -35,13 +35,12 @@ import com.onetill.android.ui.components.CashPaymentIcon
 import com.onetill.android.ui.components.CheckmarkIcon
 import com.onetill.android.ui.components.ChevronDownIcon
 import com.onetill.android.ui.components.ChevronUpIcon
-import com.onetill.android.ui.components.ConnectivityState
+import com.onetill.android.ui.components.AppStatusBar
 import com.onetill.android.ui.components.HeaderNavAction
 import com.onetill.android.ui.components.MailIcon
 import com.onetill.android.ui.components.OneTillTextField
 import com.onetill.android.ui.components.PaymentMethodCard
 import com.onetill.android.ui.components.ScreenHeader
-import com.onetill.android.ui.components.StatusBar
 import com.onetill.android.ui.theme.OneTillTheme
 import com.onetill.android.ui.theme.screenGradient
 
@@ -69,12 +68,7 @@ fun CheckoutScreen(
             .fillMaxSize()
             .drawBehind { drawRect(brush = screenGradient(size.width, size.height)) },
     ) {
-        StatusBar(
-            connectivityState = if (isOnline) ConnectivityState.Online else ConnectivityState.Offline,
-            syncStatusText = "Synced",
-            batteryPercent = 85,
-            currentTime = "3:42",
-        )
+        AppStatusBar()
 
         ScreenHeader(
             title = "Checkout",

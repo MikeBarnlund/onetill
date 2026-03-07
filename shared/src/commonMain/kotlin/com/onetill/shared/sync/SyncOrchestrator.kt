@@ -103,6 +103,17 @@ class SyncOrchestrator(
     }
 
     /**
+     * Kick off an immediate background drain of the pending order queue.
+     * Call after saving an order locally so sync starts without waiting
+     * for the next 30s delta cycle.
+     */
+    fun triggerOrderDrain() {
+        scope.launch {
+            orderSyncManager.drainPendingOrders()
+        }
+    }
+
+    /**
      * Stop all background sync jobs.
      */
     fun stopSync() {
