@@ -133,6 +133,31 @@ class FakeLocalDataSource : LocalDataSource {
         }
     }
 
+    override suspend fun getOrderByIdempotencyKey(key: String): Order? =
+        orders.firstOrNull { it.idempotencyKey == key }
+
+    override suspend fun upsertRemoteOrder(order: Order): Long {
+        val existing = orders.firstOrNull { it.idempotencyKey == order.idempotencyKey && order.idempotencyKey.isNotEmpty() }
+            ?: orders.firstOrNull { it.id == order.id && order.id > 0 }
+        if (existing != null) {
+            if (existing.status == OrderStatus.PENDING_SYNC) return existing.id
+            val index = orders.indexOf(existing)
+            orders[index] = existing.copy(
+                status = order.status,
+                total = order.total,
+                totalTax = order.totalTax,
+                number = order.number,
+                stripeTransactionId = order.stripeTransactionId,
+                note = order.note,
+                couponCodes = order.couponCodes,
+                lineItems = order.lineItems,
+            )
+            _ordersFlow.value = orders.toList()
+            return existing.id
+        }
+        return saveOrder(order)
+    }
+
     override fun observeRecentOrders(limit: Int): Flow<List<Order>> =
         _ordersFlow.map { list -> list.sortedByDescending { it.createdAt }.take(limit) }
 

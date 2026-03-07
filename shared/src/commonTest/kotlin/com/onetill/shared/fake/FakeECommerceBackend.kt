@@ -19,6 +19,7 @@ class FakeECommerceBackend : ECommerceBackend {
     var fetchProductsResults = mutableListOf<AppResult<List<Product>>>()
     var fetchProductsSinceResult: AppResult<List<Product>> = AppResult.Success(emptyList())
     var createOrderResult: AppResult<Order>? = null
+    var fetchOrdersResults = mutableListOf<AppResult<List<Order>>>()
     var fetchTaxRatesResult: AppResult<List<TaxRate>> = AppResult.Success(emptyList())
     var validateConnectionResult: ConnectionStatus = ConnectionStatus.Connected("Test Store")
     var fetchStoreCurrencyResult: AppResult<String> = AppResult.Success("USD")
@@ -26,11 +27,13 @@ class FakeECommerceBackend : ECommerceBackend {
     // Call tracking
     var fetchProductsCalls = mutableListOf<Pair<Int, Int>>() // (page, perPage)
     var createOrderCalls = mutableListOf<OrderDraft>()
+    var fetchOrdersCalls = mutableListOf<Triple<Int, Int, Instant?>>()
     var fetchTaxRatesCalls = 0
     var validateConnectionCalls = 0
     var fetchStoreCurrencyCalls = 0
 
     private var fetchProductsCallIndex = 0
+    private var fetchOrdersCallIndex = 0
 
     override suspend fun fetchProducts(page: Int, perPage: Int): AppResult<List<Product>> {
         fetchProductsCalls.add(page to perPage)
@@ -51,6 +54,16 @@ class FakeECommerceBackend : ECommerceBackend {
     override suspend fun createOrder(order: OrderDraft): AppResult<Order> {
         createOrderCalls.add(order)
         return createOrderResult ?: AppResult.Error("No result configured")
+    }
+
+    override suspend fun fetchOrders(page: Int, perPage: Int, dateAfter: Instant?): AppResult<List<Order>> {
+        fetchOrdersCalls.add(Triple(page, perPage, dateAfter))
+        val index = fetchOrdersCallIndex++
+        return if (index < fetchOrdersResults.size) {
+            fetchOrdersResults[index]
+        } else {
+            AppResult.Success(emptyList())
+        }
     }
 
     override suspend fun updateOrder(id: Long, updates: OrderUpdate): AppResult<Order> =
@@ -87,14 +100,17 @@ class FakeECommerceBackend : ECommerceBackend {
         fetchProductsResults.clear()
         fetchProductsSinceResult = AppResult.Success(emptyList())
         createOrderResult = null
+        fetchOrdersResults.clear()
         fetchTaxRatesResult = AppResult.Success(emptyList())
         validateConnectionResult = ConnectionStatus.Connected("Test Store")
         fetchStoreCurrencyResult = AppResult.Success("USD")
         fetchProductsCalls.clear()
         createOrderCalls.clear()
+        fetchOrdersCalls.clear()
         fetchTaxRatesCalls = 0
         validateConnectionCalls = 0
         fetchStoreCurrencyCalls = 0
         fetchProductsCallIndex = 0
+        fetchOrdersCallIndex = 0
     }
 }

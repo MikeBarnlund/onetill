@@ -54,7 +54,6 @@ class API_Orders {
 							'sanitize_callback' => 'absint',
 						),
 						'device_id'  => array(
-							'required'          => true,
 							'sanitize_callback' => 'sanitize_text_field',
 						),
 						'date_after' => array(
@@ -99,7 +98,13 @@ class API_Orders {
 	 * @return bool|\WP_Error
 	 */
 	public function check_permissions( $request ) {
-		// TODO: Validate WooCommerce API key authentication.
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			return new \WP_Error(
+				'onetill_rest_forbidden',
+				__( 'Sorry, you are not allowed to access this resource.', 'onetill' ),
+				array( 'status' => 403 )
+			);
+		}
 		return true;
 	}
 
@@ -148,7 +153,104 @@ class API_Orders {
 	 * @return \WP_REST_Response|\WP_Error
 	 */
 	public function get_orders( $request ) {
-		// TODO: Implement device order listing.
+		$page     = $request->get_param( 'page' ) ?: 1;
+		$per_page = $request->get_param( 'per_page' ) ?: 20;
+		$per_page = min( $per_page, 100 );
+
+		$args = array(
+			'limit'    => $per_page,
+			'page'     => $page,
+			'orderby'  => 'date',
+			'order'    => 'DESC',
+			'meta_key'   => '_onetill_source',
+			'meta_value' => 'onetill_pos',
+		);
+
+		$date_after = $request->get_param( 'date_after' );
+		if ( ! empty( $date_after ) ) {
+			$args['date_created'] = '>' . strtotime( $date_after );
+		}
+
+		$device_id = $request->get_param( 'device_id' );
+		if ( ! empty( $device_id ) ) {
+			$args['meta_query'] = array(
+				'relation' => 'AND',
+				array(
+					'key'   => '_onetill_source',
+					'value' => 'onetill_pos',
+				),
+				array(
+					'key'   => '_onetill_device_id',
+					'value' => $device_id,
+				),
+			);
+			unset( $args['meta_key'], $args['meta_value'] );
+		}
+
+		$orders = wc_get_orders( $args );
+
+		// Get total count for pagination headers.
+		$count_args          = $args;
+		$count_args['limit'] = -1;
+		$count_args['page']  = 1;
+		$count_args['return'] = 'ids';
+		$total    = count( wc_get_orders( $count_args ) );
+		$pages    = (int) ceil( $total / $per_page );
+
+		$data = array();
+		foreach ( $orders as $wc_order ) {
+			$data[] = $this->format_order( $wc_order );
+		}
+
+		$response = new \WP_REST_Response( $data, 200 );
+		$response->header( 'X-WP-Total', $total );
+		$response->header( 'X-WP-TotalPages', $pages );
+
+		return $response;
+	}
+
+	/**
+	 * Format a WC_Order into the OneTill API response shape.
+	 *
+	 * @param \WC_Order $wc_order The WooCommerce order.
+	 * @return array
+	 */
+	private function format_order( $wc_order ) {
+		$line_items = array();
+		foreach ( $wc_order->get_items() as $item ) {
+			$product = $item->get_product();
+			$line_items[] = array(
+				'product_id'   => $item->get_product_id(),
+				'variation_id' => $item->get_variation_id() ?: null,
+				'name'         => $item->get_name(),
+				'sku'          => $product ? $product->get_sku() : null,
+				'quantity'     => $item->get_quantity(),
+				'unit_price'   => wc_format_decimal( (float) $item->get_subtotal() / max( $item->get_quantity(), 1 ), 2 ),
+				'total'        => wc_format_decimal( $item->get_total(), 2 ),
+			);
+		}
+
+		$coupon_codes = array();
+		foreach ( $wc_order->get_coupon_codes() as $code ) {
+			$coupon_codes[] = $code;
+		}
+
+		return array(
+			'id'                    => $wc_order->get_id(),
+			'number'                => $wc_order->get_order_number(),
+			'status'                => $wc_order->get_status(),
+			'total'                 => wc_format_decimal( $wc_order->get_total(), 2 ),
+			'total_tax'             => wc_format_decimal( $wc_order->get_total_tax(), 2 ),
+			'currency'              => $wc_order->get_currency(),
+			'payment_method'        => $wc_order->get_payment_method(),
+			'stripe_transaction_id' => $wc_order->get_meta( '_onetill_stripe_id' ) ?: null,
+			'idempotency_key'       => $wc_order->get_meta( '_onetill_idempotency_key' ) ?: '',
+			'customer_id'           => $wc_order->get_customer_id() ?: null,
+			'note'                  => $wc_order->get_meta( '_onetill_note' ) ?: null,
+			'coupon_codes'          => $coupon_codes,
+			'line_items'            => $line_items,
+			'created_at'            => $wc_order->get_date_created() ? $wc_order->get_date_created()->format( 'Y-m-d\TH:i:s' ) : '',
+		);
 	}
 
 	/**

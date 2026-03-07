@@ -6,8 +6,9 @@ import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.shared.data.model.Order
 import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.data.model.PaymentMethod
-import com.onetill.shared.sync.OrderSyncManager
+import com.onetill.shared.sync.SyncOrchestrator
 import com.onetill.shared.util.formatDisplay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -63,7 +64,7 @@ data class DailySummaryUiModel(
 
 class OrdersViewModel(
     localDataSource: LocalDataSource,
-    orderSyncManager: OrderSyncManager,
+    private val syncOrchestrator: SyncOrchestrator,
 ) : ViewModel() {
 
     private val recentOrders: StateFlow<List<Order>> =
@@ -71,8 +72,11 @@ class OrdersViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val pendingSyncCount: StateFlow<Long> =
-        orderSyncManager.pendingOrderCount
+        syncOrchestrator.pendingOrderCount
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
+
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
     private val _selectedFilter = MutableStateFlow(OrderFilter.Today)
     val selectedFilter: StateFlow<OrderFilter> = _selectedFilter.asStateFlow()
@@ -154,6 +158,14 @@ class OrdersViewModel(
                 pendingSyncCount = 0,
             ),
         )
+
+    fun refreshOrders() {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            syncOrchestrator.performOrderSync()
+            _isRefreshing.value = false
+        }
+    }
 
     fun setFilter(filter: OrderFilter) {
         _selectedFilter.value = filter

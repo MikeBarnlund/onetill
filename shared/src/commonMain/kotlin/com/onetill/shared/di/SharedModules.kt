@@ -6,8 +6,10 @@ import com.onetill.shared.data.local.SqlDelightLocalDataSource
 import com.onetill.shared.data.model.StoreConfig
 import com.onetill.shared.db.createDatabase
 import com.onetill.shared.ecommerce.ECommerceBackend
+import com.onetill.shared.ecommerce.woocommerce.OneTillPluginClient
 import com.onetill.shared.ecommerce.woocommerce.WooCommerceBackend
 import com.onetill.shared.ecommerce.woocommerce.WooCommerceClient
+import com.onetill.shared.ecommerce.woocommerce.createOneTillPluginHttpClient
 import com.onetill.shared.ecommerce.woocommerce.createWooCommerceHttpClient
 import com.onetill.shared.setup.SetupManager
 import com.onetill.shared.sync.OrderSyncManager
@@ -30,7 +32,8 @@ fun backendModule(config: StoreConfig) = module {
     single { config }
     single { createWooCommerceHttpClient(config) }
     single { WooCommerceClient(get()) }
-    single<ECommerceBackend> { WooCommerceBackend(get(), get()) }
+    single { OneTillPluginClient(createOneTillPluginHttpClient(config)) }
+    single<ECommerceBackend> { WooCommerceBackend(get(), get(), get()) }
 }
 
 val syncModule = module {

@@ -377,6 +377,24 @@ UPDATE offline_orders SET remote_id = ?, order_number = ? WHERE id = ?;
 updateOrderStripeTransactionId:
 UPDATE offline_orders SET stripe_transaction_id = ? WHERE id = ?;
 
+selectOrderByRemoteId:
+SELECT * FROM offline_orders WHERE remote_id = ?;
+
+updateOrderFromRemote:
+UPDATE offline_orders SET
+    status = ?,
+    total_cents = ?,
+    total_tax_cents = ?,
+    remote_id = ?,
+    order_number = ?,
+    stripe_transaction_id = ?,
+    note = ?,
+    coupon_codes = ?
+WHERE id = ?;
+
+deleteLineItemsByOrderId:
+DELETE FROM order_line_item WHERE order_id = ?;
+
 selectRecentOrders:
 SELECT * FROM offline_orders ORDER BY created_at DESC LIMIT ?;
 

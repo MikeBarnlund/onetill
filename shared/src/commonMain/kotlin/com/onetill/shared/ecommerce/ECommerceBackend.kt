@@ -35,6 +35,8 @@ interface ECommerceBackend {
 
     suspend fun updateOrder(id: Long, updates: OrderUpdate): AppResult<Order>
 
+    suspend fun fetchOrders(page: Int, perPage: Int, dateAfter: Instant? = null): AppResult<List<Order>>
+
     suspend fun refundOrder(id: Long, amount: Long): AppResult<Refund>
 
     // -- Inventory --

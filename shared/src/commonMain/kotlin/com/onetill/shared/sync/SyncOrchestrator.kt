@@ -92,14 +92,23 @@ class SyncOrchestrator(
             connectivityMonitor.isOnline
                 .collectLatest { online ->
                     if (online) {
-                        Napier.i("Connectivity restored — draining order queue and syncing")
+                        Napier.i("Connectivity restored — draining order queue, fetching orders, and syncing")
                         orderSyncManager.drainPendingOrders()
+                        orderSyncManager.fetchRemoteOrders()
                         runDeltaSync()
                     }
                 }
         }
 
         Napier.i("Sync orchestrator started")
+    }
+
+    /**
+     * Fetch OneTill orders from WooCommerce back to the local database.
+     * Called from the orders screen on pull-to-refresh.
+     */
+    suspend fun performOrderSync(): AppResult<Unit> {
+        return orderSyncManager.fetchRemoteOrders()
     }
 
     /**

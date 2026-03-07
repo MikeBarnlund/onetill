@@ -10,6 +10,8 @@ import com.onetill.shared.data.model.PaymentMethod
 import com.onetill.shared.data.model.toCents
 import com.onetill.shared.data.model.toDecimalString
 import com.onetill.shared.data.model.toMoney
+import com.onetill.shared.ecommerce.woocommerce.dto.OneTillLineItemDto
+import com.onetill.shared.ecommerce.woocommerce.dto.OneTillOrderDto
 import com.onetill.shared.ecommerce.woocommerce.dto.WooCouponLineDto
 import com.onetill.shared.ecommerce.woocommerce.dto.WooCreateLineItemDto
 import com.onetill.shared.ecommerce.woocommerce.dto.WooCreateMetaDataDto
@@ -114,3 +116,30 @@ private fun mapPaymentMethod(wooMethod: String): PaymentMethod = when {
     wooMethod.contains("card", ignoreCase = true) -> PaymentMethod.CARD
     else -> PaymentMethod.CASH
 }
+
+fun OneTillOrderDto.toDomain(): Order = Order(
+    id = id,
+    number = number,
+    status = mapOrderStatus(status),
+    lineItems = lineItems.map { it.toDomain(currency) },
+    customerId = customerId,
+    total = total.toMoney(currency),
+    totalTax = totalTax.toMoney(currency),
+    paymentMethod = mapPaymentMethod(paymentMethod),
+    stripeTransactionId = stripeTransactionId,
+    idempotencyKey = idempotencyKey,
+    note = note,
+    couponCodes = couponCodes,
+    createdAt = parseWooDateTime(createdAt),
+)
+
+private fun OneTillLineItemDto.toDomain(currency: String): LineItem = LineItem(
+    id = 0,
+    productId = productId,
+    variantId = variationId,
+    name = name,
+    sku = sku,
+    quantity = quantity,
+    unitPrice = unitPrice.toMoney(currency),
+    totalPrice = total.toMoney(currency),
+)

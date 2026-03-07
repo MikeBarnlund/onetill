@@ -17,7 +17,13 @@ import io.ktor.http.path
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
-fun createWooCommerceHttpClient(config: StoreConfig): HttpClient {
+fun createOneTillPluginHttpClient(config: StoreConfig): HttpClient =
+    createAuthenticatedHttpClient(config, "wp-json/onetill/v1/")
+
+fun createWooCommerceHttpClient(config: StoreConfig): HttpClient =
+    createAuthenticatedHttpClient(config, "wp-json/wc/v3/")
+
+private fun createAuthenticatedHttpClient(config: StoreConfig, apiPath: String): HttpClient {
     val baseUrl = config.siteUrl.trimEnd('/')
 
     return HttpClient {
@@ -67,7 +73,7 @@ fun createWooCommerceHttpClient(config: StoreConfig): HttpClient {
                 if (parsed.specifiedPort != 0 && parsed.specifiedPort != protocol.defaultPort) {
                     port = parsed.specifiedPort
                 }
-                path("wp-json/wc/v3/")
+                path(apiPath)
             }
         }
     }

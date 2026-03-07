@@ -292,6 +292,98 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
             )
         }
 
+    override suspend fun getOrderByIdempotencyKey(key: String): Order? = withContext(Dispatchers.Default) {
+        queries.selectOrderByIdempotencyKey(key).executeAsOneOrNull()?.let { assembleOrder(it) }
+    }
+
+    override suspend fun upsertRemoteOrder(order: Order): Long = withContext(Dispatchers.Default) {
+        db.transactionWithResult {
+            // Check if order exists locally by idempotency key
+            val existing = if (order.idempotencyKey.isNotEmpty()) {
+                queries.selectOrderByIdempotencyKey(order.idempotencyKey).executeAsOneOrNull()
+            } else {
+                null
+            }
+            // Also try by remote_id
+            val existingByRemote = if (existing == null && order.id > 0) {
+                queries.selectOrderByRemoteId(order.id).executeAsOneOrNull()
+            } else {
+                null
+            }
+            val match = existing ?: existingByRemote
+
+            if (match != null) {
+                // Don't overwrite a local PENDING_SYNC order — it hasn't been pushed yet
+                if (match.status == OrderStatus.PENDING_SYNC.name) {
+                    return@transactionWithResult match.id
+                }
+
+                // Update the existing row with remote data
+                queries.updateOrderFromRemote(
+                    status = order.status.name,
+                    total_cents = order.total.amountCents,
+                    total_tax_cents = order.totalTax.amountCents,
+                    remote_id = order.id.takeIf { it > 0 },
+                    order_number = order.number.ifEmpty { null },
+                    stripe_transaction_id = order.stripeTransactionId,
+                    note = order.note,
+                    coupon_codes = order.couponCodes.takeIf { it.isNotEmpty() }?.joinToString(","),
+                    id = match.id,
+                )
+
+                // Replace line items
+                queries.deleteLineItemsByOrderId(match.id)
+                for (item in order.lineItems) {
+                    queries.insertOrderLineItem(
+                        order_id = match.id,
+                        product_id = item.productId,
+                        variant_id = item.variantId,
+                        name = item.name,
+                        sku = item.sku,
+                        quantity = item.quantity.toLong(),
+                        unit_price_cents = item.unitPrice.amountCents,
+                        total_price_cents = item.totalPrice.amountCents,
+                        currency_code = item.unitPrice.currencyCode,
+                    )
+                }
+                match.id
+            } else {
+                // Insert as new row
+                queries.insertOrder(
+                    remote_id = order.id.takeIf { it > 0 },
+                    order_number = order.number.ifEmpty { null },
+                    status = order.status.name,
+                    customer_id = order.customerId,
+                    total_cents = order.total.amountCents,
+                    total_tax_cents = order.totalTax.amountCents,
+                    currency_code = order.total.currencyCode,
+                    payment_method = order.paymentMethod.name,
+                    stripe_transaction_id = order.stripeTransactionId,
+                    idempotency_key = order.idempotencyKey,
+                    note = order.note,
+                    coupon_codes = order.couponCodes.takeIf { it.isNotEmpty() }?.joinToString(","),
+                    created_at = order.createdAt.toEpochMilliseconds(),
+                )
+                val localId = queries.lastInsertOrderId().executeAsOne()
+
+                for (item in order.lineItems) {
+                    queries.insertOrderLineItem(
+                        order_id = localId,
+                        product_id = item.productId,
+                        variant_id = item.variantId,
+                        name = item.name,
+                        sku = item.sku,
+                        quantity = item.quantity.toLong(),
+                        unit_price_cents = item.unitPrice.amountCents,
+                        total_price_cents = item.totalPrice.amountCents,
+                        currency_code = item.unitPrice.currencyCode,
+                    )
+                }
+                localId
+            }
+        }
+    }
+
     override fun observeRecentOrders(limit: Int): Flow<List<Order>> =
         queries.selectRecentOrders(limit.toLong())
             .asFlow()

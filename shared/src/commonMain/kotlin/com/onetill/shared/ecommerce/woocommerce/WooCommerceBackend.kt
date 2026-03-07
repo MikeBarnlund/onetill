@@ -33,6 +33,9 @@ class WooCommerceBackend(
     private val client: WooCommerceClient = WooCommerceClient(
         createWooCommerceHttpClient(config)
     ),
+    private val pluginClient: OneTillPluginClient = OneTillPluginClient(
+        createOneTillPluginHttpClient(config)
+    ),
 ) : ECommerceBackend {
 
     private val currency: String get() = config.currency
@@ -102,6 +105,12 @@ class WooCommerceBackend(
         }
 
     // -- Orders --
+
+    override suspend fun fetchOrders(page: Int, perPage: Int, dateAfter: Instant?): AppResult<List<Order>> =
+        apiCall {
+            val dateAfterStr = dateAfter?.toString()
+            pluginClient.getOrders(page, perPage, dateAfterStr).map { it.toDomain() }
+        }
 
     override suspend fun createOrder(order: OrderDraft): AppResult<Order> =
         apiCall {

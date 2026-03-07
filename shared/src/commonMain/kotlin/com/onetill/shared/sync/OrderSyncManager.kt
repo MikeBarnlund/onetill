@@ -12,6 +12,10 @@ import io.github.aakira.napier.Napier
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+
+private const val ORDER_SYNC_ENTITY_TYPE = "orders"
+private const val ORDER_PAGE_SIZE = 50
 
 class OrderSyncManager(
     private val backend: ECommerceBackend,
@@ -81,6 +85,51 @@ class OrderSyncManager(
                 }
             }
         }
+    }
+
+    /**
+     * Fetch OneTill-created orders from WooCommerce back to the local database.
+     * Uses delta sync pattern: only fetches orders created since the last sync.
+     */
+    suspend fun fetchRemoteOrders(): AppResult<Unit> {
+        val lastSynced: Instant? = localDataSource.getLastSyncedAt(ORDER_SYNC_ENTITY_TYPE)
+        var page = 1
+        var totalFetched = 0
+
+        Napier.i("Order fetch starting — dateAfter=${lastSynced ?: "none (full fetch)"}")
+
+        while (true) {
+            val result = backend.fetchOrders(
+                page = page,
+                perPage = ORDER_PAGE_SIZE,
+                dateAfter = lastSynced,
+            )
+
+            when (result) {
+                is AppResult.Error -> {
+                    Napier.e("Order fetch failed on page $page: ${result.message}")
+                    return result
+                }
+                is AppResult.Success -> {
+                    val orders = result.data
+                    if (orders.isEmpty()) break
+
+                    for (order in orders) {
+                        localDataSource.upsertRemoteOrder(order)
+                    }
+                    totalFetched += orders.size
+
+                    Napier.d("Order fetch: page $page, ${orders.size} orders upserted")
+
+                    if (orders.size < ORDER_PAGE_SIZE) break
+                    page++
+                }
+            }
+        }
+
+        localDataSource.updateLastSyncedAt(ORDER_SYNC_ENTITY_TYPE, Clock.System.now())
+        Napier.i("Order fetch complete: $totalFetched orders synced")
+        return AppResult.Success(Unit)
     }
 
     private fun orderToDraft(order: Order): OrderDraft = OrderDraft(
