@@ -177,8 +177,8 @@ function onetill_create_tables() {
 	// Idempotency table.
 	$tables[] = "CREATE TABLE {$wpdb->prefix}onetill_idempotency (
 		idempotency_key VARCHAR(100) NOT NULL,
-		response_hash VARCHAR(64) NOT NULL,
 		order_id BIGINT UNSIGNED DEFAULT NULL,
+		response_body LONGTEXT DEFAULT NULL,
 		created_at DATETIME NOT NULL,
 		PRIMARY KEY  (idempotency_key),
 		KEY idx_created (created_at)
