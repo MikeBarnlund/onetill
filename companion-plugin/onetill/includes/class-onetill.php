@@ -67,6 +67,13 @@ class OneTill {
 	private $webhooks;
 
 	/**
+	 * API Coupons handler.
+	 *
+	 * @var API_Coupons
+	 */
+	private $api_coupons;
+
+	/**
 	 * Admin handler.
 	 *
 	 * @var Admin
@@ -82,6 +89,7 @@ class OneTill {
 		$this->api_products  = new API_Products();
 		$this->api_orders    = new API_Orders();
 		$this->api_customers = new API_Customers();
+		$this->api_coupons   = new API_Coupons();
 		$this->api_settings  = new API_Settings();
 		$this->api_sync      = new API_Sync();
 		$this->pairing       = new Pairing();
@@ -99,6 +107,7 @@ class OneTill {
 		add_action( 'rest_api_init', array( $this->api_products, 'register_routes' ) );
 		add_action( 'rest_api_init', array( $this->api_orders, 'register_routes' ) );
 		add_action( 'rest_api_init', array( $this->api_customers, 'register_routes' ) );
+		add_action( 'rest_api_init', array( $this->api_coupons, 'register_routes' ) );
 		add_action( 'rest_api_init', array( $this->api_settings, 'register_routes' ) );
 		add_action( 'rest_api_init', array( $this->api_sync, 'register_routes' ) );
 		add_action( 'rest_api_init', array( $this->pairing, 'register_routes' ) );
@@ -132,5 +141,51 @@ class OneTill {
 		add_action( 'wp_ajax_onetill_initiate_pairing', array( $this->pairing, 'ajax_initiate_pairing' ) );
 		add_action( 'wp_ajax_onetill_check_pairing_status', array( $this->pairing, 'ajax_check_pairing_status' ) );
 		add_action( 'wp_ajax_onetill_disconnect_device', array( $this->admin, 'ajax_disconnect_device' ) );
+
+		// Rate limiting for REST API endpoints.
+		add_filter( 'rest_pre_dispatch', array( $this, 'apply_rate_limit' ), 10, 3 );
+	}
+
+	/**
+	 * Apply rate limiting to OneTill REST API endpoints.
+	 *
+	 * @param mixed            $result  Response to replace the requested version with.
+	 * @param \WP_REST_Server  $server  Server instance.
+	 * @param \WP_REST_Request $request Request used to generate the response.
+	 * @return mixed|\WP_Error
+	 */
+	public function apply_rate_limit( $result, $server, $request ) {
+		$route = $request->get_route();
+
+		// Only rate-limit OneTill endpoints.
+		if ( 0 !== strpos( $route, '/onetill/v1/' ) ) {
+			return $result;
+		}
+
+		// Skip pairing endpoints (they have their own IP-based rate limiting).
+		if ( 0 === strpos( $route, '/onetill/v1/pair' ) ) {
+			return $result;
+		}
+
+		// Use the authenticated user ID as the device identifier.
+		$device_id = (string) get_current_user_id();
+		if ( '0' === $device_id ) {
+			return $result; // Not authenticated yet — permission_callback will reject.
+		}
+
+		// Determine the endpoint group.
+		if ( false !== strpos( $route, '/sync/heartbeat' ) ) {
+			$group = 'heartbeat';
+		} elseif ( 'GET' === $request->get_method() ) {
+			$group = 'read';
+		} else {
+			$group = 'write';
+		}
+
+		if ( ! Rate_Limiter::check( $device_id, $group ) ) {
+			return Rate_Limiter::error();
+		}
+
+		return $result;
 	}
 }
