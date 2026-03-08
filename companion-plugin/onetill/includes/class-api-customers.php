@@ -67,14 +67,7 @@ class API_Customers {
 	 * @return bool|\WP_Error
 	 */
 	public function check_permissions( $request ) {
-		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			return new \WP_Error(
-				'onetill_rest_forbidden',
-				__( 'Sorry, you are not allowed to access this resource.', 'onetill' ),
-				array( 'status' => 403 )
-			);
-		}
-		return true;
+		return Authenticator::check( $request );
 	}
 
 	/**
