@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,6 +29,8 @@ import com.onetill.android.ui.checkout.CheckoutScreen
 import com.onetill.android.ui.complete.OrderCompleteScreen
 import com.onetill.android.ui.orders.DailySummaryScreen
 import com.onetill.android.ui.orders.OrderHistoryScreen
+import com.onetill.android.ui.scanner.QrPairingViewModel
+import com.onetill.android.ui.scanner.QrScannerScreen
 import com.onetill.android.ui.settings.SettingsScreen
 import com.onetill.android.ui.setup.SetupWizardScreen
 import com.onetill.shared.data.local.LocalDataSource
@@ -43,6 +46,7 @@ object Routes {
     const val ORDER_COMPLETE = "order_complete/{amount}/{method}"
     const val ORDER_HISTORY = "order_history"
     const val DAILY_SUMMARY = "daily_summary"
+    const val QR_SCAN = "qr_scan"
     const val SETTINGS = "settings"
 
     fun orderComplete(amount: String, method: String) = "order_complete/$amount/$method"
@@ -136,6 +140,7 @@ fun OneTillNavGraph(
                 onNavigateToOrders = { navController.navigate(Routes.ORDER_HISTORY) },
                 onNavigateToSummary = { navController.navigate(Routes.DAILY_SUMMARY) },
                 onNavigateToSettings = { navController.navigate(Routes.SETTINGS) },
+                onNavigateToQrScan = { navController.navigate(Routes.QR_SCAN) },
             )
         }
 
@@ -229,6 +234,34 @@ fun OneTillNavGraph(
         // Daily Summary
         composable(Routes.DAILY_SUMMARY) {
             DailySummaryScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        // QR Scanner (post-setup re-pairing)
+        composable(Routes.QR_SCAN) {
+            val viewModel: QrPairingViewModel = org.koin.androidx.compose.koinViewModel()
+            val pairingState by viewModel.state.collectAsState()
+
+            // Navigate back to catalog on successful pairing
+            LaunchedEffect(pairingState.pairingComplete) {
+                if (pairingState.pairingComplete) {
+                    navController.navigate(Routes.CATALOG) {
+                        popUpTo(Routes.CATALOG) { inclusive = true }
+                    }
+                }
+            }
+
+            QrScannerScreen(
+                isProcessing = pairingState.isProcessing,
+                error = pairingState.error,
+                onQrScanned = { viewModel.onQrScanned(it) },
+                onManualEntry = {
+                    navController.popBackStack()
+                    navController.navigate(Routes.SETTINGS)
+                },
+                onRetry = { viewModel.onRetry() },
+                showBackButton = true,
                 onBack = { navController.popBackStack() },
             )
         }

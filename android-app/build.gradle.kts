@@ -80,6 +80,15 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.ktor)
 
+    // CameraX
+    implementation(libs.camerax.core)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
+
+    // ML Kit Barcode Scanning
+    implementation(libs.mlkit.barcode)
+
     // Ktor engine for Coil network image loading
     implementation(libs.ktor.client.okhttp)
 }

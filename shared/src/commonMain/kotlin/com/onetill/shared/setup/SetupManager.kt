@@ -87,6 +87,12 @@ class SetupManager(
         _state.value = SetupState.Complete(config)
     }
 
+    suspend fun saveQrPairingConfig(config: StoreConfig) {
+        _state.value = SetupState.Saving
+        localDataSource.saveStoreConfig(config)
+        _state.value = SetupState.Complete(config)
+    }
+
     suspend fun clearConfiguration() {
         localDataSource.deleteStoreConfig()
         validatedConfig = null

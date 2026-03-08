@@ -554,6 +554,22 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
         )
     }
 
+    // ========================================================================
+    // Device ID
+    // ========================================================================
+
+    override suspend fun getDeviceId(): String? = withContext(Dispatchers.Default) {
+        queries.selectAppSetting("device_id").executeAsOneOrNull()
+    }
+
+    override suspend fun saveDeviceId(deviceId: String) = withContext(Dispatchers.Default) {
+        queries.upsertAppSetting("device_id", deviceId)
+    }
+
+    // ========================================================================
+    // Private: Row → Domain Assembly
+    // ========================================================================
+
     private fun mapStoreConfigRow(row: Store_config): StoreConfig = StoreConfig(
         siteUrl = row.site_url,
         consumerKey = row.consumer_key,

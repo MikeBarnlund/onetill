@@ -39,6 +39,7 @@ import com.onetill.android.R
 import org.koin.androidx.compose.koinViewModel
 import com.onetill.android.ui.components.OneTillButton
 import com.onetill.android.ui.components.OneTillTextField
+import com.onetill.android.ui.scanner.QrScannerScreen
 import com.onetill.android.ui.theme.OneTillTheme
 import com.onetill.android.ui.theme.Success
 import com.onetill.android.ui.theme.screenGradient
@@ -58,6 +59,13 @@ fun SetupWizardScreen(
         when (step) {
             SetupStep.Welcome -> WelcomeStep(
                 onGetStarted = { viewModel.onGetStarted() },
+            )
+            SetupStep.QrScan -> QrScannerScreen(
+                isProcessing = state.isQrProcessing,
+                error = state.qrError,
+                onQrScanned = { viewModel.onQrScanned(it) },
+                onManualEntry = { viewModel.onManualEntry() },
+                onRetry = { viewModel.onQrRetry() },
             )
             SetupStep.StoreConnection -> StoreConnectionStep(
                 siteUrl = state.siteUrl,

@@ -11,6 +11,7 @@ import com.onetill.shared.ecommerce.woocommerce.WooCommerceBackend
 import com.onetill.shared.ecommerce.woocommerce.WooCommerceClient
 import com.onetill.shared.ecommerce.woocommerce.createOneTillPluginHttpClient
 import com.onetill.shared.ecommerce.woocommerce.createWooCommerceHttpClient
+import com.onetill.shared.pairing.PairingClient
 import com.onetill.shared.setup.SetupManager
 import com.onetill.shared.sync.OrderSyncManager
 import com.onetill.shared.sync.ProductSyncManager
@@ -26,6 +27,7 @@ val databaseModule = module {
             backendFactory = { config -> WooCommerceBackend(config) },
         )
     }
+    single { PairingClient() }
 }
 
 fun backendModule(config: StoreConfig) = module {

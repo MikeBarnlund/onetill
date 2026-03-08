@@ -466,3 +466,18 @@ SELECT * FROM store_config WHERE id = 1;
 
 deleteStoreConfig:
 DELETE FROM store_config;
+
+-- ============================================================================
+-- App Settings (key-value store for device_id, etc.)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT NOT NULL PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+upsertAppSetting:
+INSERT OR REPLACE INTO app_settings(key, value) VALUES (?, ?);
+
+selectAppSetting:
+SELECT value FROM app_settings WHERE key = ?;

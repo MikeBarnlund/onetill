@@ -196,6 +196,16 @@ class FakeLocalDataSource : LocalDataSource {
         _storeConfigFlow.value = null
     }
 
+    // Device ID
+
+    private var deviceId: String? = null
+
+    override suspend fun getDeviceId(): String? = deviceId
+
+    override suspend fun saveDeviceId(deviceId: String) {
+        this.deviceId = deviceId
+    }
+
     fun reset() {
         products.clear()
         orders.clear()

@@ -48,4 +48,8 @@ interface LocalDataSource {
     suspend fun getStoreConfig(): StoreConfig?
     suspend fun saveStoreConfig(config: StoreConfig)
     suspend fun deleteStoreConfig()
+
+    // Device ID
+    suspend fun getDeviceId(): String?
+    suspend fun saveDeviceId(deviceId: String)
 }

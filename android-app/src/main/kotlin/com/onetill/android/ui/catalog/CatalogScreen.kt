@@ -84,6 +84,7 @@ fun CatalogScreen(
     onNavigateToOrders: () -> Unit,
     onNavigateToSummary: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToQrScan: () -> Unit,
     viewModel: CatalogViewModel = koinViewModel(),
 ) {
     val colors = OneTillTheme.colors
@@ -121,7 +122,11 @@ fun CatalogScreen(
                 viewModel.closeDrawer()
                 onNavigateToSummary()
             },
-            onSettingsTap = {
+            onScanQrTap = {
+                viewModel.closeDrawer()
+                onNavigateToQrScan()
+            },
+            onEditShopTap = {
                 viewModel.closeDrawer()
                 onNavigateToSettings()
             },

@@ -1,12 +1,16 @@
 package com.onetill.android.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -14,10 +18,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,12 +39,15 @@ import com.onetill.android.ui.theme.OneTillTheme
 fun NavigationDrawer(
     onOrdersTap: () -> Unit,
     onSummaryTap: () -> Unit,
-    onSettingsTap: () -> Unit,
+    onScanQrTap: () -> Unit,
+    onEditShopTap: () -> Unit,
     modifier: Modifier = Modifier,
     versionText: String = "v1.0.0 · Register 1",
 ) {
     val colors = OneTillTheme.colors
     val dimens = OneTillTheme.dimens
+
+    var settingsExpanded by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -85,12 +99,58 @@ fun NavigationDrawer(
         // Flex spacer
         Spacer(modifier = Modifier.weight(1f))
 
-        // Settings pinned above footer
-        DrawerNavItem(
-            label = "Settings",
-            icon = { color -> SettingsIcon(color = color, modifier = Modifier.size(dimens.headerIconSize)) },
-            onClick = onSettingsTap,
-        )
+        // Settings with expandable submenu
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(dimens.touchTargetSecondary)
+                .clickable { settingsExpanded = !settingsExpanded }
+                .padding(horizontal = 20.dp)
+                .semantics { contentDescription = "Settings" },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SettingsIcon(
+                color = colors.textSecondary,
+                modifier = Modifier.size(dimens.headerIconSize),
+            )
+            Spacer(modifier = Modifier.width(14.dp))
+            Text(
+                text = "Settings",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                color = colors.textPrimary,
+                modifier = Modifier.weight(1f),
+            )
+            ChevronIcon(
+                color = colors.textTertiary,
+                modifier = Modifier
+                    .size(12.dp)
+                    .graphicsLayer {
+                        rotationZ = if (settingsExpanded) 90f else 0f
+                    },
+            )
+        }
+
+        AnimatedVisibility(
+            visible = settingsExpanded,
+            enter = expandVertically(),
+            exit = shrinkVertically(),
+        ) {
+            Column {
+                DrawerNavItem(
+                    label = "Scan QR Code",
+                    icon = { color -> QrCodeIcon(color = color, modifier = Modifier.size(dimens.headerIconSize)) },
+                    onClick = onScanQrTap,
+                    modifier = Modifier.padding(start = 34.dp),
+                )
+                DrawerNavItem(
+                    label = "Edit Shop Info",
+                    icon = { color -> EditIcon(color = color, modifier = Modifier.size(dimens.headerIconSize)) },
+                    onClick = onEditShopTap,
+                    modifier = Modifier.padding(start = 34.dp),
+                )
+            }
+        }
 
         // Footer
         Column(

@@ -4,6 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.onetill.android.di.loadPostWizardModules
 import com.onetill.shared.data.AppResult
+import com.onetill.shared.data.local.LocalDataSource
+import com.onetill.shared.data.model.StoreConfig
+import com.onetill.shared.pairing.PairingClient
+import com.onetill.shared.pairing.PairingRequest
+import com.onetill.shared.pairing.parseQrCode
 import com.onetill.shared.setup.SetupManager
 import com.onetill.shared.setup.SetupState
 import com.onetill.shared.sync.SyncOrchestrator
@@ -15,9 +20,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 enum class SetupStep {
     Welcome,
+    QrScan,
     StoreConnection,
     CatalogSync,
     Ready,
@@ -36,18 +44,78 @@ data class SetupUiState(
     val isConnected: Boolean = false,
     val connectionError: String? = null,
     val productsSynced: Int = 0,
+    val isQrProcessing: Boolean = false,
+    val qrError: String? = null,
 )
 
 class SetupViewModel(
     private val setupManager: SetupManager,
-    private val localDataSource: com.onetill.shared.data.local.LocalDataSource,
+    private val localDataSource: LocalDataSource,
+    private val pairingClient: PairingClient,
 ) : ViewModel(), KoinComponent {
 
     private val _state = MutableStateFlow(SetupUiState())
     val state: StateFlow<SetupUiState> = _state.asStateFlow()
 
     fun onGetStarted() {
+        _state.update { it.copy(currentStep = SetupStep.QrScan) }
+    }
+
+    fun onManualEntry() {
         _state.update { it.copy(currentStep = SetupStep.StoreConnection) }
+    }
+
+    fun onQrScanned(rawValue: String) {
+        if (_state.value.isQrProcessing) return
+
+        val payload = parseQrCode(rawValue)
+        if (payload == null) {
+            _state.update { it.copy(qrError = "Not a valid OneTill QR code. Check that you're scanning the code from WP Admin.") }
+            return
+        }
+
+        viewModelScope.launch {
+            _state.update { it.copy(isQrProcessing = true, qrError = null) }
+
+            val deviceId = getOrCreateDeviceId()
+            val request = PairingRequest(
+                token = payload.token,
+                nonce = payload.nonce,
+                deviceName = "OneTill POS",
+                deviceId = deviceId,
+            )
+
+            when (val result = pairingClient.completePairing(payload.storeUrl, request)) {
+                is AppResult.Success -> {
+                    val config = StoreConfig(
+                        siteUrl = payload.storeUrl.trimEnd('/'),
+                        consumerKey = result.data.credentials.consumerKey,
+                        consumerSecret = result.data.credentials.consumerSecret,
+                        currency = result.data.store.currency,
+                    )
+
+                    setupManager.saveQrPairingConfig(config)
+                    loadPostWizardModules(config)
+
+                    // Transition to sync step
+                    _state.update { it.copy(isQrProcessing = false, currentStep = SetupStep.CatalogSync) }
+
+                    runInitialSync()
+                }
+                is AppResult.Error -> {
+                    _state.update {
+                        it.copy(
+                            isQrProcessing = false,
+                            qrError = friendlyError(result.message),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun onQrRetry() {
+        _state.update { it.copy(qrError = null) }
     }
 
     fun onSiteUrlChange(url: String) {
@@ -95,56 +163,7 @@ class SetupViewModel(
                     // Transition to sync step
                     _state.update { it.copy(currentStep = SetupStep.CatalogSync) }
 
-                    // Get SyncOrchestrator from Koin (now available after loadPostWizardModules)
-                    val syncOrchestrator: SyncOrchestrator by inject()
-
-                    // Observe sync progress in background
-                    val progressJob = launch {
-                        syncOrchestrator.initialSyncProgress.collect { progress ->
-                            _state.update {
-                                it.copy(
-                                    syncProgressCurrent = progress.totalProducts,
-                                    syncProgressTotal = progress.totalProducts,
-                                    syncComplete = progress.isComplete,
-                                    productsSynced = progress.totalProducts,
-                                )
-                            }
-                        }
-                    }
-
-                    // Run the initial sync
-                    val result = syncOrchestrator.performInitialSync()
-
-                    progressJob.cancel()
-
-                    when (result) {
-                        is AppResult.Success -> {
-                            // Get final product count from DB
-                            val productCount = localDataSource.getProductCount()
-                            _state.update {
-                                it.copy(
-                                    syncComplete = true,
-                                    productsSynced = productCount.toInt(),
-                                )
-                            }
-
-                            // Start background delta sync
-                            syncOrchestrator.startSync()
-
-                            // Auto-advance after brief pause
-                            delay(1500)
-                            _state.update { it.copy(currentStep = SetupStep.Ready) }
-                        }
-                        is AppResult.Error -> {
-                            _state.update {
-                                it.copy(
-                                    currentStep = SetupStep.StoreConnection,
-                                    isConnected = false,
-                                    connectionError = "Sync failed: ${result.message}",
-                                )
-                            }
-                        }
-                    }
+                    runInitialSync()
                 }
                 is SetupState.Error -> {
                     _state.update {
@@ -165,6 +184,68 @@ class SetupViewModel(
                 }
             }
         }
+    }
+
+    private suspend fun runInitialSync() {
+        // Get SyncOrchestrator from Koin (now available after loadPostWizardModules)
+        val syncOrchestrator: SyncOrchestrator by inject()
+
+        // Observe sync progress in background
+        val progressJob = viewModelScope.launch {
+            syncOrchestrator.initialSyncProgress.collect { progress ->
+                _state.update {
+                    it.copy(
+                        syncProgressCurrent = progress.totalProducts,
+                        syncProgressTotal = progress.totalProducts,
+                        syncComplete = progress.isComplete,
+                        productsSynced = progress.totalProducts,
+                    )
+                }
+            }
+        }
+
+        // Run the initial sync
+        val result = syncOrchestrator.performInitialSync()
+
+        progressJob.cancel()
+
+        when (result) {
+            is AppResult.Success -> {
+                // Get final product count from DB
+                val productCount = localDataSource.getProductCount()
+                _state.update {
+                    it.copy(
+                        syncComplete = true,
+                        productsSynced = productCount.toInt(),
+                    )
+                }
+
+                // Start background delta sync
+                syncOrchestrator.startSync()
+
+                // Auto-advance after brief pause
+                delay(1500)
+                _state.update { it.copy(currentStep = SetupStep.Ready) }
+            }
+            is AppResult.Error -> {
+                _state.update {
+                    it.copy(
+                        currentStep = SetupStep.StoreConnection,
+                        isConnected = false,
+                        connectionError = "Sync failed: ${result.message}",
+                    )
+                }
+            }
+        }
+    }
+
+    @OptIn(ExperimentalUuidApi::class)
+    private suspend fun getOrCreateDeviceId(): String {
+        val existing = localDataSource.getDeviceId()
+        if (existing != null) return existing
+        val newId = Uuid.random().toString()
+        localDataSource.saveDeviceId(newId)
+        return newId
     }
 
     private fun friendlyError(raw: String): String = when {
