@@ -41,6 +41,7 @@ data class WooVariationDto(
     @SerialName("stock_quantity") val stockQuantity: Int? = null,
     val attributes: List<WooAttributeDto> = emptyList(),
     @SerialName("meta_data") val metaData: List<WooMetaDataDto> = emptyList(),
+    @SerialName("global_unique_id") val globalUniqueId: String = "",
 )
 
 @Serializable

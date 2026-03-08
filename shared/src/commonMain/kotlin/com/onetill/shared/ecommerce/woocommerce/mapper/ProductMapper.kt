@@ -15,7 +15,15 @@ import com.onetill.shared.ecommerce.woocommerce.dto.WooProductDto
 import com.onetill.shared.ecommerce.woocommerce.dto.WooVariationDto
 import kotlinx.serialization.json.jsonPrimitive
 
-private const val BARCODE_META_KEY = "_barcode"
+// Barcode meta keys in priority order — matches companion plugin's get_barcode() fallback chain
+private val BARCODE_META_KEYS = listOf(
+    "_global_unique_id",  // WooCommerce 9.4+ built-in GTIN/UPC/EAN/ISBN field
+    "_onetill_barcode",   // OneTill plugin custom field
+    "_barcode",           // Generic barcode plugins
+    "_ean",               // EAN-specific plugins
+    "_upc",               // UPC-specific plugins
+    "_gtin",              // GTIN-specific plugins
+)
 
 fun WooProductDto.toDomain(
     currency: String,
@@ -57,21 +65,23 @@ fun WooVariationDto.toDomain(productId: Long, currency: String): ProductVariant 
     )
 }
 
+private fun List<com.onetill.shared.ecommerce.woocommerce.dto.WooMetaDataDto>.extractBarcode(): String? {
+    for (key in BARCODE_META_KEYS) {
+        val value = firstOrNull { it.key == key }
+            ?.value
+            ?.jsonPrimitive
+            ?.content
+            ?.ifEmpty { null }
+        if (value != null) return value
+    }
+    return null
+}
+
 private fun WooProductDto.extractBarcode(): String? =
-    metaData
-        .firstOrNull { it.key == BARCODE_META_KEY }
-        ?.value
-        ?.jsonPrimitive
-        ?.content
-        ?.ifEmpty { null }
+    globalUniqueId.ifEmpty { null } ?: metaData.extractBarcode()
 
 private fun WooVariationDto.extractBarcode(): String? =
-    metaData
-        .firstOrNull { it.key == BARCODE_META_KEY }
-        ?.value
-        ?.jsonPrimitive
-        ?.content
-        ?.ifEmpty { null }
+    globalUniqueId.ifEmpty { null } ?: metaData.extractBarcode()
 
 private fun mapStatus(wooStatus: String): ProductStatus = when (wooStatus) {
     "publish" -> ProductStatus.PUBLISHED

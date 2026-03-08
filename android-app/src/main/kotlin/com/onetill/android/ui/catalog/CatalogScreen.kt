@@ -34,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -50,13 +51,17 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.onetill.android.input.VolumeKeyEvent
+import com.onetill.android.input.VolumeKeyEventBus
 import com.onetill.android.ui.components.BarcodeIcon
 import com.onetill.android.ui.components.ButtonVariant
 import org.koin.androidx.compose.koinViewModel
@@ -99,6 +104,41 @@ fun CatalogScreen(
     val pickerProduct by viewModel.pickerProduct.collectAsState()
     val isPickerVisible by viewModel.isPickerVisible.collectAsState()
     val isSyncing by viewModel.isSyncing.collectAsState()
+    val isScannerOpen by viewModel.isScannerOpen.collectAsState()
+
+    val haptic = LocalHapticFeedback.current
+
+    // Activate volume key interception while on CatalogScreen
+    DisposableEffect(Unit) {
+        VolumeKeyEventBus.isActive = true
+        onDispose { VolumeKeyEventBus.isActive = false }
+    }
+
+    // Volume button → scanner toggle / hold-to-scan
+    LaunchedEffect(Unit) {
+        var pressTime = 0L
+        var wasOpenBeforePress = false
+        VolumeKeyEventBus.events.collect { event ->
+            when (event) {
+                is VolumeKeyEvent.Pressed -> {
+                    pressTime = System.currentTimeMillis()
+                    wasOpenBeforePress = isScannerOpen
+                    if (!wasOpenBeforePress) viewModel.openScanner()
+                }
+                is VolumeKeyEvent.Released -> {
+                    val held = System.currentTimeMillis() - pressTime
+                    if (held > 300) {
+                        // Long press (hold-to-scan) — close on release
+                        viewModel.closeScanner()
+                    } else if (wasOpenBeforePress) {
+                        // Short press while already open — toggle off
+                        viewModel.closeScanner()
+                    }
+                    // Short press while closed — scanner was opened on press, stays open
+                }
+            }
+        }
+    }
 
     val drawerWidthPx = with(LocalDensity.current) { dimens.drawerWidth.roundToPx() }
 
@@ -130,6 +170,10 @@ fun CatalogScreen(
                 viewModel.closeDrawer()
                 onNavigateToSettings()
             },
+            onResyncTap = {
+                viewModel.closeDrawer()
+                viewModel.fullResync()
+            },
         )
 
         // Layer 2: Main content (slides right when drawer opens)
@@ -149,7 +193,7 @@ fun CatalogScreen(
                     onSearchTap = { viewModel.toggleSearch() },
                     onSearchQueryChange = { viewModel.onSearch(it) },
                     onSearchDismiss = { viewModel.dismissSearch() },
-                    onBarcodeTap = { /* barcode scanner trigger */ },
+                    onBarcodeTap = { viewModel.toggleScanner() },
                 )
 
                 // Product grid
@@ -210,12 +254,6 @@ fun CatalogScreen(
                 }
             }
 
-            // Stock-limit toast
-            ToastHost(
-                state = viewModel.toastState,
-                modifier = Modifier.align(Alignment.TopCenter),
-            )
-
             // Cart preview pill — floating at bottom, aligned with grid margins
             CartPreviewPill(
                 itemCount = cartItemCount,
@@ -251,6 +289,22 @@ fun CatalogScreen(
                 onAddToCart = { selections -> viewModel.onVariantAddToCart(selections) },
             )
         }
+
+        // Barcode scanner overlay
+        BarcodeScannerOverlay(
+            visible = isScannerOpen,
+            onBarcodeScanned = { barcode ->
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.onBarcodeScan(barcode)
+            },
+            onClose = { viewModel.closeScanner() },
+        )
+
+        // Toast — rendered last so it appears above scanner overlay
+        ToastHost(
+            state = viewModel.toastState,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
     }
 }
 

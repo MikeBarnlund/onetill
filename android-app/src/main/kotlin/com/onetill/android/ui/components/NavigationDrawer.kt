@@ -41,6 +41,7 @@ fun NavigationDrawer(
     onSummaryTap: () -> Unit,
     onScanQrTap: () -> Unit,
     onEditShopTap: () -> Unit,
+    onResyncTap: () -> Unit = {},
     modifier: Modifier = Modifier,
     versionText: String = "v1.0.0 · Register 1",
 ) {
@@ -147,6 +148,12 @@ fun NavigationDrawer(
                     label = "Edit Shop Info",
                     icon = { color -> EditIcon(color = color, modifier = Modifier.size(dimens.headerIconSize)) },
                     onClick = onEditShopTap,
+                    modifier = Modifier.padding(start = 34.dp),
+                )
+                DrawerNavItem(
+                    label = "Resync Products",
+                    icon = { color -> RefreshIcon(color = color, modifier = Modifier.size(dimens.headerIconSize)) },
+                    onClick = onResyncTap,
                     modifier = Modifier.padding(start = 34.dp),
                 )
             }

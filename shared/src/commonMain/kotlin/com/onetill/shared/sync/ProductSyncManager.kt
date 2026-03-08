@@ -80,6 +80,16 @@ class ProductSyncManager(
     }
 
     /**
+     * Full re-sync — wipes local product cache and re-downloads everything.
+     * Use when local data is corrupt or stale (e.g. stock discrepancies).
+     */
+    suspend fun performFullResync(): AppResult<Unit> {
+        Napier.i("Full resync: clearing local products and sync state")
+        localDataSource.deleteAllProducts()
+        return performInitialSync()
+    }
+
+    /**
      * Delta sync — fetch only products modified since the last sync.
      * Called periodically by SyncOrchestrator (default every 30s).
      *

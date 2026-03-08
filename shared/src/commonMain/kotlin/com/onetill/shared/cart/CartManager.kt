@@ -112,13 +112,15 @@ class CartManager(
         emitState()
     }
 
-    fun clearCart() {
-        // Decrement local stock immediately so the catalog reflects the sale
-        val soldItems = items.toList()
-        scope.launch {
-            for (item in soldItems) {
-                if (item.maxQuantity != null) {
-                    localDataSource.decrementStock(item.productId, item.variantId, item.quantity)
+    fun clearCart(sold: Boolean = false) {
+        if (sold) {
+            // Decrement local stock immediately so the catalog reflects the sale
+            val soldItems = items.toList()
+            scope.launch {
+                for (item in soldItems) {
+                    if (item.maxQuantity != null) {
+                        localDataSource.decrementStock(item.productId, item.variantId, item.quantity)
+                    }
                 }
             }
         }

@@ -77,7 +77,7 @@ class CheckoutViewModel(
             val currency = cartManager.cartState.value.currency
             val draft = cartManager.buildOrderDraft(PaymentMethod.CASH)
             orderSyncManager.submitOrder(draft, currency)
-            cartManager.clearCart()
+            cartManager.clearCart(sold = true)
             syncOrchestrator.triggerOrderDrain()
             _isSubmitting.value = false
             onComplete(totalFormatted)
@@ -94,7 +94,7 @@ class CheckoutViewModel(
             // For now, create the order as a card payment
             val draft = cartManager.buildOrderDraft(PaymentMethod.CARD)
             orderSyncManager.submitOrder(draft, currency)
-            cartManager.clearCart()
+            cartManager.clearCart(sold = true)
             syncOrchestrator.triggerOrderDrain()
             _isSubmitting.value = false
             onComplete(totalFormatted)

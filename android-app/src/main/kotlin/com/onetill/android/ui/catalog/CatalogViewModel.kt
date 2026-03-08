@@ -83,6 +83,9 @@ class CatalogViewModel(
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
 
+    private val _isScannerOpen = MutableStateFlow(false)
+    val isScannerOpen: StateFlow<Boolean> = _isScannerOpen.asStateFlow()
+
     fun syncProducts() {
         if (_isSyncing.value) return
         viewModelScope.launch {
@@ -96,6 +99,26 @@ class CatalogViewModel(
                 }
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                 toastState.show("Sync timed out — check your connection", ToastType.Error)
+            } finally {
+                _isSyncing.value = false
+            }
+        }
+    }
+
+    fun fullResync() {
+        if (_isSyncing.value) return
+        viewModelScope.launch {
+            _isSyncing.value = true
+            try {
+                val result = withTimeout(60_000) {
+                    syncOrchestrator.performFullResync()
+                }
+                when (result) {
+                    is AppResult.Success -> toastState.show("Full resync complete", ToastType.Success)
+                    is AppResult.Error -> toastState.show(result.message, ToastType.Error)
+                }
+            } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                toastState.show("Resync timed out — check your connection", ToastType.Error)
             } finally {
                 _isSyncing.value = false
             }
@@ -165,10 +188,44 @@ class CatalogViewModel(
         _isPickerVisible.value = false
     }
 
+    fun openScanner() {
+        _isScannerOpen.value = true
+    }
+
+    fun closeScanner() {
+        _isScannerOpen.value = false
+    }
+
+    fun toggleScanner() {
+        _isScannerOpen.value = !_isScannerOpen.value
+    }
+
     fun onBarcodeScan(barcode: String) {
         viewModelScope.launch {
             val product = localDataSource.getProductByBarcode(barcode)
-            if (product != null) onProductTap(product)
+            if (product == null) {
+                toastState.show("No product found for $barcode", ToastType.Warning)
+                return@launch
+            }
+
+            // Check if the barcode matches a specific variant — add it directly
+            val matchedVariant = product.variants.find { it.barcode == barcode }
+            if (matchedVariant != null) {
+                val result = cartManager.addProduct(product, matchedVariant)
+                if (result == AddResult.StockLimitReached) {
+                    val stock = matchedVariant.stockQuantity ?: 0
+                    toastState.show("Only $stock in stock", ToastType.Warning)
+                } else {
+                    toastState.show("Added ${product.name} — ${matchedVariant.name}", ToastType.Success)
+                }
+                return@launch
+            }
+
+            // Barcode is on the parent product — show picker for variable, add directly for simple
+            onProductTap(product)
+            if (product.type == ProductType.SIMPLE) {
+                toastState.show("Added ${product.name}", ToastType.Success)
+            }
         }
     }
 }

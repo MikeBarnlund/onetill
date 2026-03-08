@@ -20,6 +20,7 @@ data class WooProductDto(
     val tags: List<WooTagDto> = emptyList(),
     val variations: List<Long> = emptyList(),
     @SerialName("meta_data") val metaData: List<WooMetaDataDto> = emptyList(),
+    @SerialName("global_unique_id") val globalUniqueId: String = "",
     @SerialName("date_created") val dateCreated: String = "",
     @SerialName("date_modified") val dateModified: String = "",
 )

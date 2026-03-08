@@ -20,16 +20,25 @@ import com.google.mlkit.vision.common.InputImage
 import androidx.core.content.ContextCompat
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 @Composable
-fun QrScannerView(
-    onQrCodeScanned: (String) -> Unit,
+fun BarcodeScannerView(
+    onBarcodeScanned: (String) -> Unit,
     modifier: Modifier = Modifier,
+    formats: Int = Barcode.FORMAT_QR_CODE,
+    continuous: Boolean = false,
     scanKey: Int = 0,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Single-shot mode: AtomicBoolean prevents repeat scans
     val scanned = remember(scanKey) { AtomicBoolean(false) }
+
+    // Continuous mode: cooldown to avoid re-scanning the same barcode
+    val lastScannedValue = remember { AtomicReference<String?>(null) }
+    val lastScannedTime = remember { AtomicReference(0L) }
 
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val executor = remember { Executors.newSingleThreadExecutor() }
@@ -56,7 +65,7 @@ fun QrScannerView(
 
                 val scanner = BarcodeScanning.getClient(
                     com.google.mlkit.vision.barcode.BarcodeScannerOptions.Builder()
-                        .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+                        .setBarcodeFormats(formats)
                         .build(),
                 )
 
@@ -77,16 +86,29 @@ fun QrScannerView(
                 analysis.setAnalyzer(executor) { imageProxy ->
                     @Suppress("UnsafeOptInUsageError")
                     val mediaImage = imageProxy.image
-                    if (mediaImage != null && !scanned.get()) {
+                    if (mediaImage != null && (continuous || !scanned.get())) {
                         val inputImage = InputImage.fromMediaImage(
                             mediaImage,
                             imageProxy.imageInfo.rotationDegrees,
                         )
                         scanner.process(inputImage)
                             .addOnSuccessListener { barcodes ->
-                                val qrValue = barcodes.firstOrNull()?.rawValue
-                                if (qrValue != null && scanned.compareAndSet(false, true)) {
-                                    onQrCodeScanned(qrValue)
+                                val value = barcodes.firstOrNull()?.rawValue
+                                if (value != null) {
+                                    if (continuous) {
+                                        val now = System.currentTimeMillis()
+                                        val lastValue = lastScannedValue.get()
+                                        val lastTime = lastScannedTime.get()
+                                        // Accept different barcodes immediately,
+                                        // same barcode only after 1s cooldown
+                                        if (value != lastValue || now - lastTime > 1000) {
+                                            lastScannedValue.set(value)
+                                            lastScannedTime.set(now)
+                                            onBarcodeScanned(value)
+                                        }
+                                    } else if (scanned.compareAndSet(false, true)) {
+                                        onBarcodeScanned(value)
+                                    }
                                 }
                             }
                             .addOnCompleteListener {
@@ -115,5 +137,4 @@ fun QrScannerView(
             previewView
         },
     )
-
 }

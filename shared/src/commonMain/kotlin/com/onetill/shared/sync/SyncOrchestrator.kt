@@ -48,6 +48,28 @@ class SyncOrchestrator(
     }
 
     /**
+     * Full re-sync — wipes local product cache and re-downloads everything.
+     * Use when local data is corrupt (e.g. stock discrepancies from bugs).
+     */
+    suspend fun performFullResync(): AppResult<Unit> {
+        if (!syncMutex.tryLock()) {
+            Napier.d("Sync already in progress — skipping full resync")
+            return AppResult.Success(Unit)
+        }
+        return try {
+            _syncStatus.value = SyncStatus.Syncing
+            val result = productSyncManager.performFullResync()
+            _syncStatus.value = when (result) {
+                is AppResult.Success -> SyncStatus.Idle
+                is AppResult.Error -> SyncStatus.Error(result.message)
+            }
+            result
+        } finally {
+            syncMutex.unlock()
+        }
+    }
+
+    /**
      * Run a delta sync — fetch only products modified since the last sync.
      * Use for pull-to-refresh after initial setup is complete.
      */

@@ -35,7 +35,7 @@ import com.onetill.android.ui.components.ButtonVariant
 import com.onetill.android.ui.components.HeaderNavAction
 import com.onetill.android.ui.components.OneTillButton
 import com.onetill.android.ui.components.ScreenHeader
-import com.onetill.android.ui.components.QrScannerView
+import com.onetill.android.ui.components.BarcodeScannerView
 import com.onetill.android.ui.components.ScanFrameOverlay
 import com.onetill.android.ui.theme.OneTillTheme
 import com.onetill.android.ui.theme.screenGradient
@@ -125,9 +125,11 @@ fun QrScannerScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         if (!isProcessing) {
-                            QrScannerView(
-                                onQrCodeScanned = onQrScanned,
+                            BarcodeScannerView(
+                                onBarcodeScanned = onQrScanned,
                                 modifier = Modifier.fillMaxSize(),
+                                formats = com.google.mlkit.vision.barcode.common.Barcode.FORMAT_QR_CODE,
+                                continuous = false,
                                 scanKey = scanKey,
                             )
                         }

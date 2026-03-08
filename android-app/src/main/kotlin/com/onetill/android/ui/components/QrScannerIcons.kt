@@ -7,6 +7,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
@@ -150,5 +151,34 @@ fun ChevronIcon(
             strokeWidth = s,
             cap = StrokeCap.Round,
         )
+    }
+}
+
+@Composable
+fun RefreshIcon(color: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val s = 1.5.dp.toPx()
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val r = size.width * 0.32f
+        // Circular arrow (arc)
+        drawArc(
+            color = color,
+            startAngle = -60f,
+            sweepAngle = 300f,
+            useCenter = false,
+            topLeft = Offset(cx - r, cy - r),
+            size = Size(r * 2, r * 2),
+            style = Stroke(width = s, cap = StrokeCap.Round),
+        )
+        // Arrowhead at the end of the arc (top-right area)
+        val arrowTipX = cx + r * kotlin.math.cos(Math.toRadians(-60.0)).toFloat()
+        val arrowTipY = cy + r * kotlin.math.sin(Math.toRadians(-60.0)).toFloat()
+        val arrowPath = Path().apply {
+            moveTo(arrowTipX - 3.dp.toPx(), arrowTipY - 4.dp.toPx())
+            lineTo(arrowTipX, arrowTipY)
+            lineTo(arrowTipX + 4.dp.toPx(), arrowTipY - 2.dp.toPx())
+        }
+        drawPath(arrowPath, color = color, style = Stroke(width = s, cap = StrokeCap.Round))
     }
 }
