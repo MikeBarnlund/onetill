@@ -87,13 +87,6 @@ class Pairing {
 			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'onetill' ) ), 403 );
 		}
 
-		if ( ! $this->check_rate_limit() ) {
-			wp_send_json_error( array(
-				'error'   => 'rate_limited',
-				'message' => __( 'Too many pairing attempts. Please try again later.', 'onetill' ),
-			), 429 );
-		}
-
 		global $wpdb;
 
 		$token      = bin2hex( random_bytes( 32 ) );
