@@ -5,8 +5,6 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideIn
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -110,9 +108,9 @@ fun OneTillNavGraph(
             )
         },
         popEnterTransition = {
-            slideIn(
-                initialOffset = { IntOffset(-it.width / 3, 0) },
-                animationSpec = tween(SLIDE_DURATION, easing = slideEasing),
+            slideIntoContainer(
+                AnimatedContentTransitionScope.SlideDirection.Right,
+                tween(SLIDE_DURATION, easing = slideEasing),
             )
         },
         popExitTransition = {

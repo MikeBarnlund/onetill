@@ -1,6 +1,9 @@
 package com.onetill.android.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
@@ -122,20 +125,27 @@ fun NavigationDrawer(
                 color = colors.textPrimary,
                 modifier = Modifier.weight(1f),
             )
+            val chevronRotation by animateFloatAsState(
+                targetValue = if (settingsExpanded) 90f else 0f,
+                animationSpec = tween(200, easing = FastOutSlowInEasing),
+                label = "chevronRotation",
+            )
             ChevronIcon(
                 color = colors.textTertiary,
                 modifier = Modifier
                     .size(12.dp)
-                    .graphicsLayer {
-                        rotationZ = if (settingsExpanded) 90f else 0f
-                    },
+                    .graphicsLayer { rotationZ = chevronRotation },
             )
         }
 
         AnimatedVisibility(
             visible = settingsExpanded,
-            enter = expandVertically(),
-            exit = shrinkVertically(),
+            enter = expandVertically(
+                animationSpec = tween(200, easing = FastOutSlowInEasing),
+            ),
+            exit = shrinkVertically(
+                animationSpec = tween(200, easing = FastOutSlowInEasing),
+            ),
         ) {
             Column {
                 DrawerNavItem(
