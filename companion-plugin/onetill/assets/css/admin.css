@@ -296,3 +296,80 @@
 	color: #d63638;
 	margin-bottom: 8px;
 }
+
+/* -- Users Page -- */
+
+.onetill-users-page {
+	max-width: 800px;
+}
+
+.onetill-users-layout {
+	margin-top: 20px;
+}
+
+.onetill-users-table {
+	border: none;
+}
+
+.onetill-users-table thead th {
+	font-weight: 600;
+}
+
+.onetill-users-table td,
+.onetill-users-table th {
+	padding: 10px 12px;
+	vertical-align: middle;
+}
+
+.onetill-users-table .button + .button {
+	margin-left: 4px;
+}
+
+/* -- User Form Modal -- */
+
+.onetill-user-modal {
+	text-align: left;
+	width: 380px;
+}
+
+.onetill-user-modal h2 {
+	text-align: center;
+}
+
+.onetill-form-field {
+	margin-bottom: 16px;
+}
+
+.onetill-form-field label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 4px;
+	font-size: 13px;
+}
+
+.onetill-form-field input[type="text"],
+.onetill-form-field input[type="password"] {
+	width: 100%;
+	padding: 6px 8px;
+}
+
+.onetill-form-field .description {
+	font-weight: 400;
+	font-style: italic;
+}
+
+.onetill-form-error {
+	background: #fcf0f1;
+	border-left: 4px solid #d63638;
+	padding: 8px 12px;
+	margin-bottom: 16px;
+	font-size: 13px;
+	color: #d63638;
+}
+
+.onetill-form-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	padding-top: 8px;
+}

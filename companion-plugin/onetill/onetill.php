@@ -192,6 +192,17 @@ function onetill_create_tables() {
 		KEY idx_deleted (deleted_at)
 	) $charset_collate;";
 
+	// Users table (staff PINs).
+	$tables[] = "CREATE TABLE {$wpdb->prefix}onetill_users (
+		id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+		first_name VARCHAR(100) NOT NULL,
+		last_name VARCHAR(100) NOT NULL,
+		pin VARCHAR(255) NOT NULL,
+		created_at DATETIME NOT NULL,
+		updated_at DATETIME NOT NULL,
+		PRIMARY KEY  (id)
+	) $charset_collate;";
+
 	// Change log table.
 	$tables[] = "CREATE TABLE {$wpdb->prefix}onetill_change_log (
 		id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

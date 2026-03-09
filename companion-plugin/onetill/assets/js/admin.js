@@ -202,6 +202,129 @@
 		});
 	}
 
+	// -- User Management --
+
+	function openUserModal(title, userId, firstName, lastName, pinRequired) {
+		$('#onetill-user-modal-title').text(title);
+		$('#onetill-user-id').val(userId || '');
+		$('#onetill-first-name').val(firstName || '');
+		$('#onetill-last-name').val(lastName || '');
+		$('#onetill-pin').val('');
+		$('#onetill-user-form-error').hide();
+
+		// PIN is required for new users, optional for edits.
+		var $pin = $('#onetill-pin');
+		if (pinRequired) {
+			$pin.attr('required', 'required');
+			$('#onetill-pin-hint').text('');
+		} else {
+			$pin.removeAttr('required');
+			$('#onetill-pin-hint').text(onetillAdmin.i18n.pinLeaveBlank || '');
+		}
+
+		$('#onetill-user-modal').fadeIn(200);
+		$('#onetill-first-name').focus();
+	}
+
+	function closeUserModal() {
+		$('#onetill-user-modal').fadeOut(200);
+	}
+
+	function showUserError(message) {
+		$('#onetill-user-form-error').text(message).show();
+	}
+
+	function saveUser(e) {
+		e.preventDefault();
+
+		var userId    = $('#onetill-user-id').val();
+		var firstName = $.trim($('#onetill-first-name').val());
+		var lastName  = $.trim($('#onetill-last-name').val());
+		var pin       = $.trim($('#onetill-pin').val());
+		var isEdit    = !!userId;
+
+		$('#onetill-user-form-error').hide();
+
+		if (!firstName || !lastName) {
+			showUserError(onetillAdmin.i18n.nameRequired || 'First and last name are required.');
+			return;
+		}
+
+		if (!isEdit && !pin) {
+			showUserError(onetillAdmin.i18n.pinRequired || 'PIN is required.');
+			return;
+		}
+
+		if (pin && !/^\d{4}$/.test(pin)) {
+			showUserError(onetillAdmin.i18n.pinFormat || 'PIN must be exactly 4 digits.');
+			return;
+		}
+
+		var $saveBtn = $('#onetill-user-save-btn');
+		$saveBtn.prop('disabled', true).text(onetillAdmin.i18n.saving || 'Saving...');
+
+		var data = {
+			action: isEdit ? 'onetill_update_user' : 'onetill_create_user',
+			nonce: onetillAdmin.nonce,
+			first_name: firstName,
+			last_name: lastName,
+			pin: pin
+		};
+
+		if (isEdit) {
+			data.user_id = userId;
+		}
+
+		$.ajax({
+			url: onetillAdmin.ajaxUrl,
+			method: 'POST',
+			data: data,
+			success: function (response) {
+				if (response.success) {
+					closeUserModal();
+					location.reload();
+				} else {
+					showUserError(response.data ? response.data.message : onetillAdmin.i18n.userError);
+				}
+			},
+			error: function (xhr) {
+				var msg = onetillAdmin.i18n.userError || 'Something went wrong.';
+				if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+					msg = xhr.responseJSON.data.message;
+				}
+				showUserError(msg);
+			},
+			complete: function () {
+				$saveBtn.prop('disabled', false).text(onetillAdmin.i18n.save || 'Save');
+			}
+		});
+	}
+
+	function deleteUser(userId, userName, $row) {
+		$.ajax({
+			url: onetillAdmin.ajaxUrl,
+			method: 'POST',
+			data: {
+				action: 'onetill_delete_user',
+				nonce: onetillAdmin.nonce,
+				user_id: userId
+			},
+			success: function (response) {
+				if (response.success) {
+					$row.fadeOut(300, function () {
+						$row.remove();
+						if ($('#onetill-users-tbody tr').length === 0) {
+							$('.onetill-users-table').hide();
+							$('#onetill-users-empty').show();
+						}
+					});
+				} else {
+					alert(response.data ? response.data.message : onetillAdmin.i18n.userError);
+				}
+			}
+		});
+	}
+
 	// -- Event Bindings --
 
 	$(document).ready(function () {
@@ -248,5 +371,60 @@
 				disconnectDevice(deviceId, $row);
 			}
 		});
+
+		// -- User Management Bindings --
+
+		// Add User button.
+		$('#onetill-add-user-btn').on('click', function () {
+			openUserModal(
+				onetillAdmin.i18n.addUser || 'Add User',
+				'', '', '', true
+			);
+		});
+
+		// Edit User button.
+		$(document).on('click', '.onetill-edit-user-btn', function () {
+			openUserModal(
+				onetillAdmin.i18n.editUser || 'Edit User',
+				$(this).data('user-id'),
+				$(this).data('first-name'),
+				$(this).data('last-name'),
+				false
+			);
+		});
+
+		// Delete User button.
+		$(document).on('click', '.onetill-delete-user-btn', function () {
+			var userId = $(this).data('user-id');
+			var userName = $(this).data('user-name');
+			var $row = $(this).closest('tr');
+
+			if (confirm(onetillAdmin.i18n.deleteConfirm
+				? onetillAdmin.i18n.deleteConfirm.replace('%s', userName)
+				: 'Are you sure you want to delete ' + userName + '?'
+			)) {
+				deleteUser(userId, userName, $row);
+			}
+		});
+
+		// User modal close.
+		$('#onetill-user-modal-close, #onetill-user-cancel-btn').on('click', closeUserModal);
+
+		// Click outside user modal to close.
+		$('#onetill-user-modal').on('click', function (e) {
+			if ($(e.target).is('.onetill-modal-overlay')) {
+				closeUserModal();
+			}
+		});
+
+		// ESC key to close user modal.
+		$(document).on('keydown', function (e) {
+			if (e.key === 'Escape' && $('#onetill-user-modal').is(':visible')) {
+				closeUserModal();
+			}
+		});
+
+		// User form submission.
+		$('#onetill-user-form').on('submit', saveUser);
 	});
 })(jQuery);

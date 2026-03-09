@@ -38,6 +38,7 @@ $tables = array(
 	'onetill_idempotency',
 	'onetill_deleted_products',
 	'onetill_change_log',
+	'onetill_users',
 );
 
 foreach ( $tables as $table ) {

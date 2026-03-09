@@ -43,6 +43,15 @@ class Admin {
 
 		add_submenu_page(
 			'onetill',
+			__( 'Users', 'onetill' ),
+			__( 'Users', 'onetill' ),
+			'manage_woocommerce',
+			'onetill-users',
+			array( $this, 'render_users_page' )
+		);
+
+		add_submenu_page(
+			'onetill',
 			__( 'Settings', 'onetill' ),
 			__( 'Settings', 'onetill' ),
 			'manage_woocommerce',
@@ -88,6 +97,16 @@ class Admin {
 				'disconnectConfirm' => __( 'Are you sure you want to disconnect this device? It will need to be re-paired.', 'onetill' ),
 				'disconnected'      => __( 'Device disconnected.', 'onetill' ),
 				'never'             => __( 'Never', 'onetill' ),
+				'addUser'           => __( 'Add User', 'onetill' ),
+				'editUser'          => __( 'Edit User', 'onetill' ),
+				'save'              => __( 'Save', 'onetill' ),
+				'saving'            => __( 'Saving...', 'onetill' ),
+				'nameRequired'      => __( 'First and last name are required.', 'onetill' ),
+				'pinRequired'       => __( 'PIN is required.', 'onetill' ),
+				'pinFormat'         => __( 'PIN must be exactly 4 digits.', 'onetill' ),
+				'pinLeaveBlank'     => __( '(leave blank to keep current)', 'onetill' ),
+				'deleteConfirm'     => __( 'Are you sure you want to delete %s?', 'onetill' ),
+				'userError'         => __( 'Something went wrong. Please try again.', 'onetill' ),
 			),
 		) );
 	}
@@ -110,6 +129,175 @@ class Admin {
 		// TODO: Implement settings page (barcode meta field mapping).
 		echo '<div class="wrap"><h1>' . esc_html__( 'OneTill Settings', 'onetill' ) . '</h1>';
 		echo '<p>' . esc_html__( 'Settings page coming soon.', 'onetill' ) . '</p></div>';
+	}
+
+	/**
+	 * Render the users page.
+	 */
+	public function render_users_page() {
+		$users = $this->get_users();
+
+		include ONETILL_PLUGIN_DIR . 'templates/admin-users.php';
+	}
+
+	/**
+	 * AJAX handler: Create a user.
+	 */
+	public function ajax_create_user() {
+		check_ajax_referer( 'onetill_admin', 'nonce' );
+
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'onetill' ) ), 403 );
+		}
+
+		$first_name = isset( $_POST['first_name'] ) ? sanitize_text_field( wp_unslash( $_POST['first_name'] ) ) : '';
+		$last_name  = isset( $_POST['last_name'] ) ? sanitize_text_field( wp_unslash( $_POST['last_name'] ) ) : '';
+		$pin        = isset( $_POST['pin'] ) ? sanitize_text_field( wp_unslash( $_POST['pin'] ) ) : '';
+
+		if ( empty( $first_name ) || empty( $last_name ) || empty( $pin ) ) {
+			wp_send_json_error( array( 'message' => __( 'All fields are required.', 'onetill' ) ), 400 );
+		}
+
+		if ( ! preg_match( '/^\d{4}$/', $pin ) ) {
+			wp_send_json_error( array( 'message' => __( 'PIN must be exactly 4 digits.', 'onetill' ) ), 400 );
+		}
+
+		if ( $this->is_pin_taken( $pin ) ) {
+			wp_send_json_error( array( 'message' => __( 'This PIN is already in use. Please choose a different one.', 'onetill' ) ), 409 );
+		}
+
+		global $wpdb;
+
+		$now = current_time( 'mysql', true );
+
+		$wpdb->insert(
+			$wpdb->prefix . 'onetill_users',
+			array(
+				'first_name' => $first_name,
+				'last_name'  => $last_name,
+				'pin'        => wp_hash_password( $pin ),
+				'created_at' => $now,
+				'updated_at' => $now,
+			),
+			array( '%s', '%s', '%s', '%s', '%s' )
+		);
+
+		$user_id = $wpdb->insert_id;
+
+		if ( ! $user_id ) {
+			wp_send_json_error( array( 'message' => __( 'Failed to create user.', 'onetill' ) ), 500 );
+		}
+
+		wp_send_json_success( array(
+			'message' => __( 'User created.', 'onetill' ),
+			'user'    => array(
+				'id'         => $user_id,
+				'first_name' => $first_name,
+				'last_name'  => $last_name,
+			),
+		) );
+	}
+
+	/**
+	 * AJAX handler: Update a user.
+	 */
+	public function ajax_update_user() {
+		check_ajax_referer( 'onetill_admin', 'nonce' );
+
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'onetill' ) ), 403 );
+		}
+
+		$user_id    = isset( $_POST['user_id'] ) ? absint( $_POST['user_id'] ) : 0;
+		$first_name = isset( $_POST['first_name'] ) ? sanitize_text_field( wp_unslash( $_POST['first_name'] ) ) : '';
+		$last_name  = isset( $_POST['last_name'] ) ? sanitize_text_field( wp_unslash( $_POST['last_name'] ) ) : '';
+		$pin        = isset( $_POST['pin'] ) ? sanitize_text_field( wp_unslash( $_POST['pin'] ) ) : '';
+
+		if ( empty( $user_id ) || empty( $first_name ) || empty( $last_name ) ) {
+			wp_send_json_error( array( 'message' => __( 'Name fields are required.', 'onetill' ) ), 400 );
+		}
+
+		global $wpdb;
+
+		$existing = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id FROM {$wpdb->prefix}onetill_users WHERE id = %d",
+				$user_id
+			)
+		);
+
+		if ( ! $existing ) {
+			wp_send_json_error( array( 'message' => __( 'User not found.', 'onetill' ) ), 404 );
+		}
+
+		$data   = array(
+			'first_name' => $first_name,
+			'last_name'  => $last_name,
+			'updated_at' => current_time( 'mysql', true ),
+		);
+		$format = array( '%s', '%s', '%s' );
+
+		// Only update PIN if provided.
+		if ( ! empty( $pin ) ) {
+			if ( ! preg_match( '/^\d{4}$/', $pin ) ) {
+				wp_send_json_error( array( 'message' => __( 'PIN must be exactly 4 digits.', 'onetill' ) ), 400 );
+			}
+
+			if ( $this->is_pin_taken( $pin, $user_id ) ) {
+				wp_send_json_error( array( 'message' => __( 'This PIN is already in use. Please choose a different one.', 'onetill' ) ), 409 );
+			}
+
+			$data['pin'] = wp_hash_password( $pin );
+			$format[]    = '%s';
+		}
+
+		$wpdb->update(
+			$wpdb->prefix . 'onetill_users',
+			$data,
+			array( 'id' => $user_id ),
+			$format,
+			array( '%d' )
+		);
+
+		wp_send_json_success( array(
+			'message' => __( 'User updated.', 'onetill' ),
+			'user'    => array(
+				'id'         => $user_id,
+				'first_name' => $first_name,
+				'last_name'  => $last_name,
+			),
+		) );
+	}
+
+	/**
+	 * AJAX handler: Delete a user.
+	 */
+	public function ajax_delete_user() {
+		check_ajax_referer( 'onetill_admin', 'nonce' );
+
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'onetill' ) ), 403 );
+		}
+
+		$user_id = isset( $_POST['user_id'] ) ? absint( $_POST['user_id'] ) : 0;
+
+		if ( empty( $user_id ) ) {
+			wp_send_json_error( array( 'message' => __( 'Missing user ID.', 'onetill' ) ), 400 );
+		}
+
+		global $wpdb;
+
+		$deleted = $wpdb->delete(
+			$wpdb->prefix . 'onetill_users',
+			array( 'id' => $user_id ),
+			array( '%d' )
+		);
+
+		if ( ! $deleted ) {
+			wp_send_json_error( array( 'message' => __( 'User not found.', 'onetill' ) ), 404 );
+		}
+
+		wp_send_json_success( array( 'message' => __( 'User deleted.', 'onetill' ) ) );
 	}
 
 	/**
@@ -269,5 +457,48 @@ class Admin {
 			'last_hour' => $last_hour,
 			'last_24h'  => $last_24h,
 		);
+	}
+
+	/**
+	 * Get all OneTill users.
+	 *
+	 * @return array List of user records.
+	 */
+	private function get_users() {
+		global $wpdb;
+
+		return $wpdb->get_results(
+			"SELECT id, first_name, last_name, created_at FROM {$wpdb->prefix}onetill_users ORDER BY first_name ASC, last_name ASC",
+			ARRAY_A
+		);
+	}
+
+	/**
+	 * Check if a PIN is already in use by another user.
+	 *
+	 * @param string $pin     The plaintext PIN to check.
+	 * @param int    $exclude Optional user ID to exclude (for updates).
+	 * @return bool
+	 */
+	private function is_pin_taken( $pin, $exclude = 0 ) {
+		global $wpdb;
+
+		$query = "SELECT id, pin FROM {$wpdb->prefix}onetill_users";
+		if ( $exclude ) {
+			$query = $wpdb->prepare(
+				"SELECT id, pin FROM {$wpdb->prefix}onetill_users WHERE id != %d",
+				$exclude
+			);
+		}
+
+		$users = $wpdb->get_results( $query, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		foreach ( $users as $user ) {
+			if ( wp_check_password( $pin, $user['pin'] ) ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 }

@@ -142,6 +142,11 @@ class OneTill {
 		add_action( 'wp_ajax_onetill_check_pairing_status', array( $this->pairing, 'ajax_check_pairing_status' ) );
 		add_action( 'wp_ajax_onetill_disconnect_device', array( $this->admin, 'ajax_disconnect_device' ) );
 
+		// AJAX handlers for user management.
+		add_action( 'wp_ajax_onetill_create_user', array( $this->admin, 'ajax_create_user' ) );
+		add_action( 'wp_ajax_onetill_update_user', array( $this->admin, 'ajax_update_user' ) );
+		add_action( 'wp_ajax_onetill_delete_user', array( $this->admin, 'ajax_delete_user' ) );
+
 		// Rate limiting for REST API endpoints.
 		add_filter( 'rest_pre_dispatch', array( $this, 'apply_rate_limit' ), 10, 3 );
 	}
