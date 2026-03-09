@@ -2,8 +2,10 @@ package com.onetill.android
 
 import android.os.Bundle
 import android.view.KeyEvent
+import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import com.onetill.android.input.IdleEventBus
 import com.onetill.android.input.VolumeKeyEvent
 import com.onetill.android.input.VolumeKeyEventBus
 import com.onetill.android.ui.navigation.OneTillNavGraph
@@ -28,6 +30,11 @@ class MainActivity : ComponentActivity() {
                 OneTillNavGraph()
             }
         }
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        IdleEventBus.onTouch()
+        return super.dispatchTouchEvent(ev)
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {

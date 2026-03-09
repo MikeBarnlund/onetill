@@ -41,7 +41,7 @@ fun backendModule(config: StoreConfig) = module {
 val syncModule = module {
     single { ProductSyncManager(get(), get()) }
     single { OrderSyncManager(get(), get()) }
-    single { SyncOrchestrator(get(), get(), get(), get()) }
+    single { SyncOrchestrator(get(), get(), get(), get(), get(), get()) }
 }
 
 fun cartModule(currency: String) = module {

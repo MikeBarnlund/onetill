@@ -15,6 +15,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.onetill.android.input.IdleEventBus
+import com.onetill.android.ui.lock.LockScreen
+import com.onetill.android.ui.lock.LockViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -88,8 +93,22 @@ fun OneTillNavGraph(
         return
     }
 
+    val lockViewModel: LockViewModel = org.koin.androidx.compose.koinViewModel()
+    val shouldShowLock by lockViewModel.shouldShowLockScreen.collectAsState()
+    val hasUsers by lockViewModel.hasUsers.collectAsState()
+
+    // Idle timer — lock after 60 seconds of no touch events
+    LaunchedEffect(hasUsers) {
+        if (!hasUsers) return@LaunchedEffect
+        IdleEventBus.lastTouchTime.collectLatest {
+            delay(60_000L)
+            lockViewModel.lock()
+        }
+    }
+
     val navController: NavHostController = rememberNavController()
 
+    Box(modifier = Modifier.fillMaxSize()) {
     NavHost(
         navController = navController,
         startDestination = dest,
@@ -270,5 +289,12 @@ fun OneTillNavGraph(
                 onBack = { navController.popBackStack() },
             )
         }
+    }
+
+    // Lock screen overlay — renders on top of all screens
+    LockScreen(
+        visible = shouldShowLock,
+        onPinEntered = { pin -> lockViewModel.verifyPin(pin) },
+    )
     }
 }

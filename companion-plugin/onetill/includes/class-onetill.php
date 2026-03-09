@@ -74,6 +74,13 @@ class OneTill {
 	private $api_coupons;
 
 	/**
+	 * API Users handler.
+	 *
+	 * @var API_Users
+	 */
+	private $api_users;
+
+	/**
 	 * Admin handler.
 	 *
 	 * @var Admin
@@ -92,6 +99,7 @@ class OneTill {
 		$this->api_coupons   = new API_Coupons();
 		$this->api_settings  = new API_Settings();
 		$this->api_sync      = new API_Sync();
+		$this->api_users     = new API_Users();
 		$this->pairing       = new Pairing();
 		$this->webhooks      = new Webhooks();
 		$this->admin         = new Admin();
@@ -110,6 +118,7 @@ class OneTill {
 		add_action( 'rest_api_init', array( $this->api_coupons, 'register_routes' ) );
 		add_action( 'rest_api_init', array( $this->api_settings, 'register_routes' ) );
 		add_action( 'rest_api_init', array( $this->api_sync, 'register_routes' ) );
+		add_action( 'rest_api_init', array( $this->api_users, 'register_routes' ) );
 		add_action( 'rest_api_init', array( $this->pairing, 'register_routes' ) );
 
 		// Admin pages.

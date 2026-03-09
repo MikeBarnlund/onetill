@@ -176,10 +176,11 @@ class Admin {
 				'first_name' => $first_name,
 				'last_name'  => $last_name,
 				'pin'        => wp_hash_password( $pin ),
+				'pin_sha256' => hash( 'sha256', $pin ),
 				'created_at' => $now,
 				'updated_at' => $now,
 			),
-			array( '%s', '%s', '%s', '%s', '%s' )
+			array( '%s', '%s', '%s', '%s', '%s', '%s' )
 		);
 
 		$user_id = $wpdb->insert_id;
@@ -247,8 +248,10 @@ class Admin {
 				wp_send_json_error( array( 'message' => __( 'This PIN is already in use. Please choose a different one.', 'onetill' ) ), 409 );
 			}
 
-			$data['pin'] = wp_hash_password( $pin );
-			$format[]    = '%s';
+			$data['pin']        = wp_hash_password( $pin );
+			$data['pin_sha256'] = hash( 'sha256', $pin );
+			$format[]           = '%s';
+			$format[]           = '%s';
 		}
 
 		$wpdb->update(

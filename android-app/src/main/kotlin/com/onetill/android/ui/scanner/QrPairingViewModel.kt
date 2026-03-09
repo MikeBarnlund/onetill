@@ -80,6 +80,7 @@ class QrPairingViewModel(
                     val syncOrchestrator: SyncOrchestrator by inject()
                     when (val syncResult = syncOrchestrator.performInitialSync()) {
                         is AppResult.Success -> {
+                            syncOrchestrator.syncUsers()
                             syncOrchestrator.startSync()
                             _state.update { it.copy(isProcessing = false, pairingComplete = true) }
                         }

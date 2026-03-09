@@ -1,6 +1,9 @@
 package com.onetill.shared.sync
 
 import com.onetill.shared.data.AppResult
+import com.onetill.shared.data.local.LocalDataSource
+import com.onetill.shared.ecommerce.woocommerce.OneTillPluginClient
+import com.onetill.shared.ecommerce.woocommerce.dto.toDomain
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -20,6 +23,8 @@ class SyncOrchestrator(
     private val orderSyncManager: OrderSyncManager,
     private val connectivityMonitor: ConnectivityMonitor,
     private val scope: CoroutineScope,
+    private val pluginClient: OneTillPluginClient,
+    private val localDataSource: LocalDataSource,
 ) {
     private val _syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
     val syncStatus: StateFlow<SyncStatus> = _syncStatus.asStateFlow()
@@ -101,6 +106,9 @@ class SyncOrchestrator(
     fun startSync() {
         stopSync()
 
+        // Sync staff users immediately on startup
+        scope.launch { syncUsers() }
+
         deltaSyncJob = scope.launch {
             while (true) {
                 delay(DELTA_SYNC_INTERVAL_MS)
@@ -115,6 +123,7 @@ class SyncOrchestrator(
                 .collectLatest { online ->
                     if (online) {
                         Napier.i("Connectivity restored — draining order queue, fetching orders, and syncing")
+                        syncUsers()
                         orderSyncManager.drainPendingOrders()
                         orderSyncManager.fetchRemoteOrders()
                         runDeltaSync()
@@ -141,6 +150,23 @@ class SyncOrchestrator(
     fun triggerOrderDrain() {
         scope.launch {
             orderSyncManager.drainPendingOrders()
+        }
+    }
+
+    /**
+     * Sync staff users from the plugin. Called on startup and connectivity restore.
+     */
+    suspend fun syncUsers() {
+        try {
+            Napier.i("syncUsers: fetching from plugin...")
+            val dtos = pluginClient.getUsers()
+            Napier.i("syncUsers: got ${dtos.size} DTOs")
+            val users = dtos.map { it.toDomain() }
+            Napier.i("syncUsers: mapped to domain, pinSha256 values: ${users.map { "${it.firstName}: ${it.pinSha256?.take(8)}..." }}")
+            localDataSource.saveStaffUsers(users)
+            Napier.i("syncUsers: saved ${users.size} staff users to DB")
+        } catch (e: Exception) {
+            Napier.w("syncUsers: FAILED — ${e::class.simpleName}: ${e.message}")
         }
     }
 

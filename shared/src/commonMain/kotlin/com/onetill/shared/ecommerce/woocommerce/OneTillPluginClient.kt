@@ -1,6 +1,7 @@
 package com.onetill.shared.ecommerce.woocommerce
 
 import com.onetill.shared.ecommerce.woocommerce.dto.OneTillOrderDto
+import com.onetill.shared.ecommerce.woocommerce.dto.StaffUserDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -24,6 +25,9 @@ class OneTillPluginClient(private val httpClient: HttpClient) {
                 parameter("date_after", dateAfter)
             }
         }.body()
+
+    suspend fun getUsers(): List<StaffUserDto> =
+        httpClient.get("users").body()
 
     fun close() {
         httpClient.close()

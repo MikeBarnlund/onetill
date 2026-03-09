@@ -3,6 +3,7 @@ package com.onetill.android.di
 import com.onetill.android.ui.cart.CartViewModel
 import com.onetill.android.ui.catalog.CatalogViewModel
 import com.onetill.android.ui.checkout.CheckoutViewModel
+import com.onetill.android.ui.lock.LockViewModel
 import com.onetill.android.ui.orders.OrdersViewModel
 import com.onetill.android.ui.scanner.QrPairingViewModel
 import com.onetill.android.ui.settings.SettingsViewModel
@@ -12,6 +13,7 @@ import org.koin.dsl.module
 
 val setupViewModelModule = module {
     viewModel { SetupViewModel(get(), get(), get()) }
+    viewModel { LockViewModel(get()) }
 }
 
 val postWizardViewModelModule = module {

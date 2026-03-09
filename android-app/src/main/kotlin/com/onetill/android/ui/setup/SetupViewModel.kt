@@ -220,6 +220,9 @@ class SetupViewModel(
                     )
                 }
 
+                // Sync staff users before showing catalog (needed for lock screen)
+                syncOrchestrator.syncUsers()
+
                 // Start background delta sync
                 syncOrchestrator.startSync()
 

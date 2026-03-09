@@ -14,6 +14,7 @@ import com.onetill.shared.data.model.StoreConfig
 import com.onetill.shared.data.model.ProductImage
 import com.onetill.shared.data.model.ProductStatus
 import com.onetill.shared.data.model.ProductTag
+import com.onetill.shared.data.model.StaffUser
 import com.onetill.shared.data.model.ProductType
 import com.onetill.shared.data.model.ProductVariant
 import com.onetill.shared.data.model.TaxRate
@@ -552,6 +553,50 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
             couponCodes = row.coupon_codes?.split(",")?.filter { it.isNotBlank() } ?: emptyList(),
             createdAt = Instant.fromEpochMilliseconds(row.created_at),
         )
+    }
+
+    // ========================================================================
+    // Staff Users
+    // ========================================================================
+
+    override fun observeStaffUsers(): Flow<List<StaffUser>> =
+        queries.selectAllStaffUsers()
+            .asFlow()
+            .mapToList(Dispatchers.Default)
+            .map { rows ->
+                rows.map {
+                    StaffUser(
+                        id = it.id,
+                        firstName = it.first_name,
+                        lastName = it.last_name,
+                        pinSha256 = it.pin_sha256,
+                    )
+                }
+            }
+
+    override suspend fun getStaffUsers(): List<StaffUser> = withContext(Dispatchers.Default) {
+        queries.selectAllStaffUsers().executeAsList().map {
+            StaffUser(
+                id = it.id,
+                firstName = it.first_name,
+                lastName = it.last_name,
+                pinSha256 = it.pin_sha256,
+            )
+        }
+    }
+
+    override suspend fun saveStaffUsers(users: List<StaffUser>) = withContext(Dispatchers.Default) {
+        db.transaction {
+            queries.deleteAllStaffUsers()
+            for (user in users) {
+                queries.insertOrReplaceStaffUser(
+                    id = user.id,
+                    first_name = user.firstName,
+                    last_name = user.lastName,
+                    pin_sha256 = user.pinSha256,
+                )
+            }
+        }
     }
 
     // ========================================================================

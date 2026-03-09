@@ -3,6 +3,7 @@ package com.onetill.shared.data.local
 import com.onetill.shared.data.model.Order
 import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.data.model.Product
+import com.onetill.shared.data.model.StaffUser
 import com.onetill.shared.data.model.StoreConfig
 import com.onetill.shared.data.model.TaxRate
 import kotlinx.coroutines.flow.Flow
@@ -48,6 +49,11 @@ interface LocalDataSource {
     suspend fun getStoreConfig(): StoreConfig?
     suspend fun saveStoreConfig(config: StoreConfig)
     suspend fun deleteStoreConfig()
+
+    // Staff Users
+    fun observeStaffUsers(): Flow<List<StaffUser>>
+    suspend fun getStaffUsers(): List<StaffUser>
+    suspend fun saveStaffUsers(users: List<StaffUser>)
 
     // Device ID
     suspend fun getDeviceId(): String?

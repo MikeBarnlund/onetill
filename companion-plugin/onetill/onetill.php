@@ -198,6 +198,7 @@ function onetill_create_tables() {
 		first_name VARCHAR(100) NOT NULL,
 		last_name VARCHAR(100) NOT NULL,
 		pin VARCHAR(255) NOT NULL,
+		pin_sha256 VARCHAR(64) DEFAULT NULL,
 		created_at DATETIME NOT NULL,
 		updated_at DATETIME NOT NULL,
 		PRIMARY KEY  (id)
