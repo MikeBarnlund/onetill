@@ -102,27 +102,27 @@ fun ScanFrameOverlay(
 ) {
     Canvas(modifier = modifier) {
         val s = 3.dp.toPx()
-        val w = size.width
-        val h = size.height
-        val cornerLen = w * 0.12f
-
-        val stroke = Stroke(width = s, cap = StrokeCap.Round)
+        // Always draw a centered square, even if the canvas isn't square
+        val side = minOf(size.width, size.height)
+        val ox = (size.width - side) / 2f
+        val oy = (size.height - side) / 2f
+        val cornerLen = side * 0.12f
 
         // Top-left corner
-        drawLine(color, Offset(0f, s / 2), Offset(cornerLen, s / 2), s, cap = StrokeCap.Round)
-        drawLine(color, Offset(s / 2, 0f), Offset(s / 2, cornerLen), s, cap = StrokeCap.Round)
+        drawLine(color, Offset(ox, oy + s / 2), Offset(ox + cornerLen, oy + s / 2), s, cap = StrokeCap.Round)
+        drawLine(color, Offset(ox + s / 2, oy), Offset(ox + s / 2, oy + cornerLen), s, cap = StrokeCap.Round)
 
         // Top-right corner
-        drawLine(color, Offset(w - cornerLen, s / 2), Offset(w, s / 2), s, cap = StrokeCap.Round)
-        drawLine(color, Offset(w - s / 2, 0f), Offset(w - s / 2, cornerLen), s, cap = StrokeCap.Round)
+        drawLine(color, Offset(ox + side - cornerLen, oy + s / 2), Offset(ox + side, oy + s / 2), s, cap = StrokeCap.Round)
+        drawLine(color, Offset(ox + side - s / 2, oy), Offset(ox + side - s / 2, oy + cornerLen), s, cap = StrokeCap.Round)
 
         // Bottom-left corner
-        drawLine(color, Offset(0f, h - s / 2), Offset(cornerLen, h - s / 2), s, cap = StrokeCap.Round)
-        drawLine(color, Offset(s / 2, h - cornerLen), Offset(s / 2, h), s, cap = StrokeCap.Round)
+        drawLine(color, Offset(ox, oy + side - s / 2), Offset(ox + cornerLen, oy + side - s / 2), s, cap = StrokeCap.Round)
+        drawLine(color, Offset(ox + s / 2, oy + side - cornerLen), Offset(ox + s / 2, oy + side), s, cap = StrokeCap.Round)
 
         // Bottom-right corner
-        drawLine(color, Offset(w - cornerLen, h - s / 2), Offset(w, h - s / 2), s, cap = StrokeCap.Round)
-        drawLine(color, Offset(w - s / 2, h - cornerLen), Offset(w - s / 2, h), s, cap = StrokeCap.Round)
+        drawLine(color, Offset(ox + side - cornerLen, oy + side - s / 2), Offset(ox + side, oy + side - s / 2), s, cap = StrokeCap.Round)
+        drawLine(color, Offset(ox + side - s / 2, oy + side - cornerLen), Offset(ox + side - s / 2, oy + side), s, cap = StrokeCap.Round)
     }
 }
 

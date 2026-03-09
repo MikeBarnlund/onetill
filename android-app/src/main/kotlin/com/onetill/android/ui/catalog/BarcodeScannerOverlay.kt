@@ -4,15 +4,18 @@ import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -26,7 +29,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -66,32 +71,39 @@ fun BarcodeScannerOverlay(
         }
     }
 
+    // Dark backdrop — fades in/out independently
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(),
+        exit = fadeOut(),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.7f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onClose,
+                ),
+        )
+    }
+
+    // Camera viewfinder — slides down from top
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp.dp
+
     AnimatedVisibility(
         visible = visible,
         enter = slideInVertically { -it },
         exit = slideOutVertically { -it },
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // Dark backdrop — tap to close
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.7f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onClose,
-                    ),
-            )
-
-            // Camera viewfinder — top half
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.5f)
-                    .align(Alignment.TopCenter),
-                contentAlignment = Alignment.Center,
-            ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(screenWidthDp)
+                .clipToBounds(),
+            contentAlignment = Alignment.Center,
+        ) {
                 if (hasPermission == true) {
                     BarcodeScannerView(
                         onBarcodeScanned = onBarcodeScanned,
@@ -113,36 +125,35 @@ fun BarcodeScannerOverlay(
                         color = Color.White,
                     )
                 }
-            }
 
-            // Close button
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(12.dp)
-                    .size(36.dp)
-                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
-                    .clip(CircleShape)
-                    .clickable(onClick = onClose)
-                    .semantics { contentDescription = "Close scanner" },
-                contentAlignment = Alignment.Center,
-            ) {
-                CloseIcon(
-                    color = Color.White,
-                    modifier = Modifier.size(16.dp),
+                // Hint text
+                Text(
+                    text = "Scan a product barcode",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White.copy(alpha = 0.8f),
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 16.dp),
                 )
-            }
 
-            // Hint text
-            Text(
-                text = "Scan a product barcode",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.White.copy(alpha = 0.8f),
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 16.dp),
-            )
+                // Close button
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(12.dp)
+                        .size(36.dp)
+                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                        .clip(CircleShape)
+                        .clickable(onClick = onClose)
+                        .semantics { contentDescription = "Close scanner" },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CloseIcon(
+                        color = Color.White,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
         }
     }
 }

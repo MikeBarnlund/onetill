@@ -227,9 +227,16 @@ class CatalogViewModel(
             }
 
             // Barcode is on the parent product — show picker for variable, add directly for simple
-            onProductTap(product)
             if (product.type == ProductType.SIMPLE) {
-                toastState.show("Added ${product.name}", ToastType.Success)
+                val result = cartManager.addProduct(product)
+                if (result == AddResult.StockLimitReached) {
+                    val stock = product.stockQuantity ?: 0
+                    toastState.show("Only $stock in stock", ToastType.Warning)
+                } else {
+                    toastState.show("Added ${product.name}", ToastType.Success)
+                }
+            } else {
+                onProductTap(product)
             }
         }
     }
