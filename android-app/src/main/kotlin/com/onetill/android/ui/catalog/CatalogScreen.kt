@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -51,6 +52,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -60,6 +62,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.onetill.android.R
 import com.onetill.android.input.VolumeKeyEvent
 import com.onetill.android.input.VolumeKeyEventBus
 import com.onetill.android.ui.components.BarcodeIcon
@@ -105,6 +109,7 @@ fun CatalogScreen(
     val isPickerVisible by viewModel.isPickerVisible.collectAsState()
     val isSyncing by viewModel.isSyncing.collectAsState()
     val isScannerOpen by viewModel.isScannerOpen.collectAsState()
+    val hasLoaded by viewModel.hasLoaded.collectAsState()
 
     val haptic = LocalHapticFeedback.current
 
@@ -150,6 +155,11 @@ fun CatalogScreen(
         ),
         label = "drawerOffset",
     )
+
+    if (!hasLoaded) {
+        SplashScreen()
+        return
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Layer 1: Drawer (always rendered behind main content)
@@ -566,6 +576,31 @@ private fun HeaderActionCircle(
         contentAlignment = Alignment.Center,
     ) {
         content()
+    }
+}
+
+@Composable
+private fun SplashScreen() {
+    val colors = OneTillTheme.colors
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .screenGradientBackground(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Image(
+            painter = painterResource(R.drawable.onetill_logo),
+            contentDescription = "OneTill",
+            modifier = Modifier.size(72.dp),
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Loading product catalog...",
+            fontSize = 14.sp,
+            color = colors.textSecondary,
+        )
     }
 }
 

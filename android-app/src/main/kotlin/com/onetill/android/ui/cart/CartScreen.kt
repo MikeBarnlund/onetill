@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +53,14 @@ fun CartScreen(
     val state by viewModel.cartState.collectAsState()
     var showCouponField by remember { mutableStateOf(false) }
     var couponInput by remember { mutableStateOf("") }
+
+    // Auto-navigate back when cart becomes empty (after remove or clear)
+    val itemCount = state.itemCount
+    var hadItems by remember { mutableStateOf(itemCount > 0) }
+    LaunchedEffect(itemCount) {
+        if (hadItems && itemCount == 0) onBack()
+        if (itemCount > 0) hadItems = true
+    }
 
     Column(
         modifier = Modifier
