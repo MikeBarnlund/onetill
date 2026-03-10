@@ -23,7 +23,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -80,30 +79,37 @@ fun AppStatusBar(
     val timeFormat = remember { SimpleDateFormat("h:mm", Locale.getDefault()) }
 
     var currentTime by remember { mutableStateOf(timeFormat.format(Date())) }
-    var batteryPercent by remember { mutableIntStateOf(getBatteryPercent(context)) }
+    var battery by remember { mutableStateOf(getBatteryState(context)) }
 
     LaunchedEffect(Unit) {
         while (true) {
             delay(15_000)
             currentTime = timeFormat.format(Date())
-            batteryPercent = getBatteryPercent(context)
+            battery = getBatteryState(context)
         }
     }
 
     StatusBar(
         connectivityState = connectivityState,
         syncStatusText = syncStatusText,
-        batteryPercent = batteryPercent,
+        batteryPercent = battery.percent,
+        isCharging = battery.isCharging,
         currentTime = currentTime,
         modifier = modifier,
     )
 }
 
-private fun getBatteryPercent(context: Context): Int {
+private data class BatteryState(val percent: Int, val isCharging: Boolean)
+
+private fun getBatteryState(context: Context): BatteryState {
     val intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
     val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
     val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
-    return if (level >= 0 && scale > 0) (level * 100 / scale) else 0
+    val status = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+    val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+        status == BatteryManager.BATTERY_STATUS_FULL
+    val percent = if (level >= 0 && scale > 0) (level * 100 / scale) else 0
+    return BatteryState(percent, isCharging)
 }
 
 @Composable
@@ -111,6 +117,7 @@ fun StatusBar(
     connectivityState: ConnectivityState,
     syncStatusText: String,
     batteryPercent: Int,
+    isCharging: Boolean = false,
     currentTime: String,
     modifier: Modifier = Modifier,
     onConnectivityTap: () -> Unit = {},
@@ -137,6 +144,7 @@ fun StatusBar(
     }
 
     val batteryColor = when {
+        isCharging -> colors.success
         batteryPercent < 10 -> colors.error
         batteryPercent < 20 -> colors.warning
         else -> colors.textTertiary
@@ -193,9 +201,9 @@ fun StatusBar(
                 )
                 Spacer(modifier = Modifier.width(dimens.xs))
                 Text(
-                    text = "$batteryPercent%",
+                    text = if (isCharging) "$batteryPercent% ⚡" else "$batteryPercent%",
                     style = micro,
-                    color = colors.textTertiary,
+                    color = batteryColor,
                 )
             }
 
