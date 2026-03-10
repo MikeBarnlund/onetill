@@ -44,6 +44,7 @@ fun NavigationDrawer(
     onSummaryTap: () -> Unit,
     onScanQrTap: () -> Unit,
     onEditShopTap: () -> Unit,
+    onWifiSettingsTap: () -> Unit = {},
     onResyncTap: () -> Unit = {},
     modifier: Modifier = Modifier,
     versionText: String = "v1.0.0 · Register 1",
@@ -158,6 +159,12 @@ fun NavigationDrawer(
                     label = "Edit Shop Info",
                     icon = { color -> EditIcon(color = color, modifier = Modifier.size(dimens.headerIconSize)) },
                     onClick = onEditShopTap,
+                    modifier = Modifier.padding(start = 34.dp),
+                )
+                DrawerNavItem(
+                    label = "WiFi Settings",
+                    icon = { color -> WifiIcon(color = color, modifier = Modifier.size(dimens.headerIconSize)) },
+                    onClick = onWifiSettingsTap,
                     modifier = Modifier.padding(start = 34.dp),
                 )
                 DrawerNavItem(

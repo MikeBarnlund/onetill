@@ -155,6 +155,37 @@ fun ChevronIcon(
 }
 
 @Composable
+fun WifiIcon(color: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val s = 1.5.dp.toPx()
+        val cx = size.width / 2f
+        val bottom = size.height * 0.82f
+
+        // Dot at center bottom
+        drawCircle(
+            color = color,
+            radius = 1.5.dp.toPx(),
+            center = Offset(cx, bottom),
+        )
+
+        // Three concentric arcs radiating upward
+        val radii = listOf(0.22f, 0.36f, 0.50f)
+        for (rFrac in radii) {
+            val r = size.width * rFrac
+            drawArc(
+                color = color,
+                startAngle = -140f,
+                sweepAngle = 100f,
+                useCenter = false,
+                topLeft = Offset(cx - r, bottom - r),
+                size = Size(r * 2, r * 2),
+                style = Stroke(width = s, cap = StrokeCap.Round),
+            )
+        }
+    }
+}
+
+@Composable
 fun RefreshIcon(color: Color, modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val s = 1.5.dp.toPx()

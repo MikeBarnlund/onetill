@@ -46,13 +46,16 @@ object Routes {
     const val CART = "cart"
     const val CHECKOUT = "checkout"
     const val CASH_PAYMENT = "cash_payment"
-    const val ORDER_COMPLETE = "order_complete/{amount}/{method}"
+    const val ORDER_COMPLETE = "order_complete/{amount}/{method}?change={change}"
     const val ORDER_HISTORY = "order_history"
     const val DAILY_SUMMARY = "daily_summary"
     const val QR_SCAN = "qr_scan"
     const val SETTINGS = "settings"
 
-    fun orderComplete(amount: String, method: String) = "order_complete/$amount/$method"
+    fun orderComplete(amount: String, method: String, change: String? = null): String {
+        val base = "order_complete/$amount/$method"
+        return if (change != null) "$base?change=$change" else base
+    }
 }
 
 private const val SLIDE_DURATION = 300
@@ -212,8 +215,8 @@ fun OneTillNavGraph(
         ) {
             CashPaymentModal(
                 onClose = { navController.popBackStack() },
-                onPaymentComplete = { amount ->
-                    navController.navigate(Routes.orderComplete(amount, "Cash")) {
+                onPaymentComplete = { amount, changeDue ->
+                    navController.navigate(Routes.orderComplete(amount, "Cash", changeDue)) {
                         popUpTo(Routes.CATALOG)
                     }
                 },
@@ -230,9 +233,12 @@ fun OneTillNavGraph(
         ) { backStackEntry ->
             val amount = backStackEntry.arguments?.getString("amount") ?: "$0.00"
             val method = backStackEntry.arguments?.getString("method") ?: "Card"
+            val changeDue = backStackEntry.arguments?.getString("change")
+                ?.takeIf { it != "{change}" }
             OrderCompleteScreen(
                 amount = amount,
                 paymentMethod = method,
+                changeDue = changeDue,
                 onNewSale = {
                     navController.navigate(Routes.CATALOG) {
                         popUpTo(Routes.CATALOG) { inclusive = true }

@@ -37,6 +37,7 @@ fun OrderCompleteScreen(
     amount: String,
     paymentMethod: String,
     onNewSale: () -> Unit,
+    changeDue: String? = null,
     receiptEmail: String? = null,
 ) {
     val colors = OneTillTheme.colors
@@ -131,6 +132,23 @@ fun OrderCompleteScreen(
                 color = colors.textTertiary,
                 textAlign = TextAlign.Center,
             )
+
+            // Change due (cash payments only)
+            if (changeDue != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Change due",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = colors.textTertiary,
+                )
+                Text(
+                    text = changeDue,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.success,
+                )
+            }
 
             // Receipt email (optional)
             if (receiptEmail != null) {

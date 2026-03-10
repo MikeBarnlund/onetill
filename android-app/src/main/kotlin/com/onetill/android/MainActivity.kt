@@ -21,17 +21,25 @@ class MainActivity : ComponentActivity() {
 
         ScanBeepPlayer.init(this)
 
-        // Hide system UI to simulate S700 (no system chrome)
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        WindowInsetsControllerCompat(window, window.decorView).let {
-            it.hide(WindowInsetsCompat.Type.systemBars())
-            it.systemBarsBehavior = 2 // BEHAVIOR_SHOW_TRANSIENT_BARS_BY_GESTURE
-        }
+        hideSystemBars()
 
         setContent {
             OneTillTheme {
                 OneTillNavGraph()
             }
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) hideSystemBars()
+    }
+
+    private fun hideSystemBars() {
+        WindowInsetsControllerCompat(window, window.decorView).let {
+            it.hide(WindowInsetsCompat.Type.systemBars())
+            it.systemBarsBehavior = 2 // BEHAVIOR_SHOW_TRANSIENT_BARS_BY_GESTURE
         }
     }
 

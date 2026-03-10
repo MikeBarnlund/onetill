@@ -37,7 +37,7 @@ import com.onetill.android.ui.theme.screenGradient
 @Composable
 fun CashPaymentModal(
     onClose: () -> Unit,
-    onPaymentComplete: (String) -> Unit,
+    onPaymentComplete: (amount: String, changeDue: String?) -> Unit,
     viewModel: CheckoutViewModel = koinViewModel(),
 ) {
     val colors = OneTillTheme.colors
@@ -178,7 +178,8 @@ fun CashPaymentModal(
             OneTillButton(
                 text = "Complete Sale",
                 onClick = {
-                    viewModel.submitCashPayment { amount -> onPaymentComplete(amount) }
+                    val change = if (changeCents > 0) formatCents(changeCents) else null
+                    viewModel.submitCashPayment { amount -> onPaymentComplete(amount, change) }
                 },
                 enabled = canComplete && !isSubmitting,
             )
