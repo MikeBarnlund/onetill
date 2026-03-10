@@ -196,7 +196,8 @@ class SyncOrchestrator(
             syncMutex.unlock()
         }
 
-        // Also drain pending orders during each sync cycle
+        // Also drain pending orders and refresh staff users during each sync cycle
         orderSyncManager.drainPendingOrders()
+        syncUsers()
     }
 }
