@@ -1,5 +1,9 @@
 package com.onetill.android.ui.components
 
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,13 +20,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -30,8 +39,12 @@ import com.onetill.android.ui.theme.OneTillTheme
 import com.onetill.shared.sync.ConnectivityMonitor
 import com.onetill.shared.sync.SyncOrchestrator
 import com.onetill.shared.sync.SyncStatus
+import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
 import org.koin.mp.KoinPlatform
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 enum class ConnectivityState {
     Online,
@@ -63,13 +76,34 @@ fun AppStatusBar(
         else -> "Synced"
     }
 
+    val context = LocalContext.current
+    val timeFormat = remember { SimpleDateFormat("h:mm", Locale.getDefault()) }
+
+    var currentTime by remember { mutableStateOf(timeFormat.format(Date())) }
+    var batteryPercent by remember { mutableIntStateOf(getBatteryPercent(context)) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(15_000)
+            currentTime = timeFormat.format(Date())
+            batteryPercent = getBatteryPercent(context)
+        }
+    }
+
     StatusBar(
         connectivityState = connectivityState,
         syncStatusText = syncStatusText,
-        batteryPercent = 85,
-        currentTime = "3:42",
+        batteryPercent = batteryPercent,
+        currentTime = currentTime,
         modifier = modifier,
     )
+}
+
+private fun getBatteryPercent(context: Context): Int {
+    val intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+    val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+    val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+    return if (level >= 0 && scale > 0) (level * 100 / scale) else 0
 }
 
 @Composable
