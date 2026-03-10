@@ -1,5 +1,6 @@
 package com.onetill.android.ui.catalog
 
+import android.content.Intent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -30,9 +31,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -54,6 +57,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -97,6 +101,7 @@ fun CatalogScreen(
     onNavigateToQrScan: () -> Unit,
     viewModel: CatalogViewModel = koinViewModel(),
 ) {
+    val context = LocalContext.current
     val colors = OneTillTheme.colors
     val dimens = OneTillTheme.dimens
 
@@ -114,6 +119,7 @@ fun CatalogScreen(
     val registerName by viewModel.registerName.collectAsState()
 
     val haptic = LocalHapticFeedback.current
+    var showWifiPasscodeDialog by remember { mutableStateOf(false) }
 
     // Activate volume key interception while on CatalogScreen
     DisposableEffect(Unit) {
@@ -183,6 +189,7 @@ fun CatalogScreen(
                 viewModel.closeDrawer()
                 onNavigateToSettings()
             },
+            onWifiSettingsTap = { showWifiPasscodeDialog = true },
             onResyncTap = {
                 viewModel.closeDrawer()
                 viewModel.fullResync()
@@ -319,6 +326,32 @@ fun CatalogScreen(
             state = viewModel.toastState,
             modifier = Modifier.align(Alignment.TopCenter),
         )
+
+        // WiFi passcode dialog
+        if (showWifiPasscodeDialog) {
+            AlertDialog(
+                onDismissRequest = { showWifiPasscodeDialog = false },
+                title = { Text("Device Settings Passcode") },
+                text = {
+                    Text("The admin passcode for this terminal is:\n\n07139\n\nEnter this passcode on the next screen to access WiFi and other device settings.")
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showWifiPasscodeDialog = false
+                        viewModel.closeDrawer()
+                        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("stripe://settings/"))
+                        try { context.startActivity(intent) } catch (_: Exception) {}
+                    }) {
+                        Text("Continue")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showWifiPasscodeDialog = false }) {
+                        Text("Cancel")
+                    }
+                },
+            )
+        }
     }
 }
 
