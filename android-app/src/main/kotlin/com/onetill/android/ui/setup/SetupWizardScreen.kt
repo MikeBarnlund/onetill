@@ -87,7 +87,10 @@ fun SetupWizardScreen(
                 productsSynced = state.productsSynced,
                 registerName = state.registerName,
                 onRegisterNameChange = { viewModel.onRegisterNameChange(it) },
-                onStartSelling = onSetupComplete,
+                onStartSelling = {
+                    viewModel.saveRegisterName()
+                    onSetupComplete()
+                },
             )
         }
     }

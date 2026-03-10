@@ -73,6 +73,11 @@ class CatalogViewModel(
 
     val toastState = ToastState()
 
+    val registerName: StateFlow<String> =
+        localDataSource.observeStoreConfig()
+            .map { it?.registerName ?: "Register 1" }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "Register 1")
+
     private val _isDrawerOpen = MutableStateFlow(false)
     val isDrawerOpen: StateFlow<Boolean> = _isDrawerOpen.asStateFlow()
 

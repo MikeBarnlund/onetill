@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.onetill.android.R
+import com.onetill.android.audio.ScanBeepPlayer
 import com.onetill.android.input.VolumeKeyEvent
 import com.onetill.android.input.VolumeKeyEventBus
 import com.onetill.android.ui.components.BarcodeIcon
@@ -110,6 +111,7 @@ fun CatalogScreen(
     val isSyncing by viewModel.isSyncing.collectAsState()
     val isScannerOpen by viewModel.isScannerOpen.collectAsState()
     val hasLoaded by viewModel.hasLoaded.collectAsState()
+    val registerName by viewModel.registerName.collectAsState()
 
     val haptic = LocalHapticFeedback.current
 
@@ -164,6 +166,7 @@ fun CatalogScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         // Layer 1: Drawer (always rendered behind main content)
         NavigationDrawer(
+            versionText = "v1.0 · $registerName",
             onOrdersTap = {
                 viewModel.closeDrawer()
                 onNavigateToOrders()
@@ -305,6 +308,7 @@ fun CatalogScreen(
             visible = isScannerOpen,
             onBarcodeScanned = { barcode ->
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                ScanBeepPlayer.play()
                 viewModel.onBarcodeScan(barcode)
             },
             onClose = { viewModel.closeScanner() },

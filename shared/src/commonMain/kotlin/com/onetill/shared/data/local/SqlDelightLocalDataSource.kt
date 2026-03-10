@@ -460,6 +460,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
             consumer_key = config.consumerKey,
             consumer_secret = config.consumerSecret,
             currency = config.currency,
+            register_name = config.registerName,
         )
     }
 
@@ -620,5 +621,6 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
         consumerKey = row.consumer_key,
         consumerSecret = row.consumer_secret,
         currency = row.currency,
+        registerName = row.register_name,
     )
 }

@@ -8,4 +8,5 @@ data class StoreConfig(
     val consumerKey: String,
     val consumerSecret: String,
     val currency: String,
+    val registerName: String = "Register 1",
 )

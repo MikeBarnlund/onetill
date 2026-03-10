@@ -204,7 +204,8 @@ CREATE TABLE store_config (
     site_url TEXT NOT NULL,
     consumer_key TEXT NOT NULL,
     consumer_secret TEXT NOT NULL,
-    currency TEXT NOT NULL
+    currency TEXT NOT NULL,
+    register_name TEXT NOT NULL DEFAULT 'Register 1'
 );
 
 -- ============================================================================
@@ -458,8 +459,8 @@ SELECT * FROM sync_state WHERE entity_type = ?;
 -- ============================================================================
 
 upsertStoreConfig:
-INSERT OR REPLACE INTO store_config(id, site_url, consumer_key, consumer_secret, currency)
-VALUES (1, ?, ?, ?, ?);
+INSERT OR REPLACE INTO store_config(id, site_url, consumer_key, consumer_secret, currency, register_name)
+VALUES (1, ?, ?, ?, ?, ?);
 
 selectStoreConfig:
 SELECT * FROM store_config WHERE id = 1;

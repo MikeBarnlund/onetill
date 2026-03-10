@@ -134,6 +134,13 @@ class SetupViewModel(
         _state.update { it.copy(registerName = name) }
     }
 
+    fun saveRegisterName() {
+        viewModelScope.launch {
+            val existing = localDataSource.getStoreConfig() ?: return@launch
+            localDataSource.saveStoreConfig(existing.copy(registerName = _state.value.registerName))
+        }
+    }
+
     fun onConnect() {
         viewModelScope.launch {
             _state.update { it.copy(isConnecting = true, connectionError = null) }
