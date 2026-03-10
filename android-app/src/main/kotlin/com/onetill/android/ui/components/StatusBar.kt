@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +31,7 @@ import com.onetill.shared.sync.ConnectivityMonitor
 import com.onetill.shared.sync.SyncOrchestrator
 import com.onetill.shared.sync.SyncStatus
 import org.koin.compose.koinInject
+import org.koin.mp.KoinPlatform
 
 enum class ConnectivityState {
     Online,
@@ -40,11 +42,16 @@ enum class ConnectivityState {
 @Composable
 fun AppStatusBar(
     modifier: Modifier = Modifier,
-    syncOrchestrator: SyncOrchestrator = koinInject(),
     connectivityMonitor: ConnectivityMonitor = koinInject(),
 ) {
-    val syncStatus by syncOrchestrator.syncStatus.collectAsState()
-    val pendingOrderCount by syncOrchestrator.pendingOrderCount.collectAsState(initial = 0L)
+    val syncOrchestrator = remember {
+        KoinPlatform.getKoin().getOrNull<SyncOrchestrator>()
+    }
+
+    val syncStatus by syncOrchestrator?.syncStatus?.collectAsState()
+        ?: remember { androidx.compose.runtime.mutableStateOf(SyncStatus.Idle) }
+    val pendingOrderCount by syncOrchestrator?.pendingOrderCount?.collectAsState(initial = 0L)
+        ?: remember { androidx.compose.runtime.mutableStateOf(0L) }
     val isOnline by connectivityMonitor.isOnline.collectAsState()
 
     val connectivityState = if (isOnline) ConnectivityState.Online else ConnectivityState.Offline

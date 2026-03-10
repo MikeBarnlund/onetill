@@ -106,9 +106,6 @@ class SyncOrchestrator(
     fun startSync() {
         stopSync()
 
-        // Sync staff users immediately on startup
-        scope.launch { syncUsers() }
-
         deltaSyncJob = scope.launch {
             while (true) {
                 delay(DELTA_SYNC_INTERVAL_MS)
