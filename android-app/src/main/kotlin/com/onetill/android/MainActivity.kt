@@ -5,6 +5,7 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import com.onetill.android.audio.ScanBeepPlayer
 import com.onetill.android.input.IdleEventBus
 import com.onetill.android.input.VolumeKeyEvent
 import com.onetill.android.input.VolumeKeyEventBus
@@ -17,6 +18,8 @@ import androidx.core.view.WindowInsetsControllerCompat
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        ScanBeepPlayer.init(this)
 
         // Hide system UI to simulate S700 (no system chrome)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -38,6 +41,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        IdleEventBus.onTouch()
         if (VolumeKeyEventBus.isActive && event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
             when (event.action) {
                 KeyEvent.ACTION_DOWN -> {
