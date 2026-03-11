@@ -54,7 +54,7 @@ class CheckoutViewModel(
 
     val orderTotalCents: StateFlow<Long> =
         cartManager.cartState.map { it.estimatedTotal.amountCents }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
 
     val orderTotalFormatted: StateFlow<String> =
         cartManager.cartState.map { it.estimatedTotal.formatDisplay() }
