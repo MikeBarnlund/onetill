@@ -1,6 +1,7 @@
 package com.onetill.android.di
 
 import com.onetill.android.AndroidConnectivityMonitor
+import com.onetill.android.stripe.StripeTerminalManager
 import com.onetill.shared.db.DatabaseDriverFactory
 import com.onetill.shared.sync.ConnectivityMonitor
 import kotlinx.coroutines.CoroutineScope
@@ -16,4 +17,8 @@ val androidModule = module {
 
 val connectivityModule = module {
     single<ConnectivityMonitor> { AndroidConnectivityMonitor(androidContext()) }
+}
+
+val stripeModule = module {
+    single { StripeTerminalManager(get(), androidContext()) }
 }

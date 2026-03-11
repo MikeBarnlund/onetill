@@ -49,6 +49,7 @@ fun CheckoutScreen(
     onBack: () -> Unit,
     onCashPayment: () -> Unit,
     onCardPaymentComplete: (String) -> Unit,
+    onCardPaymentFailed: (String) -> Unit = {},
     viewModel: CheckoutViewModel = koinViewModel(),
 ) {
     val colors = OneTillTheme.colors
@@ -59,6 +60,7 @@ fun CheckoutScreen(
     val itemCount by viewModel.itemCount.collectAsState()
     val selectedMethod by viewModel.selectedPaymentMethod.collectAsState()
     val isOnline by viewModel.isOnline.collectAsState()
+    val isSubmitting by viewModel.isSubmitting.collectAsState()
 
     var emailInput by remember { mutableStateOf("") }
     var orderSummaryExpanded by remember { mutableStateOf(false) }
@@ -107,7 +109,11 @@ fun CheckoutScreen(
 
             PaymentMethodCard(
                 title = "Card Payment",
-                subtitle = if (isOnline) "Tap, chip, or swipe" else "Requires internet",
+                subtitle = when {
+                    isSubmitting && selectedMethod == PaymentMethodUi.Card -> "Processing payment..."
+                    isOnline -> "Tap, chip, or swipe"
+                    else -> "Requires internet"
+                },
                 icon = {
                     CardPaymentIcon(
                         color = colors.textPrimary,
@@ -116,9 +122,13 @@ fun CheckoutScreen(
                 },
                 isSelected = selectedMethod == PaymentMethodUi.Card,
                 onClick = {
+                    if (isSubmitting) return@PaymentMethodCard
                     viewModel.selectPaymentMethod(PaymentMethodUi.Card)
                     if (isOnline) {
-                        viewModel.submitCardPayment { amount -> onCardPaymentComplete(amount) }
+                        viewModel.submitCardPayment(
+                            onComplete = { amount -> onCardPaymentComplete(amount) },
+                            onFailed = { message -> onCardPaymentFailed(message) },
+                        )
                     }
                 },
             )

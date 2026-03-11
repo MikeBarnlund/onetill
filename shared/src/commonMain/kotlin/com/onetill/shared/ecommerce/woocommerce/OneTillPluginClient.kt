@@ -2,10 +2,12 @@ package com.onetill.shared.ecommerce.woocommerce
 
 import com.onetill.shared.ecommerce.woocommerce.dto.OneTillOrderDto
 import com.onetill.shared.ecommerce.woocommerce.dto.StaffUserDto
+import com.onetill.shared.ecommerce.woocommerce.dto.StripeConnectionTokenResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
+import io.ktor.client.request.post
 
 /**
  * Thin HTTP layer over the OneTill companion plugin REST API at /wp-json/onetill/v1/.
@@ -28,6 +30,9 @@ class OneTillPluginClient(private val httpClient: HttpClient) {
 
     suspend fun getUsers(): List<StaffUserDto> =
         httpClient.get("users").body()
+
+    suspend fun getStripeConnectionToken(): String =
+        httpClient.post("stripe/connection-token").body<StripeConnectionTokenResponse>().secret
 
     fun close() {
         httpClient.close()

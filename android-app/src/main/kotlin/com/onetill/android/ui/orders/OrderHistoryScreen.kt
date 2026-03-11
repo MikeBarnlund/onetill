@@ -39,6 +39,7 @@ import com.onetill.android.ui.components.AppStatusBar
 import com.onetill.android.ui.components.HeaderNavAction
 import com.onetill.android.ui.components.ScreenHeader
 import com.onetill.android.ui.components.StatusChip
+import com.onetill.shared.orders.OrderFilter
 import com.onetill.android.ui.theme.OneTillTheme
 import com.onetill.android.ui.theme.screenGradient
 

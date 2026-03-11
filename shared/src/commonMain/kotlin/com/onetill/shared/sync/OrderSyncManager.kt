@@ -44,7 +44,7 @@ class OrderSyncManager(
             total = draft.lineItems.fold(Money.zero(currency)) { acc, li -> acc + li.totalPrice },
             totalTax = Money.zero(currency),
             paymentMethod = draft.paymentMethod,
-            stripeTransactionId = null,
+            stripeTransactionId = draft.stripeTransactionId,
             idempotencyKey = draft.idempotencyKey,
             note = draft.note,
             couponCodes = draft.couponCodes,
@@ -139,5 +139,6 @@ class OrderSyncManager(
         idempotencyKey = order.idempotencyKey,
         note = order.note,
         couponCodes = order.couponCodes,
+        stripeTransactionId = order.stripeTransactionId,
     )
 }

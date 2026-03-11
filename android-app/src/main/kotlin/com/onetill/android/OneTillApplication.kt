@@ -10,6 +10,7 @@ import com.onetill.android.di.androidModule
 import com.onetill.android.di.connectivityModule
 import com.onetill.android.di.setupViewModelModule
 import com.onetill.shared.di.databaseModule
+import com.stripe.stripeterminal.TerminalApplicationDelegate
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 import io.ktor.client.HttpClient
@@ -21,6 +22,7 @@ class OneTillApplication : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
 
+        TerminalApplicationDelegate.onCreate(this)
         Napier.base(DebugAntilog())
 
         startKoin {

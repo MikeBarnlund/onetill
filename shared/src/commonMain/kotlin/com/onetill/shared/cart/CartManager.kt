@@ -132,13 +132,21 @@ class CartManager(
     }
 
     @OptIn(ExperimentalUuidApi::class)
-    fun buildOrderDraft(paymentMethod: PaymentMethod): OrderDraft = OrderDraft(
+    fun buildOrderDraft(
+        paymentMethod: PaymentMethod,
+        stripeTransactionId: String? = null,
+        cardBrand: String? = null,
+        cardLast4: String? = null,
+    ): OrderDraft = OrderDraft(
         lineItems = items.map { it.toLineItem() },
         customerId = customerId,
         paymentMethod = paymentMethod,
         idempotencyKey = Uuid.random().toString(),
         note = note,
         couponCodes = couponCodes.toList(),
+        stripeTransactionId = stripeTransactionId,
+        cardBrand = cardBrand,
+        cardLast4 = cardLast4,
     )
 
     suspend fun refreshTaxRates() {

@@ -353,6 +353,23 @@ class Admin {
 	}
 
 	/**
+	 * Handle saving the Stripe secret key from admin form.
+	 */
+	public function save_stripe_key() {
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( esc_html__( 'Permission denied.', 'onetill' ) );
+		}
+
+		check_admin_referer( 'onetill_save_stripe_key', 'onetill_stripe_nonce' );
+
+		$key = isset( $_POST['onetill_stripe_secret_key'] ) ? sanitize_text_field( wp_unslash( $_POST['onetill_stripe_secret_key'] ) ) : '';
+		update_option( 'onetill_stripe_secret_key', $key );
+
+		wp_safe_redirect( admin_url( 'admin.php?page=onetill&stripe_saved=1' ) );
+		exit;
+	}
+
+	/**
 	 * Render the barcode field on the product Inventory tab.
 	 */
 	public function render_barcode_field() {

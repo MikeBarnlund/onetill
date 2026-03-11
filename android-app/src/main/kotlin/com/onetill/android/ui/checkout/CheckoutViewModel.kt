@@ -2,6 +2,8 @@ package com.onetill.android.ui.checkout
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.onetill.android.stripe.StripeTerminalManager
+import com.onetill.android.stripe.StripeTerminalManager.PaymentResult
 import com.onetill.shared.cart.CartManager
 import com.onetill.shared.data.model.PaymentMethod
 import com.onetill.shared.sync.ConnectivityMonitor
@@ -32,6 +34,7 @@ class CheckoutViewModel(
     private val orderSyncManager: OrderSyncManager,
     private val connectivityMonitor: ConnectivityMonitor,
     private val syncOrchestrator: SyncOrchestrator,
+    private val stripeTerminalManager: StripeTerminalManager,
 ) : ViewModel() {
 
     val items: StateFlow<List<OrderSummaryItem>> =
@@ -84,20 +87,36 @@ class CheckoutViewModel(
         }
     }
 
-    fun submitCardPayment(onComplete: (String) -> Unit) {
+    fun submitCardPayment(onComplete: (String) -> Unit, onFailed: (String) -> Unit) {
         if (_isSubmitting.value) return
         viewModelScope.launch {
             _isSubmitting.value = true
-            val totalFormatted = orderTotalFormatted.value
+            val amountCents = orderTotalCents.value
             val currency = cartManager.cartState.value.currency
-            // TODO: Integrate Stripe Terminal SDK for real card payment
-            // For now, create the order as a card payment
-            val draft = cartManager.buildOrderDraft(PaymentMethod.CARD)
-            orderSyncManager.submitOrder(draft, currency)
-            cartManager.clearCart(sold = true)
-            syncOrchestrator.triggerOrderDrain()
-            _isSubmitting.value = false
-            onComplete(totalFormatted)
+
+            when (val result = stripeTerminalManager.collectPayment(amountCents, currency)) {
+                is PaymentResult.Success -> {
+                    val totalFormatted = orderTotalFormatted.value
+                    val draft = cartManager.buildOrderDraft(
+                        PaymentMethod.CARD,
+                        stripeTransactionId = result.paymentIntentId,
+                        cardBrand = result.cardBrand,
+                        cardLast4 = result.cardLast4,
+                    )
+                    orderSyncManager.submitOrder(draft, currency)
+                    cartManager.clearCart(sold = true)
+                    syncOrchestrator.triggerOrderDrain()
+                    _isSubmitting.value = false
+                    onComplete(totalFormatted)
+                }
+                is PaymentResult.Failed -> {
+                    _isSubmitting.value = false
+                    onFailed(result.message)
+                }
+                is PaymentResult.Cancelled -> {
+                    _isSubmitting.value = false
+                }
+            }
         }
     }
 }

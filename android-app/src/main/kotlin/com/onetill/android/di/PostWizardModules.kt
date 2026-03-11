@@ -24,6 +24,7 @@ fun loadPostWizardModules(config: StoreConfig) {
         backendModule(config),
         syncModule,
         cartModule(config.currency),
+        stripeModule,
     )
     loadedConfigModules = configModules
 

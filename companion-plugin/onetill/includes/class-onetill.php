@@ -81,6 +81,13 @@ class OneTill {
 	private $api_users;
 
 	/**
+	 * API Stripe handler.
+	 *
+	 * @var API_Stripe
+	 */
+	private $api_stripe;
+
+	/**
 	 * Admin handler.
 	 *
 	 * @var Admin
@@ -100,6 +107,7 @@ class OneTill {
 		$this->api_settings  = new API_Settings();
 		$this->api_sync      = new API_Sync();
 		$this->api_users     = new API_Users();
+		$this->api_stripe    = new API_Stripe();
 		$this->pairing       = new Pairing();
 		$this->webhooks      = new Webhooks();
 		$this->admin         = new Admin();
@@ -119,6 +127,7 @@ class OneTill {
 		add_action( 'rest_api_init', array( $this->api_settings, 'register_routes' ) );
 		add_action( 'rest_api_init', array( $this->api_sync, 'register_routes' ) );
 		add_action( 'rest_api_init', array( $this->api_users, 'register_routes' ) );
+		add_action( 'rest_api_init', array( $this->api_stripe, 'register_routes' ) );
 		add_action( 'rest_api_init', array( $this->pairing, 'register_routes' ) );
 
 		// Admin pages.
@@ -145,6 +154,9 @@ class OneTill {
 		add_action( 'onetill_cleanup_change_log', array( $this->webhooks, 'cleanup_change_log' ) );
 		add_action( 'onetill_cleanup_expired_tokens', array( $this->pairing, 'cleanup_expired_tokens' ) );
 		add_action( 'onetill_cleanup_idempotency', array( $this->api_orders, 'cleanup_idempotency' ) );
+
+		// Admin post handlers.
+		add_action( 'admin_post_onetill_save_stripe_key', array( $this->admin, 'save_stripe_key' ) );
 
 		// AJAX handlers for admin pairing UI.
 		add_action( 'wp_ajax_onetill_initiate_pairing', array( $this->pairing, 'ajax_initiate_pairing' ) );

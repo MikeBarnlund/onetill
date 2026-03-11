@@ -89,6 +89,10 @@ dependencies {
     // ML Kit Barcode Scanning
     implementation(libs.mlkit.barcode)
 
+    // Stripe Terminal
+    implementation(libs.stripe.terminal.core)
+    implementation(libs.stripe.terminal.appsondevices)
+
     // Ktor engine for Coil network image loading
     implementation(libs.ktor.client.okhttp)
 }

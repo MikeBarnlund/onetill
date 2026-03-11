@@ -68,7 +68,7 @@ fun OrderDraft.toWooDto(currency: String): WooCreateOrderDto = WooCreateOrderDto
         PaymentMethod.CARD -> "Card (Stripe Terminal)"
         PaymentMethod.CASH -> "Cash"
     },
-    setPaid = paymentMethod == PaymentMethod.CASH,
+    setPaid = paymentMethod == PaymentMethod.CASH || stripeTransactionId != null,
     lineItems = lineItems.map {
         WooCreateLineItemDto(
             productId = it.productId,
@@ -81,6 +81,9 @@ fun OrderDraft.toWooDto(currency: String): WooCreateOrderDto = WooCreateOrderDto
         add(WooCreateMetaDataDto(key = "_onetill_idempotency_key", value = idempotencyKey))
         add(WooCreateMetaDataDto(key = "_onetill_source", value = "onetill_pos"))
         if (note != null) add(WooCreateMetaDataDto(key = "_onetill_note", value = note))
+        if (stripeTransactionId != null) add(WooCreateMetaDataDto(key = "_onetill_stripe_id", value = stripeTransactionId))
+        if (cardBrand != null) add(WooCreateMetaDataDto(key = "_onetill_card_brand", value = cardBrand))
+        if (cardLast4 != null) add(WooCreateMetaDataDto(key = "_onetill_card_last4", value = cardLast4))
     },
 )
 

@@ -1,10 +1,12 @@
 package com.onetill.shared.di
 
+import com.onetill.shared.auth.StaffAuthManager
 import com.onetill.shared.cart.CartManager
 import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.shared.data.local.SqlDelightLocalDataSource
 import com.onetill.shared.data.model.StoreConfig
 import com.onetill.shared.db.createDatabase
+import com.onetill.shared.orders.OrderAnalytics
 import com.onetill.shared.ecommerce.ECommerceBackend
 import com.onetill.shared.ecommerce.woocommerce.OneTillPluginClient
 import com.onetill.shared.ecommerce.woocommerce.WooCommerceBackend
@@ -28,6 +30,7 @@ val databaseModule = module {
         )
     }
     single { PairingClient() }
+    single { StaffAuthManager(get()) }
 }
 
 fun backendModule(config: StoreConfig) = module {
@@ -42,6 +45,7 @@ val syncModule = module {
     single { ProductSyncManager(get(), get()) }
     single { OrderSyncManager(get(), get()) }
     single { SyncOrchestrator(get(), get(), get(), get(), get(), get()) }
+    single { OrderAnalytics(get()) }
 }
 
 fun cartModule(currency: String) = module {

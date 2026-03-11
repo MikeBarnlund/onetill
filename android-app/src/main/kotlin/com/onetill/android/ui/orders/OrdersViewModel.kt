@@ -6,7 +6,10 @@ import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.shared.data.model.Order
 import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.data.model.PaymentMethod
+import com.onetill.shared.orders.OrderAnalytics
+import com.onetill.shared.orders.OrderFilter
 import com.onetill.shared.sync.SyncOrchestrator
+import com.onetill.shared.util.formatCents
 import com.onetill.shared.util.formatDisplay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,18 +19,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.datetime.Clock
-import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
-
-enum class OrderFilter(val label: String) {
-    Today("Today"),
-    Yesterday("Yesterday"),
-    ThisWeek("This Week"),
-    All("All"),
-}
 
 enum class SyncStatus {
     Synced,
@@ -65,15 +58,12 @@ data class DailySummaryUiModel(
 class OrdersViewModel(
     localDataSource: LocalDataSource,
     private val syncOrchestrator: SyncOrchestrator,
+    private val orderAnalytics: OrderAnalytics,
 ) : ViewModel() {
 
     private val recentOrders: StateFlow<List<Order>> =
         localDataSource.observeRecentOrders(100)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    private val pendingSyncCount: StateFlow<Long> =
-        syncOrchestrator.pendingOrderCount
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
@@ -83,81 +73,39 @@ class OrdersViewModel(
 
     val orders: StateFlow<List<OrderUiModel>> =
         combine(recentOrders, _selectedFilter) { orders, filter ->
-            val now = Clock.System.now()
             val tz = TimeZone.currentSystemDefault()
-            val todayDate = now.toLocalDateTime(tz).date
-
-            val filtered = when (filter) {
-                OrderFilter.Today -> orders.filter {
-                    it.createdAt.toLocalDateTime(tz).date == todayDate
-                }
-                OrderFilter.Yesterday -> {
-                    val yesterdayDate = todayDate.minus(1, DateTimeUnit.DAY)
-                    orders.filter {
-                        it.createdAt.toLocalDateTime(tz).date == yesterdayDate
-                    }
-                }
-                OrderFilter.ThisWeek -> {
-                    val weekAgoDate = todayDate.minus(7, DateTimeUnit.DAY)
-                    orders.filter {
-                        it.createdAt.toLocalDateTime(tz).date >= weekAgoDate
-                    }
-                }
-                OrderFilter.All -> orders
-            }
-            filtered.map { it.toUiModel(tz) }
+            orderAnalytics.filterOrders(orders, filter).map { it.toUiModel(tz) }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _expandedOrderId = MutableStateFlow<String?>(null)
     val expandedOrderId: StateFlow<String?> = _expandedOrderId.asStateFlow()
 
     val dailySummary: StateFlow<DailySummaryUiModel> =
-        combine(recentOrders, pendingSyncCount) { orders, pending ->
-            val now = Clock.System.now()
-            val tz = TimeZone.currentSystemDefault()
-            val todayDate = now.toLocalDateTime(tz).date
-            val todayOrders = orders.filter {
-                it.createdAt.toLocalDateTime(tz).date == todayDate
+        orderAnalytics.observeDailySummary(syncOrchestrator.pendingOrderCount)
+            .map { summary ->
+                DailySummaryUiModel(
+                    totalSalesFormatted = formatCents(summary.totalSalesCents),
+                    transactionCount = summary.transactionCount,
+                    averageOrderFormatted = formatCents(summary.averageOrderCents),
+                    cardPaymentsFormatted = formatCents(summary.cardPaymentsCents),
+                    cashPaymentsFormatted = formatCents(summary.cashPaymentsCents),
+                    itemsSold = summary.itemsSold,
+                    pendingSyncCount = summary.pendingSyncCount,
+                )
             }
-
-            val totalCents = todayOrders.sumOf { it.total.amountCents }
-            val currency = todayOrders.firstOrNull()?.total?.currencyCode ?: "USD"
-            val count = todayOrders.size
-            val avgCents = if (count > 0) totalCents / count else 0L
-
-            val cardCents = todayOrders
-                .filter { it.paymentMethod == PaymentMethod.CARD }
-                .sumOf { it.total.amountCents }
-            val cashCents = todayOrders
-                .filter { it.paymentMethod == PaymentMethod.CASH }
-                .sumOf { it.total.amountCents }
-
-            val itemsSold = todayOrders.sumOf { order ->
-                order.lineItems.sumOf { it.quantity }
-            }
-
-            DailySummaryUiModel(
-                totalSalesFormatted = com.onetill.shared.util.formatCents(totalCents),
-                transactionCount = count,
-                averageOrderFormatted = com.onetill.shared.util.formatCents(avgCents),
-                cardPaymentsFormatted = com.onetill.shared.util.formatCents(cardCents),
-                cashPaymentsFormatted = com.onetill.shared.util.formatCents(cashCents),
-                itemsSold = itemsSold,
-                pendingSyncCount = pending.toInt(),
+            .stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(5000),
+                DailySummaryUiModel(
+                    totalSalesFormatted = "$0.00",
+                    transactionCount = 0,
+                    averageOrderFormatted = "$0.00",
+                    cardPaymentsFormatted = "$0.00",
+                    cashPaymentsFormatted = "$0.00",
+                    itemsSold = 0,
+                    pendingSyncCount = 0,
+                ),
             )
-        }.stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
-            DailySummaryUiModel(
-                totalSalesFormatted = "$0.00",
-                transactionCount = 0,
-                averageOrderFormatted = "$0.00",
-                cardPaymentsFormatted = "$0.00",
-                cashPaymentsFormatted = "$0.00",
-                itemsSold = 0,
-                pendingSyncCount = 0,
-            ),
-        )
 
     fun refreshOrders() {
         viewModelScope.launch {

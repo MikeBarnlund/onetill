@@ -182,6 +182,7 @@ fun OneTillNavGraph(
                         popUpTo(Routes.CATALOG)
                     }
                 },
+                onCardPaymentFailed = { /* Error is shown via subtitle on payment card */ },
             )
         }
 

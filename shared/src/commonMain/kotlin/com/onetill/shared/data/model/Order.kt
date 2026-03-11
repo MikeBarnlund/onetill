@@ -31,6 +31,9 @@ data class OrderDraft(
     val idempotencyKey: String,
     val note: String?,
     val couponCodes: List<String>,
+    val stripeTransactionId: String? = null,
+    val cardBrand: String? = null,
+    val cardLast4: String? = null,
 )
 
 @Serializable
