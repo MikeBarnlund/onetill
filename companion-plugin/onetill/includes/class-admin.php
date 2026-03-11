@@ -126,9 +126,7 @@ class Admin {
 	 * Render the settings page.
 	 */
 	public function render_settings_page() {
-		// TODO: Implement settings page (barcode meta field mapping).
-		echo '<div class="wrap"><h1>' . esc_html__( 'OneTill Settings', 'onetill' ) . '</h1>';
-		echo '<p>' . esc_html__( 'Settings page coming soon.', 'onetill' ) . '</p></div>';
+		include ONETILL_PLUGIN_DIR . 'templates/admin-settings.php';
 	}
 
 	/**
@@ -365,7 +363,7 @@ class Admin {
 		$key = isset( $_POST['onetill_stripe_secret_key'] ) ? sanitize_text_field( wp_unslash( $_POST['onetill_stripe_secret_key'] ) ) : '';
 		update_option( 'onetill_stripe_secret_key', $key );
 
-		wp_safe_redirect( admin_url( 'admin.php?page=onetill&stripe_saved=1' ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=onetill-settings&stripe_saved=1' ) );
 		exit;
 	}
 
