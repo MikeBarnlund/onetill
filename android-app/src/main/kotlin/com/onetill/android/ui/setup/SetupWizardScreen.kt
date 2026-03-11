@@ -42,7 +42,7 @@ import com.onetill.android.ui.components.OneTillTextField
 import com.onetill.android.ui.scanner.QrScannerScreen
 import com.onetill.android.ui.theme.OneTillTheme
 import com.onetill.android.ui.theme.Success
-import com.onetill.android.ui.theme.screenGradient
+import com.onetill.android.ui.theme.screenGradientBackground
 
 @Composable
 fun SetupWizardScreen(
@@ -108,7 +108,7 @@ private fun WelcomeStep(onGetStarted: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .drawBehind { drawRect(brush = screenGradient(size.width, size.height)) },
+            .screenGradientBackground(),
     ) {
         // Centered content
         Column(
@@ -183,7 +183,7 @@ private fun StoreConnectionStep(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .drawBehind { drawRect(brush = screenGradient(size.width, size.height)) },
+            .screenGradientBackground(),
     ) {
         // Scrollable form
         Column(
@@ -290,7 +290,7 @@ private fun CatalogSyncStep(productsSynced: Int, isComplete: Boolean) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .drawBehind { drawRect(brush = screenGradient(size.width, size.height)) },
+            .screenGradientBackground(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -400,7 +400,7 @@ private fun ReadyStep(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .drawBehind { drawRect(brush = screenGradient(size.width, size.height)) },
+            .screenGradientBackground(),
     ) {
         // Centered content
         Column(

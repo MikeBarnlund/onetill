@@ -1,7 +1,9 @@
 package com.onetill.shared.cart
 
+import com.onetill.shared.data.model.CouponType
 import com.onetill.shared.data.model.PaymentMethod
 import com.onetill.shared.fake.FakeLocalDataSource
+import com.onetill.shared.fake.testCoupon
 import com.onetill.shared.fake.testProduct
 import com.onetill.shared.fake.testTaxRate
 import com.onetill.shared.fake.testVariant
@@ -11,6 +13,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -117,27 +120,164 @@ class CartManagerTest {
         assertTrue(cart.cartState.value.isEmpty)
     }
 
+    // -- Coupon validation --
+
+    @Test
+    fun applyCouponRejectsUnknownCode() = runTest(testDispatcher) {
+        val cart = createCartManager()
+        cart.addProduct(testProduct(price = 10000))
+
+        val result = cart.applyCoupon("BOGUS")
+
+        assertIs<CouponApplyResult.Invalid>(result)
+        assertEquals("Invalid coupon code", result.reason)
+        assertTrue(cart.cartState.value.appliedCoupons.isEmpty())
+    }
+
+    @Test
+    fun applyCouponAcceptsValidCode() = runTest(testDispatcher) {
+        fakeLocal.coupons.add(testCoupon(code = "SAVE10", type = CouponType.PERCENT, amount = "10.00"))
+        val cart = createCartManager()
+        cart.addProduct(testProduct(price = 10000)) // $100
+
+        val result = cart.applyCoupon("save10")
+
+        assertIs<CouponApplyResult.Applied>(result)
+        assertEquals("SAVE10", result.code)
+        assertEquals(1000L, result.discountAmount.amountCents) // 10% of $100
+    }
+
     @Test
     fun applyCouponDeduplicatesCaseInsensitive() = runTest(testDispatcher) {
+        fakeLocal.coupons.add(testCoupon(code = "SAVE10"))
         val cart = createCartManager()
+        cart.addProduct(testProduct(price = 10000))
 
         cart.applyCoupon("save10")
-        cart.applyCoupon("SAVE10")
+        val result = cart.applyCoupon("SAVE10")
 
-        assertEquals(1, cart.cartState.value.couponCodes.size)
-        assertEquals("SAVE10", cart.cartState.value.couponCodes[0])
+        assertIs<CouponApplyResult.Invalid>(result)
+        assertEquals("Coupon already applied", result.reason)
+        assertEquals(1, cart.cartState.value.appliedCoupons.size)
     }
 
     @Test
     fun removeCoupon() = runTest(testDispatcher) {
+        fakeLocal.coupons.add(testCoupon(code = "SAVE10"))
         val cart = createCartManager()
+        cart.addProduct(testProduct(price = 10000))
         cart.applyCoupon("SAVE10")
-        cart.applyCoupon("WELCOME")
 
         cart.removeCoupon("save10")
 
-        assertEquals(listOf("WELCOME"), cart.cartState.value.couponCodes)
+        assertTrue(cart.cartState.value.appliedCoupons.isEmpty())
+        assertEquals(0L, cart.cartState.value.discountTotal.amountCents)
     }
+
+    // -- Discount calculation --
+
+    @Test
+    fun percentCouponCalculatesCorrectDiscount() = runTest(testDispatcher) {
+        fakeLocal.coupons.add(testCoupon(code = "HALF", type = CouponType.PERCENT, amount = "50.00"))
+        val cart = createCartManager()
+        cart.addProduct(testProduct(price = 2000)) // $20
+
+        cart.applyCoupon("HALF")
+
+        val state = cart.cartState.value
+        assertEquals(1000L, state.discountTotal.amountCents) // $10
+        assertEquals(1000L, state.estimatedTotal.amountCents) // $20 - $10 = $10
+    }
+
+    @Test
+    fun fixedCartCouponCalculatesCorrectDiscount() = runTest(testDispatcher) {
+        fakeLocal.coupons.add(testCoupon(code = "FIVE", type = CouponType.FIXED_CART, amount = "5.00"))
+        val cart = createCartManager()
+        cart.addProduct(testProduct(price = 2000)) // $20
+
+        cart.applyCoupon("FIVE")
+
+        val state = cart.cartState.value
+        assertEquals(500L, state.discountTotal.amountCents) // $5
+        assertEquals(1500L, state.estimatedTotal.amountCents) // $20 - $5 = $15
+    }
+
+    @Test
+    fun fixedProductCouponScalesWithItemCount() = runTest(testDispatcher) {
+        fakeLocal.coupons.add(testCoupon(code = "BUCK", type = CouponType.FIXED_PRODUCT, amount = "1.00"))
+        val cart = createCartManager()
+        cart.addProduct(testProduct(price = 2000)) // $20
+        cart.updateQuantity(productId = 1, variantId = null, newQuantity = 3) // 3 x $20
+
+        cart.applyCoupon("BUCK")
+
+        val state = cart.cartState.value
+        assertEquals(300L, state.discountTotal.amountCents) // $1 x 3 items
+        assertEquals(5700L, state.estimatedTotal.amountCents) // $60 - $3 = $57
+    }
+
+    @Test
+    fun discountCannotExceedSubtotal() = runTest(testDispatcher) {
+        fakeLocal.coupons.add(testCoupon(code = "BIG", type = CouponType.FIXED_CART, amount = "999.00"))
+        val cart = createCartManager()
+        cart.addProduct(testProduct(price = 500)) // $5
+
+        cart.applyCoupon("BIG")
+
+        val state = cart.cartState.value
+        assertEquals(500L, state.discountTotal.amountCents) // capped at $5
+        assertEquals(0L, state.estimatedTotal.amountCents)
+    }
+
+    @Test
+    fun percentDiscountRecalculatesWhenCartChanges() = runTest(testDispatcher) {
+        fakeLocal.coupons.add(testCoupon(code = "TEN", type = CouponType.PERCENT, amount = "10.00"))
+        val cart = createCartManager()
+        cart.addProduct(testProduct(id = 1, price = 10000)) // $100
+
+        cart.applyCoupon("TEN")
+        assertEquals(1000L, cart.cartState.value.discountTotal.amountCents) // $10
+
+        // Add another item — discount should scale up
+        cart.addProduct(testProduct(id = 2, name = "Other", price = 5000)) // +$50
+
+        val state = cart.cartState.value
+        assertEquals(15000L, state.subtotal.amountCents) // $150
+        assertEquals(1500L, state.discountTotal.amountCents) // 10% of $150 = $15
+        assertEquals(13500L, state.estimatedTotal.amountCents) // $150 - $15 = $135
+    }
+
+    @Test
+    fun discountAppliedBeforeTax() = runTest(testDispatcher) {
+        fakeLocal.taxRates.add(testTaxRate(rate = "10.0"))
+        fakeLocal.coupons.add(testCoupon(code = "TEN", type = CouponType.FIXED_CART, amount = "10.00"))
+        val cart = createCartManager()
+        cart.addProduct(testProduct(price = 10000)) // $100
+
+        cart.applyCoupon("TEN")
+
+        val state = cart.cartState.value
+        assertEquals(10000L, state.subtotal.amountCents) // $100
+        assertEquals(1000L, state.discountTotal.amountCents) // $10
+        // Tax is on discounted subtotal: ($100 - $10) * 10% = $9
+        assertEquals(900L, state.estimatedTax.amountCents)
+        assertEquals(9900L, state.estimatedTotal.amountCents) // $90 + $9 = $99
+    }
+
+    @Test
+    fun couponCodesCarryThroughToOrderDraft() = runTest(testDispatcher) {
+        fakeLocal.coupons.add(testCoupon(code = "SALE"))
+        val cart = createCartManager()
+        cart.addProduct(testProduct(id = 5, price = 2000))
+        cart.applyCoupon("SALE")
+
+        val draft = cart.buildOrderDraft(PaymentMethod.CASH)
+
+        assertEquals(listOf("SALE"), draft.couponCodes)
+        assertTrue(draft.discountCents > 0)
+    }
+
+    // -- Other --
 
     @Test
     fun setNoteBlankBecomesNull() = runTest(testDispatcher) {
@@ -150,6 +290,7 @@ class CartManagerTest {
 
     @Test
     fun clearCartResetsEverything() = runTest(testDispatcher) {
+        fakeLocal.coupons.add(testCoupon(code = "SAVE10"))
         val cart = createCartManager()
         cart.addProduct(testProduct())
         cart.applyCoupon("SAVE10")
@@ -160,13 +301,15 @@ class CartManagerTest {
 
         val state = cart.cartState.value
         assertTrue(state.isEmpty)
-        assertTrue(state.couponCodes.isEmpty())
+        assertTrue(state.appliedCoupons.isEmpty())
+        assertEquals(0L, state.discountTotal.amountCents)
         assertNull(state.customerId)
         assertNull(state.note)
     }
 
     @Test
     fun buildOrderDraftCarriesAllFields() = runTest(testDispatcher) {
+        fakeLocal.coupons.add(testCoupon(code = "SALE", type = CouponType.PERCENT, amount = "10.00"))
         val cart = createCartManager()
         cart.addProduct(testProduct(id = 5, price = 2000))
         cart.applyCoupon("SALE")
@@ -181,6 +324,7 @@ class CartManagerTest {
         assertEquals(99L, draft.customerId)
         assertEquals(PaymentMethod.CASH, draft.paymentMethod)
         assertEquals(listOf("SALE"), draft.couponCodes)
+        assertEquals(200L, draft.discountCents) // 10% of $20
         assertEquals("Gift wrap", draft.note)
         assertNotEquals("", draft.idempotencyKey)
     }

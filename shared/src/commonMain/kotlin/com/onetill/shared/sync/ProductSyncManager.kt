@@ -2,7 +2,7 @@ package com.onetill.shared.sync
 
 import com.onetill.shared.data.AppResult
 import com.onetill.shared.data.local.LocalDataSource
-import com.onetill.shared.data.onSuccess
+import com.onetill.shared.data.model.Coupon
 import com.onetill.shared.ecommerce.ECommerceBackend
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +16,7 @@ private const val PAGE_SIZE = 20
 class ProductSyncManager(
     private val backend: ECommerceBackend,
     private val localDataSource: LocalDataSource,
+    private val couponFetcher: (suspend () -> List<Coupon>)? = null,
 ) {
     private val _progress = MutableStateFlow(SyncProgress(currentPage = 0, totalProducts = 0, isComplete = false))
     val progress: StateFlow<SyncProgress> = _progress.asStateFlow()
@@ -64,6 +65,9 @@ class ProductSyncManager(
         // Sync tax rates alongside products — needed for local cart tax estimation
         syncTaxRates()
 
+        // Sync coupons — needed for local coupon validation in the cart
+        syncCoupons()
+
         return AppResult.Success(Unit)
     }
 
@@ -76,6 +80,17 @@ class ProductSyncManager(
             is AppResult.Error -> {
                 Napier.w("Tax rate sync failed: ${result.message}")
             }
+        }
+    }
+
+    suspend fun syncCoupons() {
+        val fetcher = couponFetcher ?: return
+        try {
+            val coupons = fetcher()
+            localDataSource.saveCoupons(coupons)
+            Napier.d("Coupons synced: ${coupons.size} active coupons")
+        } catch (e: Exception) {
+            Napier.w("Coupon sync failed: ${e.message}")
         }
     }
 

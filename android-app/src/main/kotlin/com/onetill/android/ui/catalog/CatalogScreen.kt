@@ -48,12 +48,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -86,9 +82,8 @@ import com.onetill.android.ui.components.SearchIcon
 import com.onetill.android.ui.components.ToastHost
 import com.onetill.shared.data.model.ProductType
 import com.onetill.shared.util.formatDisplay
-import com.onetill.android.ui.theme.Background
-import com.onetill.android.ui.theme.BackgroundGradientStart
 import com.onetill.android.ui.theme.OneTillTheme
+import com.onetill.android.ui.theme.screenGradientBackground
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -639,16 +634,4 @@ private fun SplashScreen() {
             color = colors.textSecondary,
         )
     }
-}
-
-private fun Modifier.screenGradientBackground(): Modifier = this.drawBehind {
-    drawRect(
-        brush = Brush.linearGradient(
-            colors = listOf(BackgroundGradientStart, Background),
-            start = Offset(0f, 0f),
-            end = Offset(size.width, size.height),
-        ),
-        topLeft = Offset.Zero,
-        size = Size(size.width, size.height),
-    )
 }

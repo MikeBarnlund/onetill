@@ -1,6 +1,8 @@
 package com.onetill.shared.cart
 
 import com.onetill.shared.data.local.LocalDataSource
+import com.onetill.shared.data.model.Coupon
+import com.onetill.shared.data.model.CouponType
 import com.onetill.shared.data.model.Money
 import com.onetill.shared.data.model.OrderDraft
 import com.onetill.shared.data.model.PaymentMethod
@@ -12,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.math.roundToLong
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -25,16 +28,20 @@ class CartManager(
     private val taxCalculator = TaxCalculator()
 
     private var items = mutableListOf<CartItem>()
-    private var couponCodes = mutableListOf<String>()
+    private var appliedCoupons = mutableListOf<AppliedCoupon>()
     private var customerId: Long? = null
     private var note: String? = null
     private var cachedTaxRates: List<TaxRate> = emptyList()
+    private var cachedCoupons: List<Coupon> = emptyList()
 
     private val _cartState = MutableStateFlow(CartState.empty(currency))
     val cartState: StateFlow<CartState> = _cartState.asStateFlow()
 
     init {
-        scope.launch { refreshTaxRates() }
+        scope.launch {
+            refreshTaxRates()
+            refreshCoupons()
+        }
     }
 
     fun addProduct(product: Product, variant: ProductVariant? = null): AddResult {
@@ -89,16 +96,35 @@ class CartManager(
         }
     }
 
-    fun applyCoupon(code: String) {
+    fun applyCoupon(code: String): CouponApplyResult {
         val normalized = code.trim().uppercase()
-        if (normalized.isNotEmpty() && couponCodes.none { it.equals(normalized, ignoreCase = true) }) {
-            couponCodes.add(normalized)
-            emitState()
+        if (normalized.isEmpty()) return CouponApplyResult.Invalid("Enter a coupon code")
+
+        if (appliedCoupons.any { it.code.equals(normalized, ignoreCase = true) }) {
+            return CouponApplyResult.Invalid("Coupon already applied")
         }
+
+        val coupon = cachedCoupons.find { it.code.equals(normalized, ignoreCase = true) }
+            ?: return CouponApplyResult.Invalid("Invalid coupon code")
+
+        val subtotal = items.fold(Money.zero(currency)) { acc, item -> acc + item.totalPrice }
+        val discountAmount = calculateDiscount(coupon, subtotal)
+
+        appliedCoupons.add(
+            AppliedCoupon(
+                code = coupon.code,
+                type = coupon.type,
+                amount = coupon.amount,
+                discountAmount = discountAmount,
+            )
+        )
+
+        emitState()
+        return CouponApplyResult.Applied(coupon.code, discountAmount)
     }
 
     fun removeCoupon(code: String) {
-        couponCodes.removeAll { it.equals(code.trim(), ignoreCase = true) }
+        appliedCoupons.removeAll { it.code.equals(code.trim(), ignoreCase = true) }
         emitState()
     }
 
@@ -125,7 +151,7 @@ class CartManager(
             }
         }
         items.clear()
-        couponCodes.clear()
+        appliedCoupons.clear()
         customerId = null
         note = null
         emitState()
@@ -137,21 +163,46 @@ class CartManager(
         stripeTransactionId: String? = null,
         cardBrand: String? = null,
         cardLast4: String? = null,
-    ): OrderDraft = OrderDraft(
-        lineItems = items.map { it.toLineItem() },
-        customerId = customerId,
-        paymentMethod = paymentMethod,
-        idempotencyKey = Uuid.random().toString(),
-        note = note,
-        couponCodes = couponCodes.toList(),
-        stripeTransactionId = stripeTransactionId,
-        cardBrand = cardBrand,
-        cardLast4 = cardLast4,
-    )
+    ): OrderDraft {
+        val state = _cartState.value
+        return OrderDraft(
+            lineItems = items.map { it.toLineItem() },
+            customerId = customerId,
+            paymentMethod = paymentMethod,
+            idempotencyKey = Uuid.random().toString(),
+            note = note,
+            couponCodes = appliedCoupons.map { it.code },
+            discountCents = state.discountTotal.amountCents,
+            stripeTransactionId = stripeTransactionId,
+            cardBrand = cardBrand,
+            cardLast4 = cardLast4,
+        )
+    }
 
     suspend fun refreshTaxRates() {
         cachedTaxRates = localDataSource.getAllTaxRates()
         emitState()
+    }
+
+    suspend fun refreshCoupons() {
+        cachedCoupons = localDataSource.getAllCoupons()
+    }
+
+    private fun calculateDiscount(coupon: Coupon, subtotal: Money): Money {
+        val amountValue = coupon.amount.toDoubleOrNull() ?: 0.0
+        val discountCents = when (coupon.type) {
+            CouponType.PERCENT -> (subtotal.amountCents * amountValue / 100.0).roundToLong()
+            CouponType.FIXED_CART -> (amountValue * 100).roundToLong()
+            CouponType.FIXED_PRODUCT -> {
+                val itemCount = items.sumOf { it.quantity }
+                (amountValue * 100 * itemCount).roundToLong()
+            }
+        }
+        // Never discount more than the subtotal
+        return Money(
+            amountCents = discountCents.coerceAtMost(subtotal.amountCents),
+            currencyCode = subtotal.currencyCode,
+        )
     }
 
     private fun emitState() {
@@ -161,16 +212,37 @@ class CartManager(
             items.fold(Money.zero(currency)) { acc, item -> acc + item.totalPrice }
         }
 
-        val estimatedTax = taxCalculator.calculateTax(subtotal, cachedTaxRates)
-        val estimatedTotal = subtotal + estimatedTax
+        // Recalculate discount amounts when cart changes (e.g. percent coupons scale with subtotal)
+        val recalculated = appliedCoupons.map { applied ->
+            val coupon = cachedCoupons.find { it.code == applied.code }
+            if (coupon != null) {
+                applied.copy(discountAmount = calculateDiscount(coupon, subtotal))
+            } else {
+                applied
+            }
+        }
+        appliedCoupons.clear()
+        appliedCoupons.addAll(recalculated)
+
+        val discountTotal = if (appliedCoupons.isEmpty()) {
+            Money.zero(currency)
+        } else {
+            appliedCoupons.fold(Money.zero(currency)) { acc, c -> acc + c.discountAmount }
+        }
+
+        // Tax is calculated on the discounted subtotal (matches WooCommerce behavior)
+        val discountedSubtotal = subtotal - discountTotal
+        val estimatedTax = taxCalculator.calculateTax(discountedSubtotal, cachedTaxRates)
+        val estimatedTotal = discountedSubtotal + estimatedTax
 
         _cartState.value = CartState(
             items = items.toList(),
-            couponCodes = couponCodes.toList(),
+            appliedCoupons = appliedCoupons.toList(),
             customerId = customerId,
             note = note,
             currency = currency,
             subtotal = subtotal,
+            discountTotal = discountTotal,
             estimatedTax = estimatedTax,
             estimatedTotal = estimatedTotal,
             itemCount = items.sumOf { it.quantity },

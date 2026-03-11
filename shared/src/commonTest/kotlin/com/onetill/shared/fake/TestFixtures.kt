@@ -1,5 +1,7 @@
 package com.onetill.shared.fake
 
+import com.onetill.shared.data.model.Coupon
+import com.onetill.shared.data.model.CouponType
 import com.onetill.shared.data.model.LineItem
 import com.onetill.shared.data.model.Money
 import com.onetill.shared.data.model.Order
@@ -121,6 +123,18 @@ fun testTaxRate(
     state = "CA",
     isCompound = isCompound,
     isShipping = false,
+)
+
+fun testCoupon(
+    id: Long = 1,
+    code: String = "SAVE10",
+    type: CouponType = CouponType.PERCENT,
+    amount: String = "10.00",
+) = Coupon(
+    id = id,
+    code = code,
+    type = type,
+    amount = amount,
 )
 
 fun testStoreConfig(

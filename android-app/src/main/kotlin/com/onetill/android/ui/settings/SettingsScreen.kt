@@ -19,7 +19,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,7 +31,7 @@ import com.onetill.android.ui.components.OneTillTextField
 import com.onetill.android.ui.components.ScreenHeader
 import com.onetill.android.ui.theme.OneTillTheme
 import com.onetill.android.ui.theme.Success
-import com.onetill.android.ui.theme.screenGradient
+import com.onetill.android.ui.theme.screenGradientBackground
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
@@ -47,7 +46,7 @@ fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .drawBehind { drawRect(brush = screenGradient(size.width, size.height)) },
+            .screenGradientBackground(),
     ) {
         AppStatusBar()
 

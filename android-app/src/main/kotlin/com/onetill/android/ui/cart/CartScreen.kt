@@ -25,7 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,7 +37,8 @@ import com.onetill.android.ui.components.OneTillButton
 import com.onetill.android.ui.components.OneTillTextField
 import com.onetill.android.ui.components.ScreenHeader
 import com.onetill.android.ui.theme.OneTillTheme
-import com.onetill.android.ui.theme.screenGradient
+import com.onetill.android.ui.theme.screenGradientBackground
+import com.onetill.shared.data.model.CouponType
 import com.onetill.shared.util.formatDisplay
 import org.koin.androidx.compose.koinViewModel
 
@@ -51,6 +51,7 @@ fun CartScreen(
     val colors = OneTillTheme.colors
     val dimens = OneTillTheme.dimens
     val state by viewModel.cartState.collectAsState()
+    val couponError by viewModel.couponError.collectAsState()
     var showCouponField by remember { mutableStateOf(false) }
     var couponInput by remember { mutableStateOf("") }
 
@@ -65,7 +66,7 @@ fun CartScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .drawBehind { drawRect(brush = screenGradient(size.width, size.height)) },
+            .screenGradientBackground(),
     ) {
         AppStatusBar()
 
@@ -118,9 +119,9 @@ fun CartScreen(
                         .fillMaxWidth()
                         .animateContentSize(),
                 ) {
-                    val firstCoupon = state.couponCodes.firstOrNull()
+                    val firstCoupon = state.appliedCoupons.firstOrNull()
                     if (firstCoupon != null) {
-                        // Applied coupon
+                        // Applied coupon — show code, description, discount amount, and remove
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -133,49 +134,76 @@ fun CartScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 CouponTagIcon(
-                                    color = colors.textSecondary,
+                                    color = colors.success,
                                     modifier = Modifier.size(14.dp),
                                 )
                                 Text(
-                                    text = firstCoupon,
+                                    text = firstCoupon.code,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = colors.textSecondary,
                                 )
+                                val label = when (firstCoupon.type) {
+                                    CouponType.PERCENT -> "(${firstCoupon.amount}% off)"
+                                    CouponType.FIXED_CART -> ""
+                                    CouponType.FIXED_PRODUCT -> "(per item)"
+                                }
+                                if (label.isNotEmpty()) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 12.sp,
+                                        color = colors.textTertiary,
+                                    )
+                                }
                             }
                             Text(
                                 text = "Remove",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = colors.error,
-                                modifier = Modifier.clickable { viewModel.removeCoupon(firstCoupon) },
+                                modifier = Modifier.clickable { viewModel.removeCoupon(firstCoupon.code) },
                             )
                         }
                     } else if (showCouponField) {
                         // Inline coupon entry
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 14.dp),
-                            horizontalArrangement = Arrangement.spacedBy(dimens.sm),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            OneTillTextField(
-                                value = couponInput,
-                                onValueChange = { couponInput = it },
-                                placeholder = "Enter coupon code",
-                                modifier = Modifier.weight(1f),
-                            )
-                            OneTillButton(
-                                text = "Apply",
-                                onClick = {
-                                    viewModel.applyCoupon(couponInput)
-                                    couponInput = ""
-                                    showCouponField = false
-                                },
-                                variant = ButtonVariant.Secondary,
-                                modifier = Modifier.weight(0.4f),
-                            )
+                        Column {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 14.dp),
+                                horizontalArrangement = Arrangement.spacedBy(dimens.sm),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                OneTillTextField(
+                                    value = couponInput,
+                                    onValueChange = {
+                                        couponInput = it
+                                        viewModel.clearCouponError()
+                                    },
+                                    placeholder = "Enter coupon code",
+                                    modifier = Modifier.weight(1f),
+                                )
+                                OneTillButton(
+                                    text = "Apply",
+                                    onClick = {
+                                        val applied = viewModel.applyCoupon(couponInput)
+                                        if (applied) {
+                                            couponInput = ""
+                                            showCouponField = false
+                                        }
+                                    },
+                                    variant = ButtonVariant.Secondary,
+                                    modifier = Modifier.weight(0.4f),
+                                )
+                            }
+                            if (couponError != null) {
+                                Text(
+                                    text = couponError!!,
+                                    fontSize = 12.sp,
+                                    color = colors.error,
+                                    modifier = Modifier.padding(bottom = 8.dp),
+                                )
+                            }
                         }
                     } else {
                         // "Add Coupon Code" tappable row
@@ -229,6 +257,16 @@ fun CartScreen(
                 value = state.subtotal.formatDisplay(),
             )
             Spacer(modifier = Modifier.height(4.dp))
+
+            // Discount (only shown when a coupon is applied)
+            if (state.discountTotal.amountCents > 0) {
+                TotalRow(
+                    label = "Discount",
+                    value = "-${state.discountTotal.formatDisplay()}",
+                    isDiscount = true,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+            }
 
             // Tax
             TotalRow(
@@ -286,12 +324,12 @@ private fun TotalRow(
         Text(
             text = label,
             fontSize = 13.sp,
-            color = colors.textTertiary,
+            color = if (isDiscount) colors.success else colors.textTertiary,
         )
         Text(
             text = value,
             fontSize = 13.sp,
-            color = if (isDiscount) colors.error else colors.textSecondary,
+            color = if (isDiscount) colors.success else colors.textSecondary,
         )
     }
 }

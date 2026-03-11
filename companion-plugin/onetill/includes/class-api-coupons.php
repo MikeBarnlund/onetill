@@ -55,6 +55,68 @@ class API_Coupons {
 				'permission_callback' => array( $this, 'check_permissions' ),
 			)
 		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/coupons',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'list_coupons' ),
+				'permission_callback' => array( $this, 'check_permissions' ),
+			)
+		);
+	}
+
+	/**
+	 * List all active, non-expired coupons for local POS cache.
+	 *
+	 * Returns only the fields the POS needs: id, code, type, amount.
+	 * Filters out expired, draft, and usage-limit-reached coupons.
+	 *
+	 * @param \WP_REST_Request $request The request.
+	 * @return \WP_REST_Response
+	 */
+	public function list_coupons( $request ) {
+		$args = array(
+			'posts_per_page' => -1,
+			'post_type'      => 'shop_coupon',
+			'post_status'    => 'publish',
+		);
+
+		$coupon_posts = get_posts( $args );
+		$coupons      = array();
+
+		foreach ( $coupon_posts as $post ) {
+			$coupon = new \WC_Coupon( $post->ID );
+
+			// Skip expired coupons.
+			$expiry = $coupon->get_date_expires();
+			if ( $expiry && $expiry->getTimestamp() < time() ) {
+				continue;
+			}
+
+			// Skip coupons that have reached their usage limit.
+			$usage_limit = $coupon->get_usage_limit();
+			if ( $usage_limit > 0 && $coupon->get_usage_count() >= $usage_limit ) {
+				continue;
+			}
+
+			$type_map = array(
+				'percent'       => 'percent',
+				'fixed_cart'    => 'fixed_cart',
+				'fixed_product' => 'fixed_product',
+			);
+			$coupon_type = $coupon->get_discount_type();
+
+			$coupons[] = array(
+				'id'     => $coupon->get_id(),
+				'code'   => $coupon->get_code(),
+				'type'   => isset( $type_map[ $coupon_type ] ) ? $type_map[ $coupon_type ] : $coupon_type,
+				'amount' => wc_format_decimal( $coupon->get_amount(), 2 ),
+			);
+		}
+
+		return new \WP_REST_Response( $coupons, 200 );
 	}
 
 	/**

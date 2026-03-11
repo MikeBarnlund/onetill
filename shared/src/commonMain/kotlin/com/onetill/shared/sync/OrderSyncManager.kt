@@ -9,6 +9,7 @@ import com.onetill.shared.data.model.OrderDraft
 import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.ecommerce.ECommerceBackend
 import io.github.aakira.napier.Napier
+import io.ktor.client.plugins.ClientRequestException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
@@ -35,13 +36,18 @@ class OrderSyncManager(
      */
     suspend fun submitOrder(draft: OrderDraft, currency: String): Long {
         // Build a local Order to persist
+        val lineItemTotal = draft.lineItems.fold(Money.zero(currency)) { acc, li -> acc + li.totalPrice }
+        val total = Money(
+            amountCents = (lineItemTotal.amountCents - draft.discountCents).coerceAtLeast(0),
+            currencyCode = currency,
+        )
         val localOrder = Order(
             id = 0,
             number = "",
             status = OrderStatus.PENDING_SYNC,
             lineItems = draft.lineItems,
             customerId = draft.customerId,
-            total = draft.lineItems.fold(Money.zero(currency)) { acc, li -> acc + li.totalPrice },
+            total = total,
             totalTax = Money.zero(currency),
             paymentMethod = draft.paymentMethod,
             stripeTransactionId = draft.stripeTransactionId,
@@ -79,9 +85,17 @@ class OrderSyncManager(
                     Napier.i("Pending order synced: local=${order.id}, remote=${remoteOrder.id}")
                 }
                 is AppResult.Error -> {
-                    Napier.w("Failed to sync order ${order.id}: ${result.message}")
-                    // Skip and let next drain cycle retry
-                    break
+                    val isClientError = result.cause is ClientRequestException
+                    if (isClientError) {
+                        // 4xx errors (bad request, invalid coupon, etc.) won't succeed on retry —
+                        // mark as FAILED so they don't block the rest of the queue.
+                        localDataSource.updateOrderStatus(order.id, OrderStatus.FAILED)
+                        Napier.e("Order ${order.id} permanently failed: ${result.message}", result.cause)
+                    } else {
+                        // Network/server errors are retryable — stop and try again next cycle.
+                        Napier.w("Failed to sync order ${order.id} (will retry): ${result.message}", result.cause)
+                        break
+                    }
                 }
             }
         }

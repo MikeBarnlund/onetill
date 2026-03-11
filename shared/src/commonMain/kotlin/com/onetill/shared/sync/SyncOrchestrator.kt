@@ -1,5 +1,6 @@
 package com.onetill.shared.sync
 
+import com.onetill.shared.cart.CartManager
 import com.onetill.shared.data.AppResult
 import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.shared.ecommerce.woocommerce.OneTillPluginClient
@@ -25,6 +26,7 @@ class SyncOrchestrator(
     private val scope: CoroutineScope,
     private val pluginClient: OneTillPluginClient,
     private val localDataSource: LocalDataSource,
+    private val cartManager: CartManager,
 ) {
     private val _syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
     val syncStatus: StateFlow<SyncStatus> = _syncStatus.asStateFlow()
@@ -196,8 +198,10 @@ class SyncOrchestrator(
             syncMutex.unlock()
         }
 
-        // Also drain pending orders and refresh staff users during each sync cycle
+        // Also drain pending orders, refresh coupons, and refresh staff users during each sync cycle
         orderSyncManager.drainPendingOrders()
+        productSyncManager.syncCoupons()
+        cartManager.refreshCoupons()
         syncUsers()
     }
 }

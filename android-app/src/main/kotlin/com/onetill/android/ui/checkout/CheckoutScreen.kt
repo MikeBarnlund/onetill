@@ -24,7 +24,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -42,7 +41,7 @@ import com.onetill.android.ui.components.OneTillTextField
 import com.onetill.android.ui.components.PaymentMethodCard
 import com.onetill.android.ui.components.ScreenHeader
 import com.onetill.android.ui.theme.OneTillTheme
-import com.onetill.android.ui.theme.screenGradient
+import com.onetill.android.ui.theme.screenGradientBackground
 
 @Composable
 fun CheckoutScreen(
@@ -68,7 +67,7 @@ fun CheckoutScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .drawBehind { drawRect(brush = screenGradient(size.width, size.height)) },
+            .screenGradientBackground(),
     ) {
         AppStatusBar()
 

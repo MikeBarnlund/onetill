@@ -3,6 +3,8 @@ package com.onetill.shared.data.local
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.coroutines.mapToOneOrNull
+import com.onetill.shared.data.model.Coupon
+import com.onetill.shared.data.model.CouponType
 import com.onetill.shared.data.model.LineItem
 import com.onetill.shared.data.model.Money
 import com.onetill.shared.data.model.Order
@@ -32,6 +34,46 @@ import kotlinx.datetime.Instant
 class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
 
     private val queries get() = db.oneTillQueries
+
+    // ========================================================================
+    // Coupons
+    // ========================================================================
+
+    override suspend fun saveCoupons(coupons: List<Coupon>) = withContext(Dispatchers.Default) {
+        db.transaction {
+            queries.deleteAllCoupons()
+            for (coupon in coupons) {
+                queries.insertOrReplaceCoupon(
+                    id = coupon.id,
+                    code = coupon.code,
+                    type = coupon.type.name,
+                    amount = coupon.amount,
+                )
+            }
+        }
+    }
+
+    override suspend fun getAllCoupons(): List<Coupon> = withContext(Dispatchers.Default) {
+        queries.selectAllCoupons().executeAsList().map {
+            Coupon(
+                id = it.id,
+                code = it.code,
+                type = CouponType.valueOf(it.type),
+                amount = it.amount,
+            )
+        }
+    }
+
+    override suspend fun getCouponByCode(code: String): Coupon? = withContext(Dispatchers.Default) {
+        queries.selectCouponByCode(code).executeAsOneOrNull()?.let {
+            Coupon(
+                id = it.id,
+                code = it.code,
+                type = CouponType.valueOf(it.type),
+                amount = it.amount,
+            )
+        }
+    }
 
     // ========================================================================
     // Products

@@ -28,7 +28,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,7 +40,7 @@ import com.onetill.android.ui.components.ScreenHeader
 import com.onetill.android.ui.components.StatusChip
 import com.onetill.shared.orders.OrderFilter
 import com.onetill.android.ui.theme.OneTillTheme
-import com.onetill.android.ui.theme.screenGradient
+import com.onetill.android.ui.theme.screenGradientBackground
 
 @Composable
 fun OrderHistoryScreen(
@@ -59,7 +58,7 @@ fun OrderHistoryScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .drawBehind { drawRect(brush = screenGradient(size.width, size.height)) },
+            .screenGradientBackground(),
     ) {
         // Status bar
         AppStatusBar()

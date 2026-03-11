@@ -469,6 +469,19 @@ deleteStoreConfig:
 DELETE FROM store_config;
 
 -- ----------------------------------------------------------------------------
+-- Coupons (synced from WooCommerce for local validation)
+-- ----------------------------------------------------------------------------
+
+CREATE TABLE coupon (
+    id INTEGER NOT NULL PRIMARY KEY,
+    code TEXT NOT NULL,
+    type TEXT NOT NULL,
+    amount TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX idx_coupon_code ON coupon(code);
+
+-- ----------------------------------------------------------------------------
 -- Staff Users (for PIN lock screen)
 -- ----------------------------------------------------------------------------
 
@@ -510,3 +523,19 @@ SELECT COUNT(*) FROM staff_user;
 
 deleteAllStaffUsers:
 DELETE FROM staff_user;
+
+-- ============================================================================
+-- QUERIES: Coupons
+-- ============================================================================
+
+insertOrReplaceCoupon:
+INSERT OR REPLACE INTO coupon(id, code, type, amount) VALUES (?, ?, ?, ?);
+
+selectAllCoupons:
+SELECT * FROM coupon ORDER BY code ASC;
+
+selectCouponByCode:
+SELECT * FROM coupon WHERE code = ? COLLATE NOCASE;
+
+deleteAllCoupons:
+DELETE FROM coupon;

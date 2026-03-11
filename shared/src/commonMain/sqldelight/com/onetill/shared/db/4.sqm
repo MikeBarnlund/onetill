@@ -1,0 +1,9 @@
+-- Migration: Add coupons table for local coupon validation
+CREATE TABLE IF NOT EXISTS coupon (
+    id INTEGER NOT NULL PRIMARY KEY,
+    code TEXT NOT NULL,
+    type TEXT NOT NULL,
+    amount TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_coupon_code ON coupon(code);

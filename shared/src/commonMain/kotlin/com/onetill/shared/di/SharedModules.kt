@@ -13,6 +13,7 @@ import com.onetill.shared.ecommerce.woocommerce.WooCommerceBackend
 import com.onetill.shared.ecommerce.woocommerce.WooCommerceClient
 import com.onetill.shared.ecommerce.woocommerce.createOneTillPluginHttpClient
 import com.onetill.shared.ecommerce.woocommerce.createWooCommerceHttpClient
+import com.onetill.shared.ecommerce.woocommerce.dto.toDomain
 import com.onetill.shared.pairing.PairingClient
 import com.onetill.shared.setup.SetupManager
 import com.onetill.shared.sync.OrderSyncManager
@@ -42,9 +43,16 @@ fun backendModule(config: StoreConfig) = module {
 }
 
 val syncModule = module {
-    single { ProductSyncManager(get(), get()) }
+    single {
+        val pluginClient: OneTillPluginClient = get()
+        ProductSyncManager(
+            backend = get(),
+            localDataSource = get(),
+            couponFetcher = { pluginClient.getCoupons().map { it.toDomain() } },
+        )
+    }
     single { OrderSyncManager(get(), get()) }
-    single { SyncOrchestrator(get(), get(), get(), get(), get(), get()) }
+    single { SyncOrchestrator(get(), get(), get(), get(), get(), get(), get()) }
     single { OrderAnalytics(get()) }
 }
 

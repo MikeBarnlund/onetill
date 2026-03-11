@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.onetill.android.ui.components.OneTillButton
 import com.onetill.android.ui.theme.OneTillTheme
 import com.onetill.android.ui.theme.Success
-import com.onetill.android.ui.theme.screenGradient
+import com.onetill.android.ui.theme.screenGradientBackground
 import kotlinx.coroutines.delay
 
 @Composable
@@ -67,7 +67,7 @@ fun OrderCompleteScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .drawBehind { drawRect(brush = screenGradient(size.width, size.height)) },
+            .screenGradientBackground(),
     ) {
         // Centered content
         Column(

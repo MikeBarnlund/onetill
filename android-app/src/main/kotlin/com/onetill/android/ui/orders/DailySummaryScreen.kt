@@ -14,7 +14,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -25,7 +24,7 @@ import com.onetill.android.ui.components.HeaderNavAction
 import com.onetill.android.ui.components.ScreenHeader
 import com.onetill.android.ui.components.StatusChip
 import com.onetill.android.ui.theme.OneTillTheme
-import com.onetill.android.ui.theme.screenGradient
+import com.onetill.android.ui.theme.screenGradientBackground
 
 @Composable
 fun DailySummaryScreen(
@@ -39,7 +38,7 @@ fun DailySummaryScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .drawBehind { drawRect(brush = screenGradient(size.width, size.height)) },
+            .screenGradientBackground(),
     ) {
         // Status bar
         AppStatusBar()

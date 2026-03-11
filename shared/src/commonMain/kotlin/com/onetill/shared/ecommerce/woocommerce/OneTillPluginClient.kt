@@ -1,5 +1,6 @@
 package com.onetill.shared.ecommerce.woocommerce
 
+import com.onetill.shared.ecommerce.woocommerce.dto.OneTillCouponDto
 import com.onetill.shared.ecommerce.woocommerce.dto.OneTillOrderDto
 import com.onetill.shared.ecommerce.woocommerce.dto.StaffUserDto
 import com.onetill.shared.ecommerce.woocommerce.dto.StripeConnectionTokenResponse
@@ -27,6 +28,9 @@ class OneTillPluginClient(private val httpClient: HttpClient) {
                 parameter("date_after", dateAfter)
             }
         }.body()
+
+    suspend fun getCoupons(): List<OneTillCouponDto> =
+        httpClient.get("coupons").body()
 
     suspend fun getUsers(): List<StaffUserDto> =
         httpClient.get("users").body()

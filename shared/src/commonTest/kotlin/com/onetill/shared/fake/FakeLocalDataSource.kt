@@ -1,10 +1,12 @@
 package com.onetill.shared.fake
 
 import com.onetill.shared.data.local.LocalDataSource
+import com.onetill.shared.data.model.Coupon
 import com.onetill.shared.data.model.Order
 import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.data.model.Product
 import com.onetill.shared.data.model.ProductType
+import com.onetill.shared.data.model.StaffUser
 import com.onetill.shared.data.model.StoreConfig
 import com.onetill.shared.data.model.TaxRate
 import kotlinx.coroutines.flow.Flow
@@ -17,6 +19,7 @@ class FakeLocalDataSource : LocalDataSource {
     val products = mutableListOf<Product>()
     val orders = mutableListOf<Order>()
     val taxRates = mutableListOf<TaxRate>()
+    val coupons = mutableListOf<Coupon>()
     val syncTimestamps = mutableMapOf<String, Instant>()
 
     private var nextOrderId = 1L
@@ -196,6 +199,32 @@ class FakeLocalDataSource : LocalDataSource {
         _storeConfigFlow.value = null
     }
 
+    // Coupons
+
+    override suspend fun saveCoupons(coupons: List<Coupon>) {
+        this.coupons.clear()
+        this.coupons.addAll(coupons)
+    }
+
+    override suspend fun getAllCoupons(): List<Coupon> = coupons.toList()
+
+    override suspend fun getCouponByCode(code: String): Coupon? =
+        coupons.firstOrNull { it.code.equals(code, ignoreCase = true) }
+
+    // Staff Users
+
+    private val staffUsers = mutableListOf<StaffUser>()
+
+    override fun observeStaffUsers(): Flow<List<StaffUser>> =
+        MutableStateFlow(staffUsers.toList())
+
+    override suspend fun getStaffUsers(): List<StaffUser> = staffUsers.toList()
+
+    override suspend fun saveStaffUsers(users: List<StaffUser>) {
+        staffUsers.clear()
+        staffUsers.addAll(users)
+    }
+
     // Device ID
 
     private var deviceId: String? = null
@@ -210,6 +239,7 @@ class FakeLocalDataSource : LocalDataSource {
         products.clear()
         orders.clear()
         taxRates.clear()
+        coupons.clear()
         syncTimestamps.clear()
         nextOrderId = 1L
         saveProductsCalls = 0

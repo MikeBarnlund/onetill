@@ -1,5 +1,6 @@
 package com.onetill.shared.data.local
 
+import com.onetill.shared.data.model.Coupon
 import com.onetill.shared.data.model.Order
 import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.data.model.Product
@@ -10,6 +11,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.Instant
 
 interface LocalDataSource {
+
+    // Coupons
+    suspend fun saveCoupons(coupons: List<Coupon>)
+    suspend fun getAllCoupons(): List<Coupon>
+    suspend fun getCouponByCode(code: String): Coupon?
 
     // Products
     fun observeAllProducts(): Flow<List<Product>>
