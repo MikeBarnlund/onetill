@@ -110,7 +110,7 @@ fun ReceiptEmailScreen(
             OneTillButton(
                 text = "Send Receipt",
                 onClick = {
-                    viewModel.saveEmail(orderId, emailInput.trim())
+                    viewModel.saveEmailAndSync(orderId, emailInput.trim())
                     onSend(emailInput.trim())
                 },
                 enabled = isValidEmail,
@@ -118,7 +118,10 @@ fun ReceiptEmailScreen(
             Spacer(modifier = Modifier.height(8.dp))
             OneTillButton(
                 text = "Skip",
-                onClick = onSkip,
+                onClick = {
+                    viewModel.skipAndSync()
+                    onSkip()
+                },
                 variant = ButtonVariant.Ghost,
             )
         }

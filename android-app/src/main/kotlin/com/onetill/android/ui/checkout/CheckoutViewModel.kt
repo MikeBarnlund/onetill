@@ -81,7 +81,6 @@ class CheckoutViewModel(
             val draft = cartManager.buildOrderDraft(PaymentMethod.CASH)
             val localId = orderSyncManager.submitOrder(draft, currency)
             cartManager.clearCart(sold = true)
-            syncOrchestrator.triggerOrderDrain()
             _isSubmitting.value = false
             onComplete(localId, totalFormatted)
         }
@@ -105,7 +104,6 @@ class CheckoutViewModel(
                     )
                     val localId = orderSyncManager.submitOrder(draft, currency)
                     cartManager.clearCart(sold = true)
-                    syncOrchestrator.triggerOrderDrain()
                     _isSubmitting.value = false
                     onComplete(localId, totalFormatted)
                 }
