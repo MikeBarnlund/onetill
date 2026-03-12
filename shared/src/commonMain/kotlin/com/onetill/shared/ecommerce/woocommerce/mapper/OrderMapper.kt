@@ -85,8 +85,9 @@ fun OrderDraft.toWooDto(currency: String): WooCreateOrderDto = WooCreateOrderDto
         if (stripeTransactionId != null) add(WooCreateMetaDataDto(key = "_onetill_stripe_id", value = stripeTransactionId))
         if (cardBrand != null) add(WooCreateMetaDataDto(key = "_onetill_card_brand", value = cardBrand))
         if (cardLast4 != null) add(WooCreateMetaDataDto(key = "_onetill_card_last4", value = cardLast4))
-        // Order Attribution — shows "OneTill POS" in WooCommerce analytics.
-        add(WooCreateMetaDataDto(key = "_wc_order_attribution_origin", value = "OneTill POS"))
+        // Order Attribution — shows "Point of Sale" in WooCommerce analytics.
+        add(WooCreateMetaDataDto(key = "_wc_order_attribution_source_type", value = "pos"))
+        add(WooCreateMetaDataDto(key = "_wc_order_attribution_origin", value = "Point of Sale"))
     },
     billing = customerEmail?.let { WooOrderBillingDto(email = it) },
 )

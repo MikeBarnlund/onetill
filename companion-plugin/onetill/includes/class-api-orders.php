@@ -232,7 +232,8 @@ class API_Orders {
 		$order->update_meta_data( '_onetill_idempotency_key', $idempotency_key );
 
 		// WooCommerce Order Attribution — powers the analytics meta box.
-		$order->update_meta_data( '_wc_order_attribution_origin', 'OneTill POS' );
+		$order->update_meta_data( '_wc_order_attribution_source_type', 'pos' );
+		$order->update_meta_data( '_wc_order_attribution_origin', 'Point of Sale' );
 
 		if ( ! empty( $payment['transaction_id'] ) ) {
 			$order->update_meta_data( '_onetill_stripe_id', sanitize_text_field( $payment['transaction_id'] ) );
@@ -680,7 +681,8 @@ class API_Orders {
 		}
 
 		// WooCommerce Order Attribution — powers the analytics meta box.
-		$order->update_meta_data( '_wc_order_attribution_origin', 'OneTill POS' );
+		$order->update_meta_data( '_wc_order_attribution_source_type', 'pos' );
+		$order->update_meta_data( '_wc_order_attribution_origin', 'Point of Sale' );
 
 		// Resolve or create customer from billing email.
 		$customer_id = 0;
