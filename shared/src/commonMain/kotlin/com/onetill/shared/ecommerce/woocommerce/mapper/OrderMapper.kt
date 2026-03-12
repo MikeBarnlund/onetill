@@ -59,7 +59,7 @@ fun WooLineItemDto.toDomain(currency: String): LineItem = LineItem(
 )
 
 fun OrderDraft.toWooDto(currency: String): WooCreateOrderDto = WooCreateOrderDto(
-    status = "processing",
+    status = "completed",
     customerId = customerId ?: 0,
     paymentMethod = when (paymentMethod) {
         PaymentMethod.CARD -> "stripe"

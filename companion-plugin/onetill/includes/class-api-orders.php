@@ -706,6 +706,10 @@ class API_Orders {
 		}
 
 		$order->save();
+
+		// Force WooCommerce to recalculate customer stats (order count, total spent)
+		// since we assigned the customer after the order status hooks already fired.
+		wc_update_new_customer_past_orders( $customer_id );
 	}
 
 	/**
