@@ -187,13 +187,30 @@ class API_Orders {
 			$order->apply_coupon( sanitize_text_field( $code ) );
 		}
 
-		// Set customer if provided.
-		$customer_id = isset( $body['customer_id'] ) ? absint( $body['customer_id'] ) : 0;
-		if ( $customer_id ) {
-			$order->set_customer_id( $customer_id );
+		// Set customer — resolve or create from email if no explicit customer_id.
+		$customer_id    = isset( $body['customer_id'] ) ? absint( $body['customer_id'] ) : 0;
+		$customer_email = isset( $body['customer_email'] ) ? sanitize_email( $body['customer_email'] ) : '';
+
+		if ( $customer_email && ! $customer_id ) {
+			$customer_id = $this->resolve_or_create_customer( $customer_email );
 		}
 
-		$customer_email = isset( $body['customer_email'] ) ? sanitize_email( $body['customer_email'] ) : '';
+		if ( $customer_id ) {
+			$order->set_customer_id( $customer_id );
+
+			// Populate billing details from the customer record (name, phone).
+			$customer = new \WC_Customer( $customer_id );
+			if ( $customer->get_billing_first_name() ) {
+				$order->set_billing_first_name( $customer->get_billing_first_name() );
+			}
+			if ( $customer->get_billing_last_name() ) {
+				$order->set_billing_last_name( $customer->get_billing_last_name() );
+			}
+			if ( $customer->get_billing_phone() ) {
+				$order->set_billing_phone( $customer->get_billing_phone() );
+			}
+		}
+
 		if ( $customer_email ) {
 			$order->set_billing_email( $customer_email );
 		}
@@ -638,6 +655,102 @@ class API_Orders {
 	 * @param int|null $variation_id The variation ID, if applicable.
 	 * @return int The product ID to decrement stock on.
 	 */
+	/**
+	 * Hook into WooCommerce REST API order creation.
+	 *
+	 * When the app creates an order via the standard WC REST API (POST /wc/v3/orders)
+	 * with _onetill_source meta and a billing email, resolve or create a WooCommerce
+	 * customer so the order isn't a guest checkout.
+	 *
+	 * @param \WC_Order         $order   The order object.
+	 * @param \WP_REST_Request  $request The REST request.
+	 * @param bool              $creating Whether this is a new order (true) or update (false).
+	 */
+	public function on_rest_order_created( $order, $request, $creating ) {
+		if ( ! $creating ) {
+			return;
+		}
+
+		// Only process OneTill POS orders.
+		if ( 'onetill_pos' !== $order->get_meta( '_onetill_source' ) ) {
+			return;
+		}
+
+		// Skip if a customer is already linked.
+		if ( $order->get_customer_id() > 0 ) {
+			return;
+		}
+
+		$email = $order->get_billing_email();
+		if ( empty( $email ) ) {
+			return;
+		}
+
+		$customer_id = $this->resolve_or_create_customer( $email );
+		if ( ! $customer_id ) {
+			return;
+		}
+
+		$order->set_customer_id( $customer_id );
+
+		// Populate billing details from the customer record (name, phone).
+		$customer = new \WC_Customer( $customer_id );
+		if ( $customer->get_billing_first_name() && ! $order->get_billing_first_name() ) {
+			$order->set_billing_first_name( $customer->get_billing_first_name() );
+		}
+		if ( $customer->get_billing_last_name() && ! $order->get_billing_last_name() ) {
+			$order->set_billing_last_name( $customer->get_billing_last_name() );
+		}
+		if ( $customer->get_billing_phone() && ! $order->get_billing_phone() ) {
+			$order->set_billing_phone( $customer->get_billing_phone() );
+		}
+
+		$order->save();
+	}
+
+	/**
+	 * Look up an existing WooCommerce customer by email, or create one.
+	 *
+	 * Returns the customer ID so the order is linked to a real customer
+	 * record (not a guest checkout). If creation fails, returns 0 and
+	 * the order falls back to guest with billing email only.
+	 *
+	 * @param string $email The customer email.
+	 * @return int Customer ID, or 0 on failure.
+	 */
+	private function resolve_or_create_customer( $email ) {
+		// Look up existing customer by email.
+		$existing = get_user_by( 'email', $email );
+		if ( $existing ) {
+			return $existing->ID;
+		}
+
+		// Create a new WooCommerce customer from email.
+		$customer = new \WC_Customer();
+		$customer->set_email( $email );
+		$customer->set_billing_email( $email );
+
+		$username = wc_create_new_customer_username( $email );
+		$customer->set_username( $username );
+		$customer->set_password( wp_generate_password() );
+
+		try {
+			$customer->save();
+		} catch ( \Exception $e ) {
+			return 0;
+		}
+
+		if ( ! $customer->get_id() ) {
+			return 0;
+		}
+
+		// Ensure the user has the customer role.
+		$user = new \WP_User( $customer->get_id() );
+		$user->set_role( 'customer' );
+
+		return $customer->get_id();
+	}
+
 	private function resolve_stock_target( $product_id, $variation_id ) {
 		if ( $variation_id ) {
 			$variation = wc_get_product( $variation_id );
