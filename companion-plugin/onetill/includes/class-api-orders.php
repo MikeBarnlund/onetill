@@ -232,8 +232,6 @@ class API_Orders {
 		$order->update_meta_data( '_onetill_idempotency_key', $idempotency_key );
 
 		// WooCommerce Order Attribution — powers the analytics meta box.
-		$order->update_meta_data( '_wc_order_attribution_source_type', 'referral' );
-		$order->update_meta_data( '_wc_order_attribution_utm_source', 'onetill-pos' );
 		$order->update_meta_data( '_wc_order_attribution_origin', 'OneTill POS' );
 
 		if ( ! empty( $payment['transaction_id'] ) ) {
@@ -682,8 +680,6 @@ class API_Orders {
 		}
 
 		// WooCommerce Order Attribution — powers the analytics meta box.
-		$order->update_meta_data( '_wc_order_attribution_source_type', 'referral' );
-		$order->update_meta_data( '_wc_order_attribution_utm_source', 'onetill-pos' );
 		$order->update_meta_data( '_wc_order_attribution_origin', 'OneTill POS' );
 
 		// Resolve or create customer from billing email.
@@ -711,10 +707,12 @@ class API_Orders {
 
 		$order->save();
 
-		// Force WooCommerce to recalculate customer stats (order count, total spent)
-		// since we assigned the customer after the order status hooks already fired.
+		// Clear WooCommerce's cached customer stats so they recalculate on next view.
+		// We can't use wc_update_new_customer_past_orders() because it only updates
+		// stats when linking guest orders (customer_id=0) — ours is already linked.
 		if ( $customer_id ) {
-			wc_update_new_customer_past_orders( $customer_id );
+			delete_user_meta( $customer_id, '_order_count' );
+			delete_user_meta( $customer_id, '_money_spent' );
 		}
 	}
 
