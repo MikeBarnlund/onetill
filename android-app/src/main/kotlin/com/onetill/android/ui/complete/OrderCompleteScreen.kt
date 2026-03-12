@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
@@ -87,11 +88,17 @@ fun OrderCompleteScreen(
                         scaleY = scale.value
                     }
                     .drawBehind {
-                        // Subtle green glow — layered translucent circles
-                        val glowColor = Success.copy(alpha = 0.06f)
-                        drawCircle(color = glowColor, radius = size.width / 2f + 30.dp.toPx())
-                        drawCircle(color = glowColor, radius = size.width / 2f + 20.dp.toPx())
-                        drawCircle(color = glowColor, radius = size.width / 2f + 10.dp.toPx())
+                        // Smooth radial glow — avoids banding from discrete layers
+                        val glowRadius = size.width / 2f + 30.dp.toPx()
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                0f to Success.copy(alpha = 0.18f),
+                                0.7f to Success.copy(alpha = 0.04f),
+                                1f to Color.Transparent,
+                                radius = glowRadius,
+                            ),
+                            radius = glowRadius,
+                        )
                     }
                     .background(colors.success, CircleShape),
                 contentAlignment = Alignment.Center,
