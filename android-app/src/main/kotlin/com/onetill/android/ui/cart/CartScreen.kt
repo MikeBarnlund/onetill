@@ -29,12 +29,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.onetill.android.ui.checkout.CheckoutViewModel
+import com.onetill.android.ui.checkout.PaymentMethodUi
 import com.onetill.android.ui.components.ButtonVariant
+import com.onetill.android.ui.components.CardPaymentIcon
 import com.onetill.android.ui.components.CartLineItem
+import com.onetill.android.ui.components.CashPaymentIcon
 import com.onetill.android.ui.components.AppStatusBar
 import com.onetill.android.ui.components.HeaderNavAction
 import com.onetill.android.ui.components.OneTillButton
 import com.onetill.android.ui.components.OneTillTextField
+import com.onetill.android.ui.components.PaymentMethodCard
 import com.onetill.android.ui.components.ScreenHeader
 import com.onetill.android.ui.theme.OneTillTheme
 import com.onetill.android.ui.theme.screenGradientBackground
@@ -45,21 +50,29 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun CartScreen(
     onBack: () -> Unit,
-    onCheckout: () -> Unit,
+    onCashPayment: () -> Unit,
+    onCardPaymentComplete: (orderId: Long, amount: String) -> Unit,
+    onCardPaymentFailed: (message: String) -> Unit = {},
     viewModel: CartViewModel = koinViewModel(),
+    checkoutViewModel: CheckoutViewModel = koinViewModel(),
 ) {
     val colors = OneTillTheme.colors
     val dimens = OneTillTheme.dimens
     val state by viewModel.cartState.collectAsState()
+    val selectedMethod by checkoutViewModel.selectedPaymentMethod.collectAsState()
+    val isOnline by checkoutViewModel.isOnline.collectAsState()
+    val isSubmitting by checkoutViewModel.isSubmitting.collectAsState()
     val couponError by viewModel.couponError.collectAsState()
     var showCouponField by remember { mutableStateOf(false) }
     var couponInput by remember { mutableStateOf("") }
 
-    // Auto-navigate back when cart becomes empty (after remove or clear)
+    // Auto-navigate back when cart becomes empty (after remove or clear).
+    // Guard: if a payment method was selected, the cart was cleared by a sale —
+    // navigation is handled by the payment callback, not by auto-back.
     val itemCount = state.itemCount
     var hadItems by remember { mutableStateOf(itemCount > 0) }
     LaunchedEffect(itemCount) {
-        if (hadItems && itemCount == 0) onBack()
+        if (hadItems && itemCount == 0 && selectedMethod == null) onBack()
         if (itemCount > 0) hadItems = true
     }
 
@@ -299,11 +312,48 @@ fun CartScreen(
             }
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Charge button
-            OneTillButton(
-                text = "Charge ${state.estimatedTotal.formatDisplay()}",
-                onClick = onCheckout,
-                enabled = state.items.isNotEmpty(),
+            // Payment method buttons
+            PaymentMethodCard(
+                title = "Card Payment",
+                subtitle = when {
+                    isSubmitting && selectedMethod == PaymentMethodUi.Card -> "Processing payment..."
+                    isOnline -> "Tap, chip, or swipe"
+                    else -> "Requires internet"
+                },
+                icon = {
+                    CardPaymentIcon(
+                        color = colors.textPrimary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                },
+                isSelected = selectedMethod == PaymentMethodUi.Card,
+                onClick = {
+                    if (isSubmitting || state.items.isEmpty()) return@PaymentMethodCard
+                    checkoutViewModel.selectPaymentMethod(PaymentMethodUi.Card)
+                    if (isOnline) {
+                        checkoutViewModel.submitCardPayment(
+                            onComplete = { orderId, amount -> onCardPaymentComplete(orderId, amount) },
+                            onFailed = { message -> onCardPaymentFailed(message) },
+                        )
+                    }
+                },
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            PaymentMethodCard(
+                title = "Cash Payment",
+                subtitle = "Enter amount received",
+                icon = {
+                    CashPaymentIcon(
+                        color = colors.textPrimary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                },
+                isSelected = selectedMethod == PaymentMethodUi.Cash,
+                onClick = {
+                    if (state.items.isEmpty()) return@PaymentMethodCard
+                    checkoutViewModel.selectPaymentMethod(PaymentMethodUi.Cash)
+                    onCashPayment()
+                },
             )
         }
     }

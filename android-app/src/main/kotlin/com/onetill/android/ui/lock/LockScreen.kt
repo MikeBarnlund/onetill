@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.onetill.android.R
 import com.onetill.android.ui.theme.OneTillTheme
+import com.onetill.android.ui.theme.screenGradientBackground
 
 @Composable
 fun LockScreen(
@@ -67,7 +68,7 @@ private fun LockScreenContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.background),
+            .screenGradientBackground(),
         contentAlignment = Alignment.Center,
     ) {
         Column(

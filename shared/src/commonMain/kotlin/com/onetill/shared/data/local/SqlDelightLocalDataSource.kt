@@ -280,6 +280,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
                 note = order.note,
                 coupon_codes = order.couponCodes.takeIf { it.isNotEmpty() }?.joinToString(","),
                 created_at = order.createdAt.toEpochMilliseconds(),
+                customer_email = order.customerEmail,
             )
             val localId = queries.lastInsertOrderId().executeAsOne()
 
@@ -331,6 +332,14 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
         withContext(Dispatchers.Default) {
             queries.updateOrderStripeTransactionId(
                 stripe_transaction_id = stripeTransactionId,
+                id = localId,
+            )
+        }
+
+    override suspend fun updateOrderCustomerEmail(localId: Long, email: String) =
+        withContext(Dispatchers.Default) {
+            queries.updateOrderCustomerEmail(
+                customer_email = email,
                 id = localId,
             )
         }
@@ -406,6 +415,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
                     note = order.note,
                     coupon_codes = order.couponCodes.takeIf { it.isNotEmpty() }?.joinToString(","),
                     created_at = order.createdAt.toEpochMilliseconds(),
+                    customer_email = order.customerEmail,
                 )
                 val localId = queries.lastInsertOrderId().executeAsOne()
 
@@ -595,6 +605,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
             note = row.note,
             couponCodes = row.coupon_codes?.split(",")?.filter { it.isNotBlank() } ?: emptyList(),
             createdAt = Instant.fromEpochMilliseconds(row.created_at),
+            customerEmail = row.customer_email,
         )
     }
 

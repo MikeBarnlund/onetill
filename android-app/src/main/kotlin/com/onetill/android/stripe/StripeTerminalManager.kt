@@ -116,6 +116,19 @@ class StripeTerminalManager(
         Napier.i("Connected to reader: ${reader.serialNumber}", tag = "Stripe")
     }
 
+    /**
+     * Pre-initialize the SDK and connect to the reader in the background
+     * so the first payment doesn't have a multi-second cold-start delay.
+     */
+    suspend fun warmUp() {
+        try {
+            ensureConnected()
+            Napier.i("Stripe Terminal warm-up complete", tag = "Stripe")
+        } catch (e: Exception) {
+            Napier.w("Stripe Terminal warm-up failed (will retry on first payment): ${e.message}", tag = "Stripe")
+        }
+    }
+
     suspend fun collectPayment(amountCents: Long, currency: String): PaymentResult {
         try {
             ensureConnected()

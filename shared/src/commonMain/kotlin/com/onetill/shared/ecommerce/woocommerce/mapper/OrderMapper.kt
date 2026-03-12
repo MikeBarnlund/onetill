@@ -17,6 +17,7 @@ import com.onetill.shared.ecommerce.woocommerce.dto.WooCreateLineItemDto
 import com.onetill.shared.ecommerce.woocommerce.dto.WooCreateMetaDataDto
 import com.onetill.shared.ecommerce.woocommerce.dto.WooCreateOrderDto
 import com.onetill.shared.ecommerce.woocommerce.dto.WooLineItemDto
+import com.onetill.shared.ecommerce.woocommerce.dto.WooOrderBillingDto
 import com.onetill.shared.ecommerce.woocommerce.dto.WooOrderDto
 import com.onetill.shared.ecommerce.woocommerce.dto.WooUpdateOrderDto
 import kotlin.math.roundToLong
@@ -85,6 +86,7 @@ fun OrderDraft.toWooDto(currency: String): WooCreateOrderDto = WooCreateOrderDto
         if (cardBrand != null) add(WooCreateMetaDataDto(key = "_onetill_card_brand", value = cardBrand))
         if (cardLast4 != null) add(WooCreateMetaDataDto(key = "_onetill_card_last4", value = cardLast4))
     },
+    billing = customerEmail?.let { WooOrderBillingDto(email = it) },
 )
 
 fun OrderUpdate.toWooDto(): WooUpdateOrderDto = WooUpdateOrderDto(

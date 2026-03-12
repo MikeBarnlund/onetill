@@ -131,7 +131,8 @@ CREATE TABLE offline_orders (
     idempotency_key TEXT NOT NULL UNIQUE,
     note TEXT,
     coupon_codes TEXT,
-    created_at INTEGER NOT NULL
+    created_at INTEGER NOT NULL,
+    customer_email TEXT
 );
 
 CREATE INDEX idx_offline_orders_status ON offline_orders(status);
@@ -351,8 +352,8 @@ DELETE FROM product_tag_join WHERE product_id = ?;
 insertOrder:
 INSERT INTO offline_orders(
     remote_id, order_number, status, customer_id, total_cents, total_tax_cents,
-    currency_code, payment_method, stripe_transaction_id, idempotency_key, note, coupon_codes, created_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    currency_code, payment_method, stripe_transaction_id, idempotency_key, note, coupon_codes, created_at, customer_email
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 lastInsertOrderId:
 SELECT last_insert_rowid();
@@ -377,6 +378,9 @@ UPDATE offline_orders SET remote_id = ?, order_number = ? WHERE id = ?;
 
 updateOrderStripeTransactionId:
 UPDATE offline_orders SET stripe_transaction_id = ? WHERE id = ?;
+
+updateOrderCustomerEmail:
+UPDATE offline_orders SET customer_email = ? WHERE id = ?;
 
 selectOrderByRemoteId:
 SELECT * FROM offline_orders WHERE remote_id = ?;

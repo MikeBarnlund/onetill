@@ -35,6 +35,11 @@ data class WooLineItemDto(
  * Request body for creating an order via POST /orders.
  */
 @Serializable
+data class WooOrderBillingDto(
+    val email: String = "",
+)
+
+@Serializable
 data class WooCreateOrderDto(
     val status: String = "processing",
     @SerialName("customer_id") val customerId: Long = 0,
@@ -44,6 +49,7 @@ data class WooCreateOrderDto(
     @SerialName("line_items") val lineItems: List<WooCreateLineItemDto>,
     @SerialName("coupon_lines") val couponLines: List<WooCouponLineDto> = emptyList(),
     @SerialName("meta_data") val metaData: List<WooCreateMetaDataDto> = emptyList(),
+    val billing: WooOrderBillingDto? = null,
 )
 
 @Serializable

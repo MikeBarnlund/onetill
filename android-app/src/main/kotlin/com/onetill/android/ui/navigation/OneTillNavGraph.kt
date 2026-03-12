@@ -19,6 +19,7 @@ import com.onetill.android.input.IdleEventBus
 import com.onetill.android.ui.lock.LockScreen
 import com.onetill.android.ui.lock.LockViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -28,8 +29,8 @@ import com.onetill.android.di.loadPostWizardModules
 import com.onetill.android.ui.cart.CartScreen
 import com.onetill.android.ui.catalog.CatalogScreen
 import com.onetill.android.ui.checkout.CashPaymentModal
-import com.onetill.android.ui.checkout.CheckoutScreen
 import com.onetill.android.ui.complete.OrderCompleteScreen
+import com.onetill.android.ui.receipt.ReceiptEmailScreen
 import com.onetill.android.ui.orders.DailySummaryScreen
 import com.onetill.android.ui.orders.OrderHistoryScreen
 import com.onetill.android.ui.scanner.QrPairingViewModel
@@ -37,6 +38,7 @@ import com.onetill.android.ui.scanner.QrScannerScreen
 import com.onetill.android.ui.settings.SettingsScreen
 import com.onetill.android.ui.setup.SetupWizardScreen
 import com.onetill.shared.data.local.LocalDataSource
+import com.onetill.android.stripe.StripeTerminalManager
 import com.onetill.shared.sync.SyncOrchestrator
 import org.koin.compose.koinInject
 
@@ -44,17 +46,26 @@ object Routes {
     const val SETUP = "setup"
     const val CATALOG = "catalog"
     const val CART = "cart"
-    const val CHECKOUT = "checkout"
     const val CASH_PAYMENT = "cash_payment"
-    const val ORDER_COMPLETE = "order_complete/{amount}/{method}?change={change}"
+    const val RECEIPT_EMAIL = "receipt_email/{orderId}/{amount}/{method}?change={change}"
+    const val ORDER_COMPLETE = "order_complete/{amount}/{method}?change={change}&email={email}"
     const val ORDER_HISTORY = "order_history"
     const val DAILY_SUMMARY = "daily_summary"
     const val QR_SCAN = "qr_scan"
     const val SETTINGS = "settings"
 
-    fun orderComplete(amount: String, method: String, change: String? = null): String {
-        val base = "order_complete/$amount/$method"
+    fun receiptEmail(orderId: Long, amount: String, method: String, change: String? = null): String {
+        val base = "receipt_email/$orderId/$amount/$method"
         return if (change != null) "$base?change=$change" else base
+    }
+
+    fun orderComplete(amount: String, method: String, change: String? = null, email: String? = null): String {
+        val base = "order_complete/$amount/$method"
+        val params = buildList {
+            if (change != null) add("change=$change")
+            if (email != null) add("email=$email")
+        }
+        return if (params.isNotEmpty()) "$base?${params.joinToString("&")}" else base
     }
 }
 
@@ -76,12 +87,13 @@ fun OneTillNavGraph(
         val config = localDataSource.getStoreConfig()
         if (config != null) {
             loadPostWizardModules(config)
-            // Start background sync on app restart
+            // Start background sync and pre-warm Stripe Terminal on app restart
             try {
-                val syncOrchestrator = org.koin.core.context.GlobalContext.get().get<SyncOrchestrator>()
-                syncOrchestrator.startSync()
+                val koin = org.koin.core.context.GlobalContext.get()
+                koin.get<SyncOrchestrator>().startSync()
+                launch { koin.get<StripeTerminalManager>().warmUp() }
             } catch (_: Exception) {
-                // SyncOrchestrator not yet available — will start after setup
+                // Not yet available — will initialize on first use
             }
             startDestination = Routes.CATALOG
         } else {
@@ -164,21 +176,13 @@ fun OneTillNavGraph(
             )
         }
 
-        // Cart
+        // Cart — includes payment method selection
         composable(Routes.CART) {
             CartScreen(
                 onBack = { navController.popBackStack() },
-                onCheckout = { navController.navigate(Routes.CHECKOUT) },
-            )
-        }
-
-        // Checkout
-        composable(Routes.CHECKOUT) {
-            CheckoutScreen(
-                onBack = { navController.popBackStack() },
                 onCashPayment = { navController.navigate(Routes.CASH_PAYMENT) },
-                onCardPaymentComplete = { amount ->
-                    navController.navigate(Routes.orderComplete(amount, "Card")) {
+                onCardPaymentComplete = { orderId, amount ->
+                    navController.navigate(Routes.receiptEmail(orderId, amount, "Card")) {
                         popUpTo(Routes.CATALOG)
                     }
                 },
@@ -216,8 +220,30 @@ fun OneTillNavGraph(
         ) {
             CashPaymentModal(
                 onClose = { navController.popBackStack() },
-                onPaymentComplete = { amount, changeDue ->
-                    navController.navigate(Routes.orderComplete(amount, "Cash", changeDue)) {
+                onPaymentComplete = { orderId, amount, changeDue ->
+                    navController.navigate(Routes.receiptEmail(orderId, amount, "Cash", changeDue)) {
+                        popUpTo(Routes.CATALOG)
+                    }
+                },
+            )
+        }
+
+        // Receipt Email — post-payment email capture
+        composable(Routes.RECEIPT_EMAIL) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getString("orderId")?.toLongOrNull() ?: 0L
+            val amount = backStackEntry.arguments?.getString("amount") ?: "$0.00"
+            val method = backStackEntry.arguments?.getString("method") ?: "Card"
+            val changeDue = backStackEntry.arguments?.getString("change")
+                ?.takeIf { it != "{change}" }
+            ReceiptEmailScreen(
+                orderId = orderId,
+                onSend = { email ->
+                    navController.navigate(Routes.orderComplete(amount, method, changeDue, email)) {
+                        popUpTo(Routes.CATALOG)
+                    }
+                },
+                onSkip = {
+                    navController.navigate(Routes.orderComplete(amount, method, changeDue)) {
                         popUpTo(Routes.CATALOG)
                     }
                 },
@@ -236,10 +262,13 @@ fun OneTillNavGraph(
             val method = backStackEntry.arguments?.getString("method") ?: "Card"
             val changeDue = backStackEntry.arguments?.getString("change")
                 ?.takeIf { it != "{change}" }
+            val receiptEmail = backStackEntry.arguments?.getString("email")
+                ?.takeIf { it != "{email}" }
             OrderCompleteScreen(
                 amount = amount,
                 paymentMethod = method,
                 changeDue = changeDue,
+                receiptEmail = receiptEmail,
                 onNewSale = {
                     navController.navigate(Routes.CATALOG) {
                         popUpTo(Routes.CATALOG) { inclusive = true }

@@ -146,6 +146,11 @@ class OrderSyncManager(
         return AppResult.Success(Unit)
     }
 
+    suspend fun updateOrderEmail(localId: Long, email: String) {
+        localDataSource.updateOrderCustomerEmail(localId, email)
+        Napier.d("Order $localId customer email updated")
+    }
+
     private fun orderToDraft(order: Order): OrderDraft = OrderDraft(
         lineItems = order.lineItems,
         customerId = order.customerId,
@@ -154,5 +159,6 @@ class OrderSyncManager(
         note = order.note,
         couponCodes = order.couponCodes,
         stripeTransactionId = order.stripeTransactionId,
+        customerEmail = order.customerEmail,
     )
 }

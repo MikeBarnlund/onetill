@@ -136,6 +136,14 @@ class FakeLocalDataSource : LocalDataSource {
         }
     }
 
+    override suspend fun updateOrderCustomerEmail(localId: Long, email: String) {
+        val index = orders.indexOfFirst { it.id == localId }
+        if (index >= 0) {
+            orders[index] = orders[index].copy(customerEmail = email)
+            _ordersFlow.value = orders.toList()
+        }
+    }
+
     override suspend fun getOrderByIdempotencyKey(key: String): Order? =
         orders.firstOrNull { it.idempotencyKey == key }
 

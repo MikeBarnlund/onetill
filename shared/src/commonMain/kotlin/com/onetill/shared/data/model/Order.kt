@@ -18,6 +18,7 @@ data class Order(
     val note: String?,
     val couponCodes: List<String>,
     val createdAt: Instant,
+    val customerEmail: String? = null,
 )
 
 /**
@@ -35,6 +36,7 @@ data class OrderDraft(
     val stripeTransactionId: String? = null,
     val cardBrand: String? = null,
     val cardLast4: String? = null,
+    val customerEmail: String? = null,
 )
 
 @Serializable

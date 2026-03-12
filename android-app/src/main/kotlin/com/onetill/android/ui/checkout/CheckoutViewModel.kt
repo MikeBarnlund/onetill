@@ -72,22 +72,22 @@ class CheckoutViewModel(
         _selectedPaymentMethod.value = method
     }
 
-    fun submitCashPayment(onComplete: (String) -> Unit) {
+    fun submitCashPayment(onComplete: (Long, String) -> Unit) {
         if (_isSubmitting.value) return
         viewModelScope.launch {
             _isSubmitting.value = true
             val totalFormatted = orderTotalFormatted.value
             val currency = cartManager.cartState.value.currency
             val draft = cartManager.buildOrderDraft(PaymentMethod.CASH)
-            orderSyncManager.submitOrder(draft, currency)
+            val localId = orderSyncManager.submitOrder(draft, currency)
             cartManager.clearCart(sold = true)
             syncOrchestrator.triggerOrderDrain()
             _isSubmitting.value = false
-            onComplete(totalFormatted)
+            onComplete(localId, totalFormatted)
         }
     }
 
-    fun submitCardPayment(onComplete: (String) -> Unit, onFailed: (String) -> Unit) {
+    fun submitCardPayment(onComplete: (Long, String) -> Unit, onFailed: (String) -> Unit) {
         if (_isSubmitting.value) return
         viewModelScope.launch {
             _isSubmitting.value = true
@@ -103,11 +103,11 @@ class CheckoutViewModel(
                         cardBrand = result.cardBrand,
                         cardLast4 = result.cardLast4,
                     )
-                    orderSyncManager.submitOrder(draft, currency)
+                    val localId = orderSyncManager.submitOrder(draft, currency)
                     cartManager.clearCart(sold = true)
                     syncOrchestrator.triggerOrderDrain()
                     _isSubmitting.value = false
-                    onComplete(totalFormatted)
+                    onComplete(localId, totalFormatted)
                 }
                 is PaymentResult.Failed -> {
                     _isSubmitting.value = false
