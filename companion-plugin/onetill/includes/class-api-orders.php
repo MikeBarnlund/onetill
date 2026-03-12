@@ -231,6 +231,11 @@ class API_Orders {
 		$order->update_meta_data( '_onetill_payment_method', $payment_method );
 		$order->update_meta_data( '_onetill_idempotency_key', $idempotency_key );
 
+		// WooCommerce Order Attribution — powers the analytics meta box.
+		$order->update_meta_data( '_wc_order_attribution_source_type', 'admin' );
+		$order->update_meta_data( '_wc_order_attribution_utm_source', 'onetill-pos' );
+		$order->update_meta_data( '_wc_order_attribution_origin', 'OneTill POS' );
+
 		if ( ! empty( $payment['transaction_id'] ) ) {
 			$order->update_meta_data( '_onetill_stripe_id', sanitize_text_field( $payment['transaction_id'] ) );
 			$order->set_transaction_id( sanitize_text_field( $payment['transaction_id'] ) );
@@ -676,40 +681,41 @@ class API_Orders {
 			return;
 		}
 
-		// Skip if a customer is already linked.
-		if ( $order->get_customer_id() > 0 ) {
-			return;
-		}
+		// WooCommerce Order Attribution — powers the analytics meta box.
+		$order->update_meta_data( '_wc_order_attribution_source_type', 'admin' );
+		$order->update_meta_data( '_wc_order_attribution_utm_source', 'onetill-pos' );
+		$order->update_meta_data( '_wc_order_attribution_origin', 'OneTill POS' );
 
-		$email = $order->get_billing_email();
-		if ( empty( $email ) ) {
-			return;
-		}
+		// Resolve or create customer from billing email.
+		$customer_id = 0;
+		$email       = $order->get_billing_email();
 
-		$customer_id = $this->resolve_or_create_customer( $email );
-		if ( ! $customer_id ) {
-			return;
-		}
+		if ( $order->get_customer_id() <= 0 && ! empty( $email ) ) {
+			$customer_id = $this->resolve_or_create_customer( $email );
+			if ( $customer_id ) {
+				$order->set_customer_id( $customer_id );
 
-		$order->set_customer_id( $customer_id );
-
-		// Populate billing details from the customer record (name, phone).
-		$customer = new \WC_Customer( $customer_id );
-		if ( $customer->get_billing_first_name() && ! $order->get_billing_first_name() ) {
-			$order->set_billing_first_name( $customer->get_billing_first_name() );
-		}
-		if ( $customer->get_billing_last_name() && ! $order->get_billing_last_name() ) {
-			$order->set_billing_last_name( $customer->get_billing_last_name() );
-		}
-		if ( $customer->get_billing_phone() && ! $order->get_billing_phone() ) {
-			$order->set_billing_phone( $customer->get_billing_phone() );
+				// Populate billing details from the customer record (name, phone).
+				$customer = new \WC_Customer( $customer_id );
+				if ( $customer->get_billing_first_name() && ! $order->get_billing_first_name() ) {
+					$order->set_billing_first_name( $customer->get_billing_first_name() );
+				}
+				if ( $customer->get_billing_last_name() && ! $order->get_billing_last_name() ) {
+					$order->set_billing_last_name( $customer->get_billing_last_name() );
+				}
+				if ( $customer->get_billing_phone() && ! $order->get_billing_phone() ) {
+					$order->set_billing_phone( $customer->get_billing_phone() );
+				}
+			}
 		}
 
 		$order->save();
 
 		// Force WooCommerce to recalculate customer stats (order count, total spent)
 		// since we assigned the customer after the order status hooks already fired.
-		wc_update_new_customer_past_orders( $customer_id );
+		if ( $customer_id ) {
+			wc_update_new_customer_past_orders( $customer_id );
+		}
 	}
 
 	/**
