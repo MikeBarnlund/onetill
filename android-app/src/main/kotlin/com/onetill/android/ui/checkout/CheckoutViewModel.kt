@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.onetill.android.stripe.StripeTerminalManager
 import com.onetill.android.stripe.StripeTerminalManager.PaymentResult
 import com.onetill.shared.cart.CartManager
+import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.data.model.PaymentMethod
 import com.onetill.shared.sync.ConnectivityMonitor
 import com.onetill.shared.sync.OrderSyncManager
@@ -79,7 +80,7 @@ class CheckoutViewModel(
             val totalFormatted = orderTotalFormatted.value
             val currency = cartManager.cartState.value.currency
             val draft = cartManager.buildOrderDraft(PaymentMethod.CASH)
-            val localId = orderSyncManager.submitOrder(draft, currency)
+            val localId = orderSyncManager.submitOrder(draft, currency, OrderStatus.PENDING_RECEIPT)
             cartManager.clearCart(sold = true)
             _isSubmitting.value = false
             onComplete(localId, totalFormatted)
@@ -102,7 +103,7 @@ class CheckoutViewModel(
                         cardBrand = result.cardBrand,
                         cardLast4 = result.cardLast4,
                     )
-                    val localId = orderSyncManager.submitOrder(draft, currency)
+                    val localId = orderSyncManager.submitOrder(draft, currency, OrderStatus.PENDING_RECEIPT)
                     cartManager.clearCart(sold = true)
                     _isSubmitting.value = false
                     onComplete(localId, totalFormatted)

@@ -143,7 +143,7 @@ class OneTill {
 		add_action( 'woocommerce_variation_set_stock', array( $this->webhooks, 'on_variation_stock_changed' ) );
 		add_action( 'woocommerce_save_product_variation', array( $this->webhooks, 'on_variation_saved' ), 20, 2 );
 		add_action( 'woocommerce_new_order', array( $this->webhooks, 'on_order_created' ) );
-		add_action( 'woocommerce_rest_insert_shop_order_object', array( $this->api_orders, 'on_rest_order_created' ), 10, 3 );
+		add_action( 'woocommerce_rest_insert_shop_order_object', array( $this->api_orders, 'on_rest_order_created' ), 999, 3 );
 
 		// Barcode meta field on product edit screen.
 		add_action( 'woocommerce_product_options_inventory_product_data', array( $this->admin, 'render_barcode_field' ) );

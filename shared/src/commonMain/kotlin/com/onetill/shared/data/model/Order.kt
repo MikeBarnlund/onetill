@@ -55,6 +55,7 @@ enum class OrderStatus {
     REFUNDED,
     FAILED,
     PENDING_SYNC,
+    PENDING_RECEIPT,
 }
 
 @Serializable

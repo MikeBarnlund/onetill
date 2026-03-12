@@ -85,6 +85,10 @@ fun OrderDraft.toWooDto(currency: String): WooCreateOrderDto = WooCreateOrderDto
         if (stripeTransactionId != null) add(WooCreateMetaDataDto(key = "_onetill_stripe_id", value = stripeTransactionId))
         if (cardBrand != null) add(WooCreateMetaDataDto(key = "_onetill_card_brand", value = cardBrand))
         if (cardLast4 != null) add(WooCreateMetaDataDto(key = "_onetill_card_last4", value = cardLast4))
+        // Order Attribution — shows "OneTill POS" in WooCommerce analytics.
+        add(WooCreateMetaDataDto(key = "_wc_order_attribution_source_type", value = "referral"))
+        add(WooCreateMetaDataDto(key = "_wc_order_attribution_utm_source", value = "onetill-pos"))
+        add(WooCreateMetaDataDto(key = "_wc_order_attribution_origin", value = "OneTill POS"))
     },
     billing = customerEmail?.let { WooOrderBillingDto(email = it) },
 )
@@ -114,6 +118,7 @@ private fun mapOrderStatusToWoo(status: OrderStatus): String = when (status) {
     OrderStatus.REFUNDED -> "refunded"
     OrderStatus.FAILED -> "failed"
     OrderStatus.PENDING_SYNC -> "pending"
+    OrderStatus.PENDING_RECEIPT -> "pending"
 }
 
 private fun mapPaymentMethod(wooMethod: String): PaymentMethod = when {

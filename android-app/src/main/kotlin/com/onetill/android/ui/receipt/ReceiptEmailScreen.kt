@@ -119,7 +119,7 @@ fun ReceiptEmailScreen(
             OneTillButton(
                 text = "Skip",
                 onClick = {
-                    viewModel.skipAndSync()
+                    viewModel.skipAndSync(orderId)
                     onSkip()
                 },
                 variant = ButtonVariant.Ghost,

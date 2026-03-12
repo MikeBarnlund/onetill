@@ -14,11 +14,15 @@ class ReceiptEmailViewModel(
     fun saveEmailAndSync(localOrderId: Long, email: String) {
         viewModelScope.launch {
             orderSyncManager.updateOrderEmail(localOrderId, email)
+            orderSyncManager.markOrderReadyToSync(localOrderId)
             syncOrchestrator.triggerOrderDrain()
         }
     }
 
-    fun skipAndSync() {
-        syncOrchestrator.triggerOrderDrain()
+    fun skipAndSync(localOrderId: Long) {
+        viewModelScope.launch {
+            orderSyncManager.markOrderReadyToSync(localOrderId)
+            syncOrchestrator.triggerOrderDrain()
+        }
     }
 }

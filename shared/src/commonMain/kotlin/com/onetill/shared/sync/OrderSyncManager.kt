@@ -34,7 +34,11 @@ class OrderSyncManager(
      *
      * @return the local database ID of the saved order.
      */
-    suspend fun submitOrder(draft: OrderDraft, currency: String): Long {
+    suspend fun submitOrder(
+        draft: OrderDraft,
+        currency: String,
+        status: OrderStatus = OrderStatus.PENDING_SYNC,
+    ): Long {
         // Build a local Order to persist
         val lineItemTotal = draft.lineItems.fold(Money.zero(currency)) { acc, li -> acc + li.totalPrice }
         val total = Money(
@@ -44,7 +48,7 @@ class OrderSyncManager(
         val localOrder = Order(
             id = 0,
             number = "",
-            status = OrderStatus.PENDING_SYNC,
+            status = status,
             lineItems = draft.lineItems,
             customerId = draft.customerId,
             total = total,
@@ -149,6 +153,11 @@ class OrderSyncManager(
     suspend fun updateOrderEmail(localId: Long, email: String) {
         localDataSource.updateOrderCustomerEmail(localId, email)
         Napier.d("Order $localId customer email updated")
+    }
+
+    suspend fun markOrderReadyToSync(localId: Long) {
+        localDataSource.updateOrderStatus(localId, OrderStatus.PENDING_SYNC)
+        Napier.d("Order $localId marked ready to sync")
     }
 
     private fun orderToDraft(order: Order): OrderDraft = OrderDraft(
