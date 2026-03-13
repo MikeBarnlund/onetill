@@ -79,6 +79,9 @@ class CheckoutViewModel(
     private val _isSubmitting = MutableStateFlow(false)
     val isSubmitting: StateFlow<Boolean> = _isSubmitting.asStateFlow()
 
+    private val _cardPaymentError = MutableStateFlow<String?>(null)
+    val cardPaymentError: StateFlow<String?> = _cardPaymentError.asStateFlow()
+
     fun selectPaymentMethod(method: PaymentMethodUi) {
         _selectedPaymentMethod.value = method
     }
@@ -100,6 +103,7 @@ class CheckoutViewModel(
     @OptIn(ExperimentalUuidApi::class)
     fun submitCardPayment(onComplete: (Long, String) -> Unit, onFailed: (String) -> Unit) {
         if (_isSubmitting.value) return
+        _cardPaymentError.value = null
         viewModelScope.launch {
             _isSubmitting.value = true
             val amountCents = orderTotalCents.value
@@ -117,8 +121,8 @@ class CheckoutViewModel(
                     if (config.perTransactionLimitCents > 0 && amountCents > config.perTransactionLimitCents) {
                         _isSubmitting.value = false
                         val txLimit = Money(config.perTransactionLimitCents, currency).formatDisplay()
-                        val txAmount = Money(amountCents, currency).formatDisplay()
-                        onFailed("This transaction of $txAmount exceeds your offline limit of $txLimit")
+                        _cardPaymentError.value = "Exceeds offline limit of $txLimit per transaction"
+                        onFailed(_cardPaymentError.value!!)
                         return@launch
                     }
                     if (config.totalLimitCents > 0) {
@@ -127,7 +131,8 @@ class CheckoutViewModel(
                         if (pendingAmount + amountCents > config.totalLimitCents) {
                             _isSubmitting.value = false
                             val totalLimit = Money(config.totalLimitCents, currency).formatDisplay()
-                            onFailed("This would exceed your total offline payments limit of $totalLimit")
+                            _cardPaymentError.value = "Would exceed total offline limit of $totalLimit"
+                            onFailed(_cardPaymentError.value!!)
                             return@launch
                         }
                     }
@@ -157,6 +162,7 @@ class CheckoutViewModel(
                 }
                 is PaymentResult.Failed -> {
                     _isSubmitting.value = false
+                    _cardPaymentError.value = result.message
                     onFailed(result.message)
                 }
                 is PaymentResult.Cancelled -> {

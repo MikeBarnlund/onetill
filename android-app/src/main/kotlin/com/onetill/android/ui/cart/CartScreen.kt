@@ -63,6 +63,7 @@ fun CartScreen(
     val isOnline by checkoutViewModel.isOnline.collectAsState()
     val offlinePaymentsEnabled by checkoutViewModel.offlinePaymentsEnabled.collectAsState()
     val isSubmitting by checkoutViewModel.isSubmitting.collectAsState()
+    val cardPaymentError by checkoutViewModel.cardPaymentError.collectAsState()
     val couponError by viewModel.couponError.collectAsState()
     var showCouponField by remember { mutableStateOf(false) }
     var couponInput by remember { mutableStateOf("") }
@@ -314,14 +315,18 @@ fun CartScreen(
             Spacer(modifier = Modifier.height(14.dp))
 
             // Payment method buttons
+            val cardSubtitle = when {
+                isSubmitting && selectedMethod == PaymentMethodUi.Card -> "Processing payment..."
+                cardPaymentError != null -> cardPaymentError!!
+                isOnline -> "Tap, chip, or swipe"
+                offlinePaymentsEnabled -> "Offline — Tap or chip only"
+                else -> "Requires internet"
+            }
+
             PaymentMethodCard(
                 title = "Card Payment",
-                subtitle = when {
-                    isSubmitting && selectedMethod == PaymentMethodUi.Card -> "Processing payment..."
-                    isOnline -> "Tap, chip, or swipe"
-                    offlinePaymentsEnabled -> "Offline — Tap or chip only"
-                    else -> "Requires internet"
-                },
+                subtitle = cardSubtitle,
+                subtitleColor = if (cardPaymentError != null) colors.error else null,
                 icon = {
                     CardPaymentIcon(
                         color = colors.textPrimary,

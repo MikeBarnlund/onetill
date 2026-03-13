@@ -25,6 +25,8 @@ import com.stripe.stripeterminal.external.models.TerminalException
 import com.stripe.stripeterminal.log.LogLevel
 import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.shared.data.model.OrderStatus
+import com.onetill.shared.data.model.OrderUpdate
+import com.onetill.shared.ecommerce.ECommerceBackend
 import com.onetill.shared.ecommerce.woocommerce.OneTillPluginClient
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CoroutineScope
@@ -42,6 +44,7 @@ class StripeTerminalManager(
     private val pluginClient: OneTillPluginClient,
     private val applicationContext: Context,
     private val localDataSource: LocalDataSource,
+    private val backend: ECommerceBackend,
 ) {
     sealed class PaymentResult {
         data class Success(
@@ -64,6 +67,10 @@ class StripeTerminalManager(
 
     private val _forwardingFailures = MutableStateFlow(0)
     val forwardingFailures: StateFlow<Int> = _forwardingFailures.asStateFlow()
+
+    fun dismissForwardingFailures() {
+        _forwardingFailures.value = 0
+    }
 
     private val appsOnDevicesListener = object : AppsOnDevicesListener {
         override fun onDisconnect(reason: DisconnectReason) {
@@ -88,10 +95,22 @@ class StripeTerminalManager(
                 _forwardingFailures.value++
                 if (idempotencyKey != null) {
                     scope.launch {
+                        localDataSource.updateOrderStatusByIdempotencyKey(idempotencyKey, OrderStatus.FORWARDING_FAILED)
+                        Napier.w("Marked order with key=$idempotencyKey as FORWARDING_FAILED", tag = "Stripe")
+                        // Push failed status to WooCommerce if the order was already synced
                         val order = localDataSource.getOrderByIdempotencyKey(idempotencyKey)
-                        if (order != null) {
-                            localDataSource.updateOrderStatus(order.id, OrderStatus.FORWARDING_FAILED)
-                            Napier.w("Marked order ${order.id} as FORWARDING_FAILED", tag = "Stripe")
+                        if (order != null && order.number.isNotBlank()) {
+                            try {
+                                val update = OrderUpdate(
+                                    status = OrderStatus.FAILED,
+                                    stripeTransactionId = null,
+                                    note = "Offline payment declined when forwarded to bank",
+                                )
+                                backend.updateOrder(order.id, update)
+                                Napier.i("Updated WooCommerce order ${order.id} to failed", tag = "Stripe")
+                            } catch (ex: Exception) {
+                                Napier.e("Failed to update WooCommerce order ${order.id}: ${ex.message}", tag = "Stripe")
+                            }
                         }
                     }
                 }
@@ -239,7 +258,13 @@ class StripeTerminalManager(
                 return PaymentResult.Cancelled
             }
             Napier.e("Payment failed: ${e.errorMessage}", tag = "Stripe")
-            return PaymentResult.Failed(e.errorMessage)
+            val message = if (e.errorMessage.contains("not configured to operate offline", ignoreCase = true)) {
+                "This device isn't configured for offline payments yet. " +
+                    "Enable offline mode in the Stripe Dashboard under Terminal → Locations → your location."
+            } else {
+                e.errorMessage
+            }
+            return PaymentResult.Failed(message)
         } catch (e: Exception) {
             Napier.e("Payment error: ${e.message}", tag = "Stripe")
             return PaymentResult.Failed(e.message ?: "An unexpected error occurred")

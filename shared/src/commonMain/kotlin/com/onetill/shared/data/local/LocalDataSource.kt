@@ -38,6 +38,7 @@ interface LocalDataSource {
     suspend fun getRecentOrders(limit: Int): List<Order>
     fun observePendingSyncOrderCount(): Flow<Long>
     suspend fun updateOrderStatus(localId: Long, status: OrderStatus)
+    suspend fun updateOrderStatusByIdempotencyKey(key: String, status: OrderStatus)
     suspend fun updateOrderRemoteId(localId: Long, remoteId: Long, orderNumber: String)
     suspend fun updateOrderStripeTransactionId(localId: Long, stripeTransactionId: String)
     suspend fun updateOrderCustomerEmail(localId: Long, email: String)

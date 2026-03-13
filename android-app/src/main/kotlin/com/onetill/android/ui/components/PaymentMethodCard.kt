@@ -33,6 +33,7 @@ fun PaymentMethodCard(
     isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    subtitleColor: Color? = null,
 ) {
     val colors = OneTillTheme.colors
     val shape = RoundedCornerShape(12.dp)
@@ -79,7 +80,7 @@ fun PaymentMethodCard(
                 text = subtitle,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Normal,
-                color = colors.textTertiary,
+                color = subtitleColor ?: colors.textTertiary,
             )
         }
 

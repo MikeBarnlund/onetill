@@ -374,6 +374,9 @@ SELECT * FROM offline_orders WHERE status = 'PENDING_SYNC' ORDER BY created_at A
 updateOrderStatus:
 UPDATE offline_orders SET status = ? WHERE id = ?;
 
+updateOrderStatusByIdempotencyKey:
+UPDATE offline_orders SET status = ? WHERE idempotency_key = ?;
+
 updateOrderRemoteId:
 UPDATE offline_orders SET remote_id = ?, order_number = ? WHERE id = ?;
 

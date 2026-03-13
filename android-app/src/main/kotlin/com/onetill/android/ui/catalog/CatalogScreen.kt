@@ -217,7 +217,7 @@ fun CatalogScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(colors.error.copy(alpha = 0.15f))
-                            .padding(horizontal = dimens.md, vertical = 8.dp),
+                            .padding(start = dimens.md, end = 4.dp, top = 8.dp, bottom = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
@@ -225,7 +225,19 @@ fun CatalogScreen(
                             fontSize = 12.sp,
                             color = colors.error,
                             lineHeight = 16.sp,
+                            modifier = Modifier.weight(1f),
                         )
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clickable { stripeTerminalManager.dismissForwardingFailures() },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CloseIcon(
+                                color = colors.error,
+                                modifier = Modifier.size(12.dp),
+                            )
+                        }
                     }
                 }
 

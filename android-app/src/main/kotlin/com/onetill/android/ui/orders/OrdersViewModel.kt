@@ -26,6 +26,7 @@ enum class SyncStatus {
     Synced,
     Pending,
     Failed,
+    ForwardingFailed,
 }
 
 data class OrderLineItem(
@@ -146,6 +147,7 @@ private fun Order.toUiModel(tz: TimeZone): OrderUiModel {
     val syncStatus = when (status) {
         OrderStatus.PENDING_SYNC -> SyncStatus.Pending
         OrderStatus.FAILED -> SyncStatus.Failed
+        OrderStatus.FORWARDING_FAILED -> SyncStatus.ForwardingFailed
         else -> SyncStatus.Synced
     }
 

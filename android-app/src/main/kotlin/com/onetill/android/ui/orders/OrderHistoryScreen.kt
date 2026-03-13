@@ -170,16 +170,19 @@ private fun OrderRow(
                         SyncStatus.Synced -> "Synced"
                         SyncStatus.Pending -> "Pending sync"
                         SyncStatus.Failed -> "Failed"
+                        SyncStatus.ForwardingFailed -> "Payment declined"
                     },
                     variant = when (order.syncStatus) {
                         SyncStatus.Synced -> ChipVariant.Success
                         SyncStatus.Pending -> ChipVariant.Warning
                         SyncStatus.Failed -> ChipVariant.Error
+                        SyncStatus.ForwardingFailed -> ChipVariant.Error
                     },
                     icon = when (order.syncStatus) {
                         SyncStatus.Synced -> "✓"
                         SyncStatus.Pending -> "⏳"
                         SyncStatus.Failed -> "✕"
+                        SyncStatus.ForwardingFailed -> "✕"
                     },
                 )
             }

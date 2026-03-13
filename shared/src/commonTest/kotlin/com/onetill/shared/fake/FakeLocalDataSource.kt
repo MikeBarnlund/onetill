@@ -121,6 +121,14 @@ class FakeLocalDataSource : LocalDataSource {
         }
     }
 
+    override suspend fun updateOrderStatusByIdempotencyKey(key: String, status: OrderStatus) {
+        val index = orders.indexOfFirst { it.idempotencyKey == key }
+        if (index >= 0) {
+            orders[index] = orders[index].copy(status = status)
+            _ordersFlow.value = orders.toList()
+        }
+    }
+
     override suspend fun updateOrderRemoteId(localId: Long, remoteId: Long, orderNumber: String) {
         updateOrderRemoteIdCalls.add(Triple(localId, remoteId, orderNumber))
         val index = orders.indexOfFirst { it.id == localId }

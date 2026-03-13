@@ -323,6 +323,10 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
         queries.updateOrderStatus(status = status.name, id = localId)
     }
 
+    override suspend fun updateOrderStatusByIdempotencyKey(key: String, status: OrderStatus) = withContext(Dispatchers.Default) {
+        queries.updateOrderStatusByIdempotencyKey(status = status.name, idempotency_key = key)
+    }
+
     override suspend fun updateOrderRemoteId(localId: Long, remoteId: Long, orderNumber: String) =
         withContext(Dispatchers.Default) {
             queries.updateOrderRemoteId(
