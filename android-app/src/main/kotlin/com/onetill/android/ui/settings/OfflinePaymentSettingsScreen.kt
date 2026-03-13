@@ -129,7 +129,7 @@ fun OfflinePaymentSettingsScreen(
 
                 OneTillButton(
                     text = "Save Limits",
-                    onClick = { viewModel.saveLimits() },
+                    onClick = { viewModel.saveLimits(onSaved = onBack) },
                     enabled = state.perTransactionLimitFormatted.isNotBlank() &&
                         state.totalLimitFormatted.isNotBlank(),
                 )

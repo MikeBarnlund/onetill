@@ -113,7 +113,7 @@ class OfflinePaymentSettingsViewModel(
         _state.update { it.copy(totalLimitFormatted = text) }
     }
 
-    fun saveLimits() {
+    fun saveLimits(onSaved: () -> Unit = {}) {
         viewModelScope.launch {
             val perTxCents = parseDollarsToCents(_state.value.perTransactionLimitFormatted)
             val totalCents = parseDollarsToCents(_state.value.totalLimitFormatted)
@@ -123,6 +123,7 @@ class OfflinePaymentSettingsViewModel(
             )
             localDataSource.saveOfflinePaymentConfig(currentConfig)
             logConsent(ConsentAction.LIMITS_CHANGED)
+            onSaved()
         }
     }
 

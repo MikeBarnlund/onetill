@@ -114,20 +114,22 @@ class CheckoutViewModel(
             if (config.enabled) {
                 // Check limits when actually offline
                 if (!online) {
-                    if (amountCents > config.perTransactionLimitCents) {
+                    if (config.perTransactionLimitCents > 0 && amountCents > config.perTransactionLimitCents) {
                         _isSubmitting.value = false
                         val txLimit = Money(config.perTransactionLimitCents, currency).formatDisplay()
                         val txAmount = Money(amountCents, currency).formatDisplay()
                         onFailed("This transaction of $txAmount exceeds your offline limit of $txLimit")
                         return@launch
                     }
-                    val pendingAmount = stripeTerminalManager.offlineStatus.value
-                        ?.sdk?.offlinePaymentAmountsByCurrency?.values?.sum() ?: 0L
-                    if (pendingAmount + amountCents > config.totalLimitCents) {
-                        _isSubmitting.value = false
-                        val totalLimit = Money(config.totalLimitCents, currency).formatDisplay()
-                        onFailed("This would exceed your total offline payments limit of $totalLimit")
-                        return@launch
+                    if (config.totalLimitCents > 0) {
+                        val pendingAmount = stripeTerminalManager.offlineStatus.value
+                            ?.sdk?.offlinePaymentAmountsByCurrency?.values?.sum() ?: 0L
+                        if (pendingAmount + amountCents > config.totalLimitCents) {
+                            _isSubmitting.value = false
+                            val totalLimit = Money(config.totalLimitCents, currency).formatDisplay()
+                            onFailed("This would exceed your total offline payments limit of $totalLimit")
+                            return@launch
+                        }
                     }
                 }
                 offlineBehavior = OfflineBehavior.PREFER_ONLINE
