@@ -118,6 +118,7 @@ private fun mapOrderStatusToWoo(status: OrderStatus): String = when (status) {
     OrderStatus.FAILED -> "failed"
     OrderStatus.PENDING_SYNC -> "pending"
     OrderStatus.PENDING_RECEIPT -> "pending"
+    OrderStatus.FORWARDING_FAILED -> "failed"
 }
 
 private fun mapPaymentMethod(wooMethod: String): PaymentMethod = when {

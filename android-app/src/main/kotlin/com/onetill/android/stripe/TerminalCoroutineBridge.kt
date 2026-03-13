@@ -5,6 +5,7 @@ import com.stripe.stripeterminal.external.callable.Callback
 import com.stripe.stripeterminal.external.callable.PaymentIntentCallback
 import com.stripe.stripeterminal.external.callable.ReaderCallback
 import com.stripe.stripeterminal.external.models.EasyConnectConfiguration
+import com.stripe.stripeterminal.external.models.CreateConfiguration
 import com.stripe.stripeterminal.external.models.PaymentIntent
 import com.stripe.stripeterminal.external.models.PaymentIntentParameters
 import com.stripe.stripeterminal.external.models.Reader
@@ -25,6 +26,21 @@ suspend fun Terminal.awaitCreatePaymentIntent(
             cont.resumeWithException(e)
         }
     })
+}
+
+suspend fun Terminal.awaitCreatePaymentIntent(
+    params: PaymentIntentParameters,
+    createConfig: CreateConfiguration,
+): PaymentIntent = suspendCancellableCoroutine { cont ->
+    createPaymentIntent(params, object : PaymentIntentCallback {
+        override fun onSuccess(paymentIntent: PaymentIntent) {
+            cont.resume(paymentIntent)
+        }
+
+        override fun onFailure(e: TerminalException) {
+            cont.resumeWithException(e)
+        }
+    }, createConfig)
 }
 
 suspend fun Terminal.awaitCollectPaymentMethod(

@@ -1,6 +1,8 @@
 package com.onetill.shared.data.local
 
+import com.onetill.shared.data.model.ConsentLogEntry
 import com.onetill.shared.data.model.Coupon
+import com.onetill.shared.data.model.OfflinePaymentConfig
 import com.onetill.shared.data.model.Order
 import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.data.model.Product
@@ -65,4 +67,16 @@ interface LocalDataSource {
     // Device ID
     suspend fun getDeviceId(): String?
     suspend fun saveDeviceId(deviceId: String)
+
+    // Offline Payment Config
+    suspend fun getOfflinePaymentConfig(): OfflinePaymentConfig
+    suspend fun saveOfflinePaymentConfig(config: OfflinePaymentConfig)
+    fun observeOfflinePaymentEnabled(): Flow<Boolean>
+
+    // Consent Audit Log
+    suspend fun logOfflinePaymentConsent(entry: ConsentLogEntry)
+    suspend fun getConsentLog(): List<ConsentLogEntry>
+
+    // Offline order tracking
+    suspend fun getUnreconciledOfflineOrders(): List<Order>
 }

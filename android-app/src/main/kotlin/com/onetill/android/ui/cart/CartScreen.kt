@@ -61,6 +61,7 @@ fun CartScreen(
     val state by viewModel.cartState.collectAsState()
     val selectedMethod by checkoutViewModel.selectedPaymentMethod.collectAsState()
     val isOnline by checkoutViewModel.isOnline.collectAsState()
+    val offlinePaymentsEnabled by checkoutViewModel.offlinePaymentsEnabled.collectAsState()
     val isSubmitting by checkoutViewModel.isSubmitting.collectAsState()
     val couponError by viewModel.couponError.collectAsState()
     var showCouponField by remember { mutableStateOf(false) }
@@ -318,6 +319,7 @@ fun CartScreen(
                 subtitle = when {
                     isSubmitting && selectedMethod == PaymentMethodUi.Card -> "Processing payment..."
                     isOnline -> "Tap, chip, or swipe"
+                    offlinePaymentsEnabled -> "Offline — Tap or chip only"
                     else -> "Requires internet"
                 },
                 icon = {
@@ -330,7 +332,7 @@ fun CartScreen(
                 onClick = {
                     if (isSubmitting || state.items.isEmpty()) return@PaymentMethodCard
                     checkoutViewModel.selectPaymentMethod(PaymentMethodUi.Card)
-                    if (isOnline) {
+                    if (isOnline || offlinePaymentsEnabled) {
                         checkoutViewModel.submitCardPayment(
                             onComplete = { orderId, amount -> onCardPaymentComplete(orderId, amount) },
                             onFailed = { message -> onCardPaymentFailed(message) },

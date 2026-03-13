@@ -1,0 +1,11 @@
+ALTER TABLE offline_orders ADD COLUMN payment_created_offline INTEGER NOT NULL DEFAULT 0;
+
+CREATE TABLE offline_payment_consent_log (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    device_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    per_transaction_limit_cents INTEGER,
+    total_limit_cents INTEGER,
+    risk_text_version TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);

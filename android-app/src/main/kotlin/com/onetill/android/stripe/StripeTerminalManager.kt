@@ -10,9 +10,11 @@ import com.stripe.stripeterminal.external.callable.TerminalListener
 import com.stripe.stripeterminal.external.models.CaptureMethod
 import com.stripe.stripeterminal.external.models.ConnectionConfiguration
 import com.stripe.stripeterminal.external.models.ConnectionTokenException
+import com.stripe.stripeterminal.external.models.CreateConfiguration
 import com.stripe.stripeterminal.external.models.DisconnectReason
 import com.stripe.stripeterminal.external.models.DiscoveryConfiguration
 import com.stripe.stripeterminal.external.models.EasyConnectConfiguration
+import com.stripe.stripeterminal.external.models.OfflineBehavior
 import com.stripe.stripeterminal.external.models.OfflineStatus
 import com.stripe.stripeterminal.external.models.PaymentIntent
 import com.stripe.stripeterminal.external.models.PaymentIntentParameters
@@ -21,11 +23,16 @@ import com.stripe.stripeterminal.external.models.ReaderEvent
 import com.stripe.stripeterminal.external.models.TerminalErrorCode
 import com.stripe.stripeterminal.external.models.TerminalException
 import com.stripe.stripeterminal.log.LogLevel
+import com.onetill.shared.data.local.LocalDataSource
+import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.ecommerce.woocommerce.OneTillPluginClient
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -34,12 +41,14 @@ import kotlinx.coroutines.withContext
 class StripeTerminalManager(
     private val pluginClient: OneTillPluginClient,
     private val applicationContext: Context,
+    private val localDataSource: LocalDataSource,
 ) {
     sealed class PaymentResult {
         data class Success(
             val paymentIntentId: String,
             val cardBrand: String?,
             val cardLast4: String?,
+            val wasCreatedOffline: Boolean = false,
         ) : PaymentResult()
 
         data class Failed(val message: String) : PaymentResult()
@@ -50,6 +59,12 @@ class StripeTerminalManager(
     private val initMutex = Mutex()
     private var initialized = false
 
+    private val _offlineStatus = MutableStateFlow<OfflineStatus?>(null)
+    val offlineStatus: StateFlow<OfflineStatus?> = _offlineStatus.asStateFlow()
+
+    private val _forwardingFailures = MutableStateFlow(0)
+    val forwardingFailures: StateFlow<Int> = _forwardingFailures.asStateFlow()
+
     private val appsOnDevicesListener = object : AppsOnDevicesListener {
         override fun onDisconnect(reason: DisconnectReason) {
             Napier.w("Reader disconnected: $reason", tag = "Stripe")
@@ -57,6 +72,47 @@ class StripeTerminalManager(
 
         override fun onReportReaderEvent(event: ReaderEvent) {
             Napier.d("Reader event: $event", tag = "Stripe")
+        }
+    }
+
+    private val offlineListener = object : OfflineListener {
+        override fun onOfflineStatusChange(offlineStatus: OfflineStatus) {
+            Napier.d("Offline status changed: $offlineStatus", tag = "Stripe")
+            _offlineStatus.value = offlineStatus
+        }
+
+        override fun onPaymentIntentForwarded(paymentIntent: PaymentIntent, e: TerminalException?) {
+            val idempotencyKey = paymentIntent.metadata?.get("onetill_idempotency_key")
+            if (e != null) {
+                Napier.e("Offline payment forwarding failed: ${e.errorMessage}, key=$idempotencyKey", tag = "Stripe")
+                _forwardingFailures.value++
+                if (idempotencyKey != null) {
+                    scope.launch {
+                        val order = localDataSource.getOrderByIdempotencyKey(idempotencyKey)
+                        if (order != null) {
+                            localDataSource.updateOrderStatus(order.id, OrderStatus.FORWARDING_FAILED)
+                            Napier.w("Marked order ${order.id} as FORWARDING_FAILED", tag = "Stripe")
+                        }
+                    }
+                }
+            } else {
+                val realId = paymentIntent.id
+                Napier.i("Offline payment forwarded successfully: pi=$realId, key=$idempotencyKey", tag = "Stripe")
+                if (idempotencyKey != null && realId != null) {
+                    scope.launch {
+                        val order = localDataSource.getOrderByIdempotencyKey(idempotencyKey)
+                        if (order != null) {
+                            localDataSource.updateOrderStripeTransactionId(order.id, realId)
+                            Napier.i("Reconciled order ${order.id} with pi=$realId", tag = "Stripe")
+                        }
+                    }
+                }
+            }
+        }
+
+        override fun onForwardingFailure(e: TerminalException) {
+            Napier.e("General forwarding failure: ${e.errorMessage}", tag = "Stripe")
+            _forwardingFailures.value++
         }
     }
 
@@ -87,11 +143,7 @@ class StripeTerminalManager(
                         }
                     },
                     object : TerminalListener {},
-                    object : OfflineListener {
-                        override fun onOfflineStatusChange(offlineStatus: OfflineStatus) {}
-                        override fun onPaymentIntentForwarded(paymentIntent: PaymentIntent, e: TerminalException?) {}
-                        override fun onForwardingFailure(e: TerminalException) {}
-                    },
+                    offlineListener,
                 )
             }
 
@@ -129,22 +181,33 @@ class StripeTerminalManager(
         }
     }
 
-    suspend fun collectPayment(amountCents: Long, currency: String): PaymentResult {
+    suspend fun collectPayment(
+        amountCents: Long,
+        currency: String,
+        offlineBehavior: OfflineBehavior = OfflineBehavior.REQUIRE_ONLINE,
+        idempotencyKey: String? = null,
+    ): PaymentResult {
         try {
             ensureConnected()
 
             val terminal = Terminal.getInstance()
 
             // 1. Create PaymentIntent client-side
-            val params = PaymentIntentParameters.Builder(
+            val paramsBuilder = PaymentIntentParameters.Builder(
                 amountCents,
                 currency.lowercase(),
                 CaptureMethod.Automatic,
                 listOf(PaymentMethodType.CARD_PRESENT),
-            ).build()
+            )
+            if (idempotencyKey != null) {
+                paramsBuilder.setMetadata(mapOf("onetill_idempotency_key" to idempotencyKey))
+            }
+            val params = paramsBuilder.build()
 
-            Napier.d("Creating PaymentIntent: ${amountCents}c $currency", tag = "Stripe")
-            var paymentIntent = terminal.awaitCreatePaymentIntent(params)
+            val createConfig = CreateConfiguration(offlineBehavior)
+
+            Napier.d("Creating PaymentIntent: ${amountCents}c $currency, offline=$offlineBehavior", tag = "Stripe")
+            var paymentIntent = terminal.awaitCreatePaymentIntent(params, createConfig)
 
             // 2. Collect payment method — Stripe Reader App takes over screen
             Napier.d("Collecting payment method...", tag = "Stripe")
@@ -154,7 +217,8 @@ class StripeTerminalManager(
             Napier.d("Confirming payment...", tag = "Stripe")
             paymentIntent = terminal.awaitConfirmPaymentIntent(paymentIntent)
 
-            // 4. Extract result
+            // 4. Extract result — null id means the payment was created offline
+            val wasCreatedOffline = paymentIntent.id == null
             val charge = paymentIntent.getCharges().firstOrNull()
             val cardDetails = charge?.paymentMethodDetails?.cardPresentDetails
 
@@ -162,9 +226,10 @@ class StripeTerminalManager(
                 paymentIntentId = paymentIntent.id ?: "",
                 cardBrand = cardDetails?.brand,
                 cardLast4 = cardDetails?.last4,
+                wasCreatedOffline = wasCreatedOffline,
             )
             Napier.i(
-                "Payment successful: pi=${result.paymentIntentId}, card=${result.cardBrand} ***${result.cardLast4}",
+                "Payment successful: pi=${result.paymentIntentId}, card=${result.cardBrand} ***${result.cardLast4}, offline=$wasCreatedOffline",
                 tag = "Stripe",
             )
             return result

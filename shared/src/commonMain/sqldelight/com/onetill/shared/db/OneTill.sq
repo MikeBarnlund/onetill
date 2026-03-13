@@ -132,7 +132,8 @@ CREATE TABLE offline_orders (
     note TEXT,
     coupon_codes TEXT,
     created_at INTEGER NOT NULL,
-    customer_email TEXT
+    customer_email TEXT,
+    payment_created_offline INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX idx_offline_orders_status ON offline_orders(status);
@@ -352,8 +353,8 @@ DELETE FROM product_tag_join WHERE product_id = ?;
 insertOrder:
 INSERT INTO offline_orders(
     remote_id, order_number, status, customer_id, total_cents, total_tax_cents,
-    currency_code, payment_method, stripe_transaction_id, idempotency_key, note, coupon_codes, created_at, customer_email
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    currency_code, payment_method, stripe_transaction_id, idempotency_key, note, coupon_codes, created_at, customer_email, payment_created_offline
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 lastInsertOrderId:
 SELECT last_insert_rowid();
@@ -543,3 +544,36 @@ SELECT * FROM coupon WHERE code = ? COLLATE NOCASE;
 
 deleteAllCoupons:
 DELETE FROM coupon;
+
+-- ----------------------------------------------------------------------------
+-- Offline Payment Consent Log (append-only — no DELETE query)
+-- ----------------------------------------------------------------------------
+
+CREATE TABLE offline_payment_consent_log (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    device_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    per_transaction_limit_cents INTEGER,
+    total_limit_cents INTEGER,
+    risk_text_version TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+
+-- ============================================================================
+-- QUERIES: Offline Payment Consent Log
+-- ============================================================================
+
+insertConsentLogEntry:
+INSERT INTO offline_payment_consent_log(
+    device_id, action, per_transaction_limit_cents, total_limit_cents, risk_text_version, created_at
+) VALUES (?, ?, ?, ?, ?, ?);
+
+selectAllConsentLogEntries:
+SELECT * FROM offline_payment_consent_log ORDER BY created_at ASC;
+
+-- ============================================================================
+-- QUERIES: Offline Payment Orders
+-- ============================================================================
+
+selectUnreconciledOfflineOrders:
+SELECT * FROM offline_orders WHERE payment_created_offline = 1 AND (stripe_transaction_id IS NULL OR stripe_transaction_id = '');

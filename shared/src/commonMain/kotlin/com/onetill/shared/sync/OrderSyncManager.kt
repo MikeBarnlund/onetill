@@ -59,6 +59,7 @@ class OrderSyncManager(
             note = draft.note,
             couponCodes = draft.couponCodes,
             createdAt = Clock.System.now(),
+            paymentCreatedOffline = draft.paymentCreatedOffline,
         )
 
         val localId = localDataSource.saveOrder(localOrder)

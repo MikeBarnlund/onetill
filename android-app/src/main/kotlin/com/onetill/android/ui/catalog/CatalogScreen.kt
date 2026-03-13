@@ -70,6 +70,7 @@ import com.onetill.android.input.VolumeKeyEventBus
 import com.onetill.android.ui.components.BarcodeIcon
 import com.onetill.android.ui.components.ButtonVariant
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 import com.onetill.android.ui.components.CartPreviewPill
 import com.onetill.android.ui.components.CloseIcon
 import com.onetill.android.ui.components.AppStatusBar
@@ -82,6 +83,7 @@ import com.onetill.android.ui.components.SearchIcon
 import com.onetill.android.ui.components.ToastHost
 import com.onetill.shared.data.model.ProductType
 import com.onetill.shared.util.formatDisplay
+import com.onetill.android.stripe.StripeTerminalManager
 import com.onetill.android.ui.theme.OneTillTheme
 import com.onetill.android.ui.theme.screenGradientBackground
 import kotlinx.coroutines.delay
@@ -112,6 +114,9 @@ fun CatalogScreen(
     val isScannerOpen by viewModel.isScannerOpen.collectAsState()
     val hasLoaded by viewModel.hasLoaded.collectAsState()
     val registerName by viewModel.registerName.collectAsState()
+
+    val stripeTerminalManager: StripeTerminalManager = koinInject()
+    val forwardingFailures by stripeTerminalManager.forwardingFailures.collectAsState()
 
     val haptic = LocalHapticFeedback.current
     var showWifiPasscodeDialog by remember { mutableStateOf(false) }
@@ -200,6 +205,24 @@ fun CatalogScreen(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 AppStatusBar()
+
+                // Forwarding failure banner
+                if (forwardingFailures > 0) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(colors.error.copy(alpha = 0.15f))
+                            .padding(horizontal = dimens.md, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "$forwardingFailures offline payment(s) were declined after the device came back online. Check Order History for details.",
+                            fontSize = 12.sp,
+                            color = colors.error,
+                            lineHeight = 16.sp,
+                        )
+                    }
+                }
 
                 CatalogHeader(
                     isSearchVisible = isSearchVisible,

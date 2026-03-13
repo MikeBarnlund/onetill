@@ -35,6 +35,7 @@ import com.onetill.android.ui.orders.DailySummaryScreen
 import com.onetill.android.ui.orders.OrderHistoryScreen
 import com.onetill.android.ui.scanner.QrPairingViewModel
 import com.onetill.android.ui.scanner.QrScannerScreen
+import com.onetill.android.ui.settings.OfflinePaymentSettingsScreen
 import com.onetill.android.ui.settings.SettingsScreen
 import com.onetill.android.ui.setup.SetupWizardScreen
 import com.onetill.shared.data.local.LocalDataSource
@@ -53,6 +54,7 @@ object Routes {
     const val DAILY_SUMMARY = "daily_summary"
     const val QR_SCAN = "qr_scan"
     const val SETTINGS = "settings"
+    const val OFFLINE_PAYMENT_SETTINGS = "offline_payment_settings"
 
     fun receiptEmail(orderId: Long, amount: String, method: String, change: String? = null): String {
         val base = "receipt_email/$orderId/$amount/$method"
@@ -322,6 +324,16 @@ fun OneTillNavGraph(
         // Settings
         composable(Routes.SETTINGS) {
             SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToOfflinePayments = {
+                    navController.navigate(Routes.OFFLINE_PAYMENT_SETTINGS)
+                },
+            )
+        }
+
+        // Offline Payment Settings
+        composable(Routes.OFFLINE_PAYMENT_SETTINGS) {
+            OfflinePaymentSettingsScreen(
                 onBack = { navController.popBackStack() },
             )
         }

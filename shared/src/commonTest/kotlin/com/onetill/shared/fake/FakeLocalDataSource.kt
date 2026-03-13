@@ -1,7 +1,9 @@
 package com.onetill.shared.fake
 
 import com.onetill.shared.data.local.LocalDataSource
+import com.onetill.shared.data.model.ConsentLogEntry
 import com.onetill.shared.data.model.Coupon
+import com.onetill.shared.data.model.OfflinePaymentConfig
 import com.onetill.shared.data.model.Order
 import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.data.model.Product
@@ -242,6 +244,30 @@ class FakeLocalDataSource : LocalDataSource {
     override suspend fun saveDeviceId(deviceId: String) {
         this.deviceId = deviceId
     }
+
+    // Offline Payment Config
+
+    private var offlinePaymentConfig = OfflinePaymentConfig()
+    private val _offlinePaymentEnabledFlow = MutableStateFlow(false)
+    private val consentLog = mutableListOf<ConsentLogEntry>()
+
+    override suspend fun getOfflinePaymentConfig(): OfflinePaymentConfig = offlinePaymentConfig
+
+    override suspend fun saveOfflinePaymentConfig(config: OfflinePaymentConfig) {
+        offlinePaymentConfig = config
+        _offlinePaymentEnabledFlow.value = config.enabled
+    }
+
+    override fun observeOfflinePaymentEnabled(): Flow<Boolean> = _offlinePaymentEnabledFlow
+
+    override suspend fun logOfflinePaymentConsent(entry: ConsentLogEntry) {
+        consentLog.add(entry)
+    }
+
+    override suspend fun getConsentLog(): List<ConsentLogEntry> = consentLog.toList()
+
+    override suspend fun getUnreconciledOfflineOrders(): List<Order> =
+        orders.filter { it.paymentCreatedOffline && (it.stripeTransactionId.isNullOrEmpty()) }
 
     fun reset() {
         products.clear()

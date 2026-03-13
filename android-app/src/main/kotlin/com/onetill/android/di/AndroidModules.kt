@@ -20,5 +20,5 @@ val connectivityModule = module {
 }
 
 val stripeModule = module {
-    single { StripeTerminalManager(get(), androidContext()) }
+    single { StripeTerminalManager(get(), androidContext(), get()) }
 }

@@ -163,19 +163,22 @@ class CartManager(
         stripeTransactionId: String? = null,
         cardBrand: String? = null,
         cardLast4: String? = null,
+        idempotencyKey: String? = null,
+        paymentCreatedOffline: Boolean = false,
     ): OrderDraft {
         val state = _cartState.value
         return OrderDraft(
             lineItems = items.map { it.toLineItem() },
             customerId = customerId,
             paymentMethod = paymentMethod,
-            idempotencyKey = Uuid.random().toString(),
+            idempotencyKey = idempotencyKey ?: Uuid.random().toString(),
             note = note,
             couponCodes = appliedCoupons.map { it.code },
             discountCents = state.discountTotal.amountCents,
             stripeTransactionId = stripeTransactionId,
             cardBrand = cardBrand,
             cardLast4 = cardLast4,
+            paymentCreatedOffline = paymentCreatedOffline,
         )
     }
 

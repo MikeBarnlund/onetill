@@ -37,6 +37,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onNavigateToOfflinePayments: () -> Unit = {},
     viewModel: SettingsViewModel = koinViewModel(),
 ) {
     val colors = OneTillTheme.colors
@@ -163,6 +164,14 @@ fun SettingsScreen(
                     )
                 }
             }
+
+            // Offline Payments navigation
+            Spacer(modifier = Modifier.height(dimens.md))
+            OneTillButton(
+                text = "Offline Payments",
+                onClick = onNavigateToOfflinePayments,
+                variant = ButtonVariant.Secondary,
+            )
         }
 
         // Bottom CTA

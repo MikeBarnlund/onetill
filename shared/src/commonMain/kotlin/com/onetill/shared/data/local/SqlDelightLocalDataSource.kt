@@ -3,10 +3,13 @@ package com.onetill.shared.data.local
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.coroutines.mapToOneOrNull
+import com.onetill.shared.data.model.ConsentAction
+import com.onetill.shared.data.model.ConsentLogEntry
 import com.onetill.shared.data.model.Coupon
 import com.onetill.shared.data.model.CouponType
 import com.onetill.shared.data.model.LineItem
 import com.onetill.shared.data.model.Money
+import com.onetill.shared.data.model.OfflinePaymentConfig
 import com.onetill.shared.data.model.Order
 import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.data.model.PaymentMethod
@@ -281,6 +284,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
                 coupon_codes = order.couponCodes.takeIf { it.isNotEmpty() }?.joinToString(","),
                 created_at = order.createdAt.toEpochMilliseconds(),
                 customer_email = order.customerEmail,
+                payment_created_offline = if (order.paymentCreatedOffline) 1L else 0L,
             )
             val localId = queries.lastInsertOrderId().executeAsOne()
 
@@ -416,6 +420,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
                     coupon_codes = order.couponCodes.takeIf { it.isNotEmpty() }?.joinToString(","),
                     created_at = order.createdAt.toEpochMilliseconds(),
                     customer_email = order.customerEmail,
+                    payment_created_offline = if (order.paymentCreatedOffline) 1L else 0L,
                 )
                 val localId = queries.lastInsertOrderId().executeAsOne()
 
@@ -606,6 +611,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
             couponCodes = row.coupon_codes?.split(",")?.filter { it.isNotBlank() } ?: emptyList(),
             createdAt = Instant.fromEpochMilliseconds(row.created_at),
             customerEmail = row.customer_email,
+            paymentCreatedOffline = row.payment_created_offline != 0L,
         )
     }
 
@@ -663,6 +669,68 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
 
     override suspend fun saveDeviceId(deviceId: String) = withContext(Dispatchers.Default) {
         queries.upsertAppSetting("device_id", deviceId)
+    }
+
+    // ========================================================================
+    // Offline Payment Config
+    // ========================================================================
+
+    override suspend fun getOfflinePaymentConfig(): OfflinePaymentConfig = withContext(Dispatchers.Default) {
+        val enabled = queries.selectAppSetting("offline_payments_enabled").executeAsOneOrNull() == "true"
+        val perTx = queries.selectAppSetting("offline_per_transaction_limit_cents").executeAsOneOrNull()?.toLongOrNull() ?: 0L
+        val total = queries.selectAppSetting("offline_total_limit_cents").executeAsOneOrNull()?.toLongOrNull() ?: 0L
+        OfflinePaymentConfig(enabled = enabled, perTransactionLimitCents = perTx, totalLimitCents = total)
+    }
+
+    override suspend fun saveOfflinePaymentConfig(config: OfflinePaymentConfig) = withContext(Dispatchers.Default) {
+        db.transaction {
+            queries.upsertAppSetting("offline_payments_enabled", config.enabled.toString())
+            queries.upsertAppSetting("offline_per_transaction_limit_cents", config.perTransactionLimitCents.toString())
+            queries.upsertAppSetting("offline_total_limit_cents", config.totalLimitCents.toString())
+        }
+    }
+
+    override fun observeOfflinePaymentEnabled(): Flow<Boolean> =
+        queries.selectAppSetting("offline_payments_enabled")
+            .asFlow()
+            .mapToOneOrNull(Dispatchers.Default)
+            .map { it == "true" }
+
+    // ========================================================================
+    // Consent Audit Log
+    // ========================================================================
+
+    override suspend fun logOfflinePaymentConsent(entry: ConsentLogEntry) = withContext(Dispatchers.Default) {
+        queries.insertConsentLogEntry(
+            device_id = entry.deviceId,
+            action = entry.action.name,
+            per_transaction_limit_cents = entry.perTransactionLimitCents,
+            total_limit_cents = entry.totalLimitCents,
+            risk_text_version = entry.riskTextVersion,
+            created_at = entry.createdAt.toEpochMilliseconds(),
+        )
+    }
+
+    override suspend fun getConsentLog(): List<ConsentLogEntry> = withContext(Dispatchers.Default) {
+        queries.selectAllConsentLogEntries().executeAsList().map {
+            ConsentLogEntry(
+                id = it.id,
+                deviceId = it.device_id,
+                action = ConsentAction.valueOf(it.action),
+                perTransactionLimitCents = it.per_transaction_limit_cents,
+                totalLimitCents = it.total_limit_cents,
+                riskTextVersion = it.risk_text_version,
+                createdAt = Instant.fromEpochMilliseconds(it.created_at),
+            )
+        }
+    }
+
+    // ========================================================================
+    // Offline Order Tracking
+    // ========================================================================
+
+    override suspend fun getUnreconciledOfflineOrders(): List<Order> = withContext(Dispatchers.Default) {
+        queries.selectUnreconciledOfflineOrders().executeAsList().map { assembleOrder(it) }
     }
 
     // ========================================================================

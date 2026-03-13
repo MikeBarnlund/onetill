@@ -35,6 +35,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.onetill.android.ui.theme.OneTillTheme
+import com.onetill.android.stripe.StripeTerminalManager
+import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.shared.sync.ConnectivityMonitor
 import com.onetill.shared.sync.SyncOrchestrator
 import com.onetill.shared.sync.SyncStatus
@@ -66,7 +68,16 @@ fun AppStatusBar(
         ?: remember { androidx.compose.runtime.mutableStateOf(0L) }
     val isOnline by connectivityMonitor.isOnline.collectAsState()
 
+    val localDataSource = remember { KoinPlatform.getKoin().getOrNull<LocalDataSource>() }
+    val offlinePaymentsEnabled by localDataSource?.observeOfflinePaymentEnabled()?.collectAsState(initial = false)
+        ?: remember { mutableStateOf(false) }
+    val stripeTerminalManager = remember { KoinPlatform.getKoin().getOrNull<StripeTerminalManager>() }
+    val offlineStatus by stripeTerminalManager?.offlineStatus?.collectAsState()
+        ?: remember { mutableStateOf(null) }
+
     val connectivityState = if (isOnline) ConnectivityState.Online else ConnectivityState.Offline
+
+    val pendingOfflineCount = offlineStatus?.sdk?.offlinePaymentsCount ?: 0
 
     val syncStatusText = when {
         syncStatus is SyncStatus.Syncing -> "Syncing..."
@@ -89,12 +100,20 @@ fun AppStatusBar(
         }
     }
 
+    val connectivityLabel = when {
+        isOnline -> null
+        offlinePaymentsEnabled && pendingOfflineCount > 0 -> "Offline payments: $pendingOfflineCount pending"
+        offlinePaymentsEnabled -> "Offline (payments enabled)"
+        else -> null
+    }
+
     StatusBar(
         connectivityState = connectivityState,
         syncStatusText = syncStatusText,
         batteryPercent = battery.percent,
         isCharging = battery.isCharging,
         currentTime = currentTime,
+        connectivityLabelOverride = connectivityLabel,
         modifier = modifier,
     )
 }
@@ -119,6 +138,7 @@ fun StatusBar(
     batteryPercent: Int,
     isCharging: Boolean = false,
     currentTime: String,
+    connectivityLabelOverride: String? = null,
     modifier: Modifier = Modifier,
     onConnectivityTap: () -> Unit = {},
 ) {
@@ -131,7 +151,7 @@ fun StatusBar(
         ConnectivityState.Offline -> colors.warning
         ConnectivityState.Syncing -> colors.accent
     }
-    val connectivityLabel = when (connectivityState) {
+    val connectivityLabel = connectivityLabelOverride ?: when (connectivityState) {
         ConnectivityState.Online -> "Online"
         ConnectivityState.Offline -> "Offline"
         ConnectivityState.Syncing -> "Syncing"

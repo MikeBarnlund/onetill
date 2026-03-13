@@ -19,6 +19,7 @@ data class Order(
     val couponCodes: List<String>,
     val createdAt: Instant,
     val customerEmail: String? = null,
+    val paymentCreatedOffline: Boolean = false,
 )
 
 /**
@@ -37,6 +38,7 @@ data class OrderDraft(
     val cardBrand: String? = null,
     val cardLast4: String? = null,
     val customerEmail: String? = null,
+    val paymentCreatedOffline: Boolean = false,
 )
 
 @Serializable
@@ -56,6 +58,7 @@ enum class OrderStatus {
     FAILED,
     PENDING_SYNC,
     PENDING_RECEIPT,
+    FORWARDING_FAILED,
 }
 
 @Serializable
