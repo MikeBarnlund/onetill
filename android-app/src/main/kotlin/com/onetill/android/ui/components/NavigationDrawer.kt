@@ -44,6 +44,7 @@ fun NavigationDrawer(
     onSummaryTap: () -> Unit,
     onScanQrTap: () -> Unit,
     onEditShopTap: () -> Unit,
+    onOfflinePaymentsTap: () -> Unit = {},
     onWifiSettingsTap: () -> Unit = {},
     onResyncTap: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -159,6 +160,12 @@ fun NavigationDrawer(
                     label = "Edit Shop Info",
                     icon = { color -> EditIcon(color = color, modifier = Modifier.size(dimens.headerIconSize)) },
                     onClick = onEditShopTap,
+                    modifier = Modifier.padding(start = 34.dp),
+                )
+                DrawerNavItem(
+                    label = "Offline Payments",
+                    icon = { color -> OfflinePaymentsIcon(color = color, modifier = Modifier.size(dimens.headerIconSize)) },
+                    onClick = onOfflinePaymentsTap,
                     modifier = Modifier.padding(start = 34.dp),
                 )
                 DrawerNavItem(

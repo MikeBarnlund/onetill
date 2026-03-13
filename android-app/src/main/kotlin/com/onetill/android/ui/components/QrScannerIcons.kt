@@ -213,3 +213,35 @@ fun RefreshIcon(color: Color, modifier: Modifier = Modifier) {
         drawPath(arrowPath, color = color, style = Stroke(width = s, cap = StrokeCap.Round))
     }
 }
+
+@Composable
+fun OfflinePaymentsIcon(color: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val s = 1.5.dp.toPx()
+        val w = size.width
+        val h = size.height
+        // Card outline
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(w * 0.1f, h * 0.2f),
+            size = Size(w * 0.8f, h * 0.6f),
+            cornerRadius = CornerRadius(2.dp.toPx()),
+            style = Stroke(width = s),
+        )
+        // Stripe on card
+        drawLine(
+            color = color,
+            start = Offset(w * 0.1f, h * 0.38f),
+            end = Offset(w * 0.9f, h * 0.38f),
+            strokeWidth = s,
+        )
+        // Diagonal "offline" slash
+        drawLine(
+            color = color,
+            start = Offset(w * 0.2f, h * 0.85f),
+            end = Offset(w * 0.8f, h * 0.15f),
+            strokeWidth = s,
+            cap = StrokeCap.Round,
+        )
+    }
+}

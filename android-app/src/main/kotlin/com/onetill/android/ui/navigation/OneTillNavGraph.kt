@@ -175,6 +175,7 @@ fun OneTillNavGraph(
                 onNavigateToSummary = { navController.navigate(Routes.DAILY_SUMMARY) },
                 onNavigateToSettings = { navController.navigate(Routes.SETTINGS) },
                 onNavigateToQrScan = { navController.navigate(Routes.QR_SCAN) },
+                onNavigateToOfflinePayments = { navController.navigate(Routes.OFFLINE_PAYMENT_SETTINGS) },
             )
         }
 
@@ -325,9 +326,6 @@ fun OneTillNavGraph(
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 onBack = { navController.popBackStack() },
-                onNavigateToOfflinePayments = {
-                    navController.navigate(Routes.OFFLINE_PAYMENT_SETTINGS)
-                },
             )
         }
 

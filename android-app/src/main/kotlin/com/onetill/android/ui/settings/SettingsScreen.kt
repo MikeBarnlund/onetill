@@ -23,7 +23,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.onetill.android.ui.components.ButtonVariant
 import com.onetill.android.ui.components.AppStatusBar
 import com.onetill.android.ui.components.HeaderNavAction
 import com.onetill.android.ui.components.OneTillButton
@@ -37,7 +36,6 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
-    onNavigateToOfflinePayments: () -> Unit = {},
     viewModel: SettingsViewModel = koinViewModel(),
 ) {
     val colors = OneTillTheme.colors
@@ -165,13 +163,6 @@ fun SettingsScreen(
                 }
             }
 
-            // Offline Payments navigation
-            Spacer(modifier = Modifier.height(dimens.md))
-            OneTillButton(
-                text = "Offline Payments",
-                onClick = onNavigateToOfflinePayments,
-                variant = ButtonVariant.Secondary,
-            )
         }
 
         // Bottom CTA

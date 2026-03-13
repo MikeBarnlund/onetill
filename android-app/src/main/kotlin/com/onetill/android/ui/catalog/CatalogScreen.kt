@@ -96,6 +96,7 @@ fun CatalogScreen(
     onNavigateToSummary: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToQrScan: () -> Unit,
+    onNavigateToOfflinePayments: () -> Unit = {},
     viewModel: CatalogViewModel = koinViewModel(),
 ) {
     val context = LocalContext.current
@@ -188,6 +189,10 @@ fun CatalogScreen(
             onEditShopTap = {
                 viewModel.closeDrawer()
                 onNavigateToSettings()
+            },
+            onOfflinePaymentsTap = {
+                viewModel.closeDrawer()
+                onNavigateToOfflinePayments()
             },
             onWifiSettingsTap = { showWifiPasscodeDialog = true },
             onResyncTap = {
