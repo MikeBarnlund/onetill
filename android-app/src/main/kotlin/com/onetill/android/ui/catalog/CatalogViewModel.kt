@@ -17,7 +17,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
@@ -41,8 +43,9 @@ class CatalogViewModel(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    @OptIn(FlowPreview::class)
     val searchResults: StateFlow<List<Product>> =
-        combine(allProducts, _searchQuery) { products, query ->
+        combine(allProducts, _searchQuery.debounce(150)) { products, query ->
             if (query.isBlank()) products
             else {
                 val nameMatches = mutableListOf<Product>()

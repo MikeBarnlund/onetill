@@ -1,0 +1,20 @@
+# Baseline profile for OneTill catalog scroll performance.
+# Eliminates JIT compilation penalty on first scroll after S700 daily restart.
+
+# Compose runtime & foundation
+HSPLandroidx/compose/runtime/**->**(**)**
+HSPLandroidx/compose/foundation/**->**(**)**
+HSPLandroidx/compose/foundation/lazy/**->**(**)**
+HSPLandroidx/compose/foundation/lazy/grid/**->**(**)**
+HSPLandroidx/compose/ui/**->**(**)**
+HSPLandroidx/compose/material3/**->**(**)**
+HSPLandroidx/compose/animation/**->**(**)**
+
+# Coil image loading
+HSPLcoil3/**->**(**)**
+
+# OneTill catalog hot paths
+HSPLcom/onetill/android/ui/catalog/CatalogScreenKt**->**(**)**
+HSPLcom/onetill/android/ui/components/ProductCardKt**->**(**)**
+HSPLcom/onetill/android/ui/catalog/CatalogViewModel**->**(**)**
+HSPLcom/onetill/shared/data/model/**->**(**)**

@@ -27,6 +27,16 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.onetill.android.ui.theme.OneTillTheme
 
+private val cardScrimGradient = Brush.verticalGradient(
+    colors = listOf(
+        Color.Transparent,
+        Color.Black.copy(alpha = 0.5f),
+        Color.Black.copy(alpha = 0.82f),
+    ),
+    startY = 0f,
+    endY = Float.POSITIVE_INFINITY,
+)
+
 @Composable
 fun ProductCard(
     name: String,
@@ -71,17 +81,7 @@ fun ProductCard(
                     .fillMaxWidth()
                     .aspectRatio(4f / 3f)
                     .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.5f),
-                                Color.Black.copy(alpha = 0.82f),
-                            ),
-                            startY = 0f,
-                            endY = Float.POSITIVE_INFINITY,
-                        ),
-                    ),
+                    .background(cardScrimGradient),
             )
 
             // Product name overlaid at bottom-left inside scrim

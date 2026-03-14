@@ -4,7 +4,11 @@ import android.app.Application
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
+import coil3.disk.DiskCache
 import coil3.network.ktor3.KtorNetworkFetcherFactory
+import coil3.request.CachePolicy
+import coil3.request.crossfade
+import okio.Path.Companion.toOkioPath
 
 import com.onetill.android.di.androidModule
 import com.onetill.android.di.connectivityModule
@@ -41,6 +45,15 @@ class OneTillApplication : Application(), SingletonImageLoader.Factory {
             .components {
                 add(KtorNetworkFetcherFactory(httpClient = { HttpClient(OkHttp) }))
             }
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(cacheDir.resolve("image_cache").toOkioPath())
+                    .maxSizeBytes(50L * 1024 * 1024) // 50 MB
+                    .build()
+            }
+            .crossfade(150)
             .build()
     }
 }

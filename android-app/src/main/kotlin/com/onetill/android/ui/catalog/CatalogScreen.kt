@@ -89,7 +89,18 @@ import com.onetill.shared.util.formatDisplay
 import com.onetill.android.stripe.StripeTerminalManager
 import com.onetill.android.ui.theme.OneTillTheme
 import com.onetill.android.ui.theme.screenGradientBackground
+import androidx.compose.ui.graphics.Brush
 import kotlinx.coroutines.delay
+
+private val customSaleScrimGradient = Brush.verticalGradient(
+    colors = listOf(
+        Color.Transparent,
+        Color.Black.copy(alpha = 0.5f),
+        Color.Black.copy(alpha = 0.82f),
+    ),
+    startY = 0f,
+    endY = Float.POSITIVE_INFINITY,
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -283,6 +294,7 @@ fun CatalogScreen(
                             items(
                                 items = products,
                                 key = { it.id },
+                                contentType = { "product" },
                             ) { product ->
                                 val stock = if (product.type == ProductType.VARIABLE) {
                                     product.variants.sumOf { it.stockQuantity ?: 0 }
@@ -312,7 +324,7 @@ fun CatalogScreen(
 
                             // Custom Sale tile — last item in grid (hidden during search)
                             if (searchQuery.isBlank()) {
-                                item(key = "custom_sale") {
+                                item(key = "custom_sale", contentType = "custom_sale") {
                                     CustomSaleTile(
                                         onClick = { viewModel.openCustomSaleSheet() },
                                     )
@@ -449,17 +461,7 @@ private fun CustomSaleTile(
                     .fillMaxWidth()
                     .aspectRatio(4f / 3f)
                     .align(Alignment.BottomCenter)
-                    .background(
-                        androidx.compose.ui.graphics.Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.5f),
-                                Color.Black.copy(alpha = 0.82f),
-                            ),
-                            startY = 0f,
-                            endY = Float.POSITIVE_INFINITY,
-                        ),
-                    ),
+                    .background(customSaleScrimGradient),
             )
 
             // Title overlaid at bottom-left — same style as ProductCard name
