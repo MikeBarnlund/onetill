@@ -2,6 +2,7 @@ package com.onetill.shared.sync
 
 import com.onetill.shared.data.AppResult
 import com.onetill.shared.data.local.LocalDataSource
+import com.onetill.shared.data.model.FeeLine
 import com.onetill.shared.data.model.LineItem
 import com.onetill.shared.data.model.Money
 import com.onetill.shared.data.model.Order
@@ -41,8 +42,9 @@ class OrderSyncManager(
     ): Long {
         // Build a local Order to persist
         val lineItemTotal = draft.lineItems.fold(Money.zero(currency)) { acc, li -> acc + li.totalPrice }
+        val feeLineTotal = draft.feeLines.fold(Money.zero(currency)) { acc, fl -> acc + fl.amount }
         val total = Money(
-            amountCents = (lineItemTotal.amountCents - draft.discountCents).coerceAtLeast(0),
+            amountCents = (lineItemTotal.amountCents + feeLineTotal.amountCents - draft.discountCents).coerceAtLeast(0),
             currencyCode = currency,
         )
         val localOrder = Order(
@@ -50,6 +52,7 @@ class OrderSyncManager(
             number = "",
             status = status,
             lineItems = draft.lineItems,
+            feeLines = draft.feeLines,
             customerId = draft.customerId,
             total = total,
             totalTax = Money.zero(currency),
@@ -163,6 +166,7 @@ class OrderSyncManager(
 
     private fun orderToDraft(order: Order): OrderDraft = OrderDraft(
         lineItems = order.lineItems,
+        feeLines = order.feeLines,
         customerId = order.customerId,
         paymentMethod = order.paymentMethod,
         idempotencyKey = order.idempotencyKey,

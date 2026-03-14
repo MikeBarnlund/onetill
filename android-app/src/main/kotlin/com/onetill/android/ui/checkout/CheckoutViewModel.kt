@@ -46,13 +46,21 @@ class CheckoutViewModel(
 
     val items: StateFlow<List<OrderSummaryItem>> =
         cartManager.cartState.map { cart ->
-            cart.items.map { item ->
+            val productItems = cart.items.map { item ->
                 OrderSummaryItem(
                     name = item.name,
                     quantity = item.quantity,
                     totalFormatted = item.totalPrice.formatDisplay(),
                 )
             }
+            val customItems = cart.customSaleItems.map { item ->
+                OrderSummaryItem(
+                    name = item.description.ifBlank { "Custom Sale" },
+                    quantity = 1,
+                    totalFormatted = item.amount.formatDisplay(),
+                )
+            }
+            productItems + customItems
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val itemCount: StateFlow<Int> =

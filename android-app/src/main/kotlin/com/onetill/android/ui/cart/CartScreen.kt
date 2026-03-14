@@ -4,7 +4,9 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,10 +25,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.onetill.android.ui.checkout.CheckoutViewModel
@@ -35,6 +40,7 @@ import com.onetill.android.ui.components.ButtonVariant
 import com.onetill.android.ui.components.CardPaymentIcon
 import com.onetill.android.ui.components.CartLineItem
 import com.onetill.android.ui.components.CashPaymentIcon
+import com.onetill.shared.cart.CustomSaleItem
 import com.onetill.android.ui.components.AppStatusBar
 import com.onetill.android.ui.components.HeaderNavAction
 import com.onetill.android.ui.components.OneTillButton
@@ -120,7 +126,22 @@ fun CartScreen(
                     maxQuantity = item.maxQuantity,
                     modifier = Modifier.padding(vertical = 14.dp),
                 )
-                if (index < state.items.lastIndex) {
+                if (index < state.items.lastIndex || state.customSaleItems.isNotEmpty()) {
+                    HorizontalDivider(thickness = 1.dp, color = colors.border)
+                }
+            }
+
+            // Custom sale items
+            itemsIndexed(
+                items = state.customSaleItems,
+                key = { _, item -> "custom_${item.id}" },
+            ) { index, item ->
+                CustomSaleCartItem(
+                    item = item,
+                    onRemove = { viewModel.removeCustomSale(item.id) },
+                    modifier = Modifier.padding(vertical = 14.dp),
+                )
+                if (index < state.customSaleItems.lastIndex) {
                     HorizontalDivider(thickness = 1.dp, color = colors.border)
                 }
             }
@@ -335,7 +356,7 @@ fun CartScreen(
                 },
                 isSelected = selectedMethod == PaymentMethodUi.Card,
                 onClick = {
-                    if (isSubmitting || state.items.isEmpty()) return@PaymentMethodCard
+                    if (isSubmitting || state.isEmpty) return@PaymentMethodCard
                     checkoutViewModel.selectPaymentMethod(PaymentMethodUi.Card)
                     if (isOnline || offlinePaymentsEnabled) {
                         checkoutViewModel.submitCardPayment(
@@ -357,7 +378,7 @@ fun CartScreen(
                 },
                 isSelected = selectedMethod == PaymentMethodUi.Cash,
                 onClick = {
-                    if (state.items.isEmpty()) return@PaymentMethodCard
+                    if (state.isEmpty) return@PaymentMethodCard
                     checkoutViewModel.selectPaymentMethod(PaymentMethodUi.Cash)
                     onCashPayment()
                 },
@@ -388,6 +409,79 @@ private fun TotalRow(
             fontSize = 13.sp,
             color = if (isDiscount) colors.success else colors.textSecondary,
         )
+    }
+}
+
+@Composable
+private fun CustomSaleCartItem(
+    item: CustomSaleItem,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = OneTillTheme.colors
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(intrinsicSize = IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        // Placeholder icon — 56×56dp matching CartLineItem image size
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(colors.surface),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "$",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Light,
+                color = colors.textTertiary,
+            )
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = item.description.ifBlank { "Custom Sale" },
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 17.sp,
+            )
+            Text(
+                text = "Custom amount",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Normal,
+                color = colors.textTertiary,
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = "Remove",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = colors.error,
+                    modifier = Modifier.clickable(onClick = onRemove),
+                )
+                Text(
+                    text = item.amount.formatDisplay(),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textPrimary,
+                )
+            }
+        }
     }
 }
 

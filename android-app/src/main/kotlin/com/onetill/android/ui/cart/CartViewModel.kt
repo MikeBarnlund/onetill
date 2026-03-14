@@ -49,4 +49,8 @@ class CartViewModel(
     fun removeCoupon(code: String) {
         cartManager.removeCoupon(code)
     }
+
+    fun removeCustomSale(id: String) {
+        cartManager.removeCustomSale(id)
+    }
 }

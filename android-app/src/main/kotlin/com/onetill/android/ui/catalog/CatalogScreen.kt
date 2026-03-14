@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -36,6 +37,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -48,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
@@ -113,6 +116,7 @@ fun CatalogScreen(
     val isPickerVisible by viewModel.isPickerVisible.collectAsState()
     val isSyncing by viewModel.isSyncing.collectAsState()
     val isScannerOpen by viewModel.isScannerOpen.collectAsState()
+    val isCustomSaleVisible by viewModel.isCustomSaleVisible.collectAsState()
     val hasLoaded by viewModel.hasLoaded.collectAsState()
     val registerName by viewModel.registerName.collectAsState()
 
@@ -257,11 +261,12 @@ fun CatalogScreen(
                     onRefresh = { viewModel.syncProducts() },
                     modifier = Modifier.weight(1f),
                 ) {
-                    if (products.isEmpty()) {
+                    if (products.isEmpty() && searchQuery.isBlank()) {
                         EmptyCatalogState(
                             isSyncing = isSyncing,
                             onSyncProducts = { viewModel.syncProducts() },
                             onNavigateToSettings = onNavigateToSettings,
+                            onCustomSale = { viewModel.openCustomSaleSheet() },
                         )
                     } else {
                         LazyVerticalGrid(
@@ -304,6 +309,15 @@ fun CatalogScreen(
                                     onClick = { viewModel.onProductTap(product) },
                                 )
                             }
+
+                            // Custom Sale tile — last item in grid (hidden during search)
+                            if (searchQuery.isBlank()) {
+                                item(key = "custom_sale") {
+                                    CustomSaleTile(
+                                        onClick = { viewModel.openCustomSaleSheet() },
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -344,6 +358,15 @@ fun CatalogScreen(
                 onAddToCart = { selections -> viewModel.onVariantAddToCart(selections) },
             )
         }
+
+        // Custom sale sheet overlay
+        CustomSaleSheet(
+            visible = isCustomSaleVisible,
+            onDismiss = { viewModel.dismissCustomSaleSheet() },
+            onAddToCart = { description, amountCents ->
+                viewModel.addCustomSale(description, amountCents)
+            },
+        )
 
         // Barcode scanner overlay
         BarcodeScannerOverlay(
@@ -391,10 +414,79 @@ fun CatalogScreen(
 }
 
 @Composable
+private fun CustomSaleTile(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = OneTillTheme.colors
+    val dimens = OneTillTheme.dimens
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+    ) {
+        // Image area — 4:3 aspect ratio to match ProductCard
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(4f / 3f)
+                .clip(RoundedCornerShape(dimens.cardRadius))
+                .background(colors.surface),
+        ) {
+            // Centered "+" icon
+            Text(
+                text = "+",
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Light,
+                color = colors.textTertiary,
+                modifier = Modifier.align(Alignment.Center),
+            )
+
+            // Gradient scrim at bottom — matches ProductCard
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(4f / 3f)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.5f),
+                                Color.Black.copy(alpha = 0.82f),
+                            ),
+                            startY = 0f,
+                            endY = Float.POSITIVE_INFINITY,
+                        ),
+                    ),
+            )
+
+            // Title overlaid at bottom-left — same style as ProductCard name
+            Text(
+                text = "Custom Sale",
+                fontSize = 12.5.sp,
+                fontWeight = FontWeight.Normal,
+                color = colors.textPrimary,
+                maxLines = 2,
+                lineHeight = 16.sp,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(horizontal = 8.dp, vertical = 7.dp),
+            )
+        }
+
+        // Empty info row — preserves spacing to match ProductCard height
+        Spacer(modifier = Modifier.height(4.dp))
+    }
+}
+
+@Composable
 private fun EmptyCatalogState(
     isSyncing: Boolean,
     onSyncProducts: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onCustomSale: () -> Unit = {},
 ) {
     val colors = OneTillTheme.colors
     val dimens = OneTillTheme.dimens
@@ -436,6 +528,15 @@ private fun EmptyCatalogState(
             text = "Store Settings",
             onClick = onNavigateToSettings,
             variant = ButtonVariant.Ghost,
+        )
+
+        Spacer(modifier = Modifier.height(dimens.lg))
+
+        OneTillButton(
+            text = "Custom Sale",
+            onClick = onCustomSale,
+            variant = ButtonVariant.Secondary,
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }

@@ -172,6 +172,7 @@ class FakeLocalDataSource : LocalDataSource {
                 note = order.note,
                 couponCodes = order.couponCodes,
                 lineItems = order.lineItems,
+                feeLines = order.feeLines,
             )
             _ordersFlow.value = orders.toList()
             return existing.id

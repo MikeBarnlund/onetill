@@ -8,6 +8,7 @@ import com.onetill.shared.cart.AddResult
 import com.onetill.shared.cart.CartManager
 import com.onetill.shared.data.AppResult
 import com.onetill.shared.data.local.LocalDataSource
+import com.onetill.shared.data.model.Money
 import com.onetill.shared.data.model.Product
 import com.onetill.shared.data.model.ProductType
 import com.onetill.shared.sync.SyncOrchestrator
@@ -95,6 +96,9 @@ class CatalogViewModel(
 
     private val _isScannerOpen = MutableStateFlow(false)
     val isScannerOpen: StateFlow<Boolean> = _isScannerOpen.asStateFlow()
+
+    private val _isCustomSaleVisible = MutableStateFlow(false)
+    val isCustomSaleVisible: StateFlow<Boolean> = _isCustomSaleVisible.asStateFlow()
 
     fun syncProducts() {
         if (_isSyncing.value) return
@@ -244,5 +248,21 @@ class CatalogViewModel(
                 onProductTap(product)
             }
         }
+    }
+
+    fun openCustomSaleSheet() {
+        _isCustomSaleVisible.value = true
+    }
+
+    fun dismissCustomSaleSheet() {
+        _isCustomSaleVisible.value = false
+    }
+
+    fun addCustomSale(description: String, amountCents: Long) {
+        val currency = cartManager.cartState.value.currency
+        val amount = Money(amountCents = amountCents, currencyCode = currency)
+        cartManager.addCustomSale(description, amount)
+        _isCustomSaleVisible.value = false
+        toastState.show("Custom sale added", ToastType.Success)
     }
 }

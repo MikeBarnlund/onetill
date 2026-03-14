@@ -47,9 +47,18 @@ data class WooCreateOrderDto(
     @SerialName("payment_method_title") val paymentMethodTitle: String = "",
     @SerialName("set_paid") val setPaid: Boolean = false,
     @SerialName("line_items") val lineItems: List<WooCreateLineItemDto>,
+    @SerialName("fee_lines") val feeLines: List<WooCreateFeeLineDto> = emptyList(),
     @SerialName("coupon_lines") val couponLines: List<WooCouponLineDto> = emptyList(),
     @SerialName("meta_data") val metaData: List<WooCreateMetaDataDto> = emptyList(),
     val billing: WooOrderBillingDto? = null,
+)
+
+@Serializable
+data class WooCreateFeeLineDto(
+    val name: String,
+    val total: String,
+    @SerialName("tax_status") val taxStatus: String = "taxable",
+    @SerialName("tax_class") val taxClass: String = "",
 )
 
 @Serializable

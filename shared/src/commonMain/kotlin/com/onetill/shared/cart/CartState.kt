@@ -4,6 +4,7 @@ import com.onetill.shared.data.model.Money
 
 data class CartState(
     val items: List<CartItem>,
+    val customSaleItems: List<CustomSaleItem> = emptyList(),
     val appliedCoupons: List<AppliedCoupon>,
     val customerId: Long?,
     val note: String?,
@@ -14,12 +15,13 @@ data class CartState(
     val estimatedTotal: Money,
     val itemCount: Int,
 ) {
-    val isEmpty: Boolean get() = items.isEmpty()
+    val isEmpty: Boolean get() = items.isEmpty() && customSaleItems.isEmpty()
     val couponCodes: List<String> get() = appliedCoupons.map { it.code }
 
     companion object {
         fun empty(currency: String) = CartState(
             items = emptyList(),
+            customSaleItems = emptyList(),
             appliedCoupons = emptyList(),
             customerId = null,
             note = null,

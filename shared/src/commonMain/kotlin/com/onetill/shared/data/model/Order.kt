@@ -4,11 +4,18 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class FeeLine(
+    val name: String,
+    val amount: Money,
+)
+
+@Serializable
 data class Order(
     val id: Long,
     val number: String,
     val status: OrderStatus,
     val lineItems: List<LineItem>,
+    val feeLines: List<FeeLine> = emptyList(),
     val customerId: Long?,
     val total: Money,
     val totalTax: Money,
@@ -28,6 +35,7 @@ data class Order(
 @Serializable
 data class OrderDraft(
     val lineItems: List<LineItem>,
+    val feeLines: List<FeeLine> = emptyList(),
     val customerId: Long?,
     val paymentMethod: PaymentMethod,
     val idempotencyKey: String,

@@ -3,6 +3,7 @@ package com.onetill.shared.cart
 import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.shared.data.model.Coupon
 import com.onetill.shared.data.model.CouponType
+import com.onetill.shared.data.model.FeeLine
 import com.onetill.shared.data.model.Money
 import com.onetill.shared.data.model.OrderDraft
 import com.onetill.shared.data.model.PaymentMethod
@@ -28,6 +29,7 @@ class CartManager(
     private val taxCalculator = TaxCalculator()
 
     private var items = mutableListOf<CartItem>()
+    private var customSaleItems = mutableListOf<CustomSaleItem>()
     private var appliedCoupons = mutableListOf<AppliedCoupon>()
     private var customerId: Long? = null
     private var note: String? = null
@@ -76,6 +78,23 @@ class CartManager(
 
     fun removeItem(productId: Long, variantId: Long? = null) {
         items.removeAll { it.productId == productId && it.variantId == variantId }
+        emitState()
+    }
+
+    @OptIn(ExperimentalUuidApi::class)
+    fun addCustomSale(description: String, amount: Money) {
+        customSaleItems.add(
+            CustomSaleItem(
+                id = Uuid.random().toString(),
+                description = description.ifBlank { "Custom Sale" },
+                amount = amount,
+            ),
+        )
+        emitState()
+    }
+
+    fun removeCustomSale(id: String) {
+        customSaleItems.removeAll { it.id == id }
         emitState()
     }
 
@@ -151,6 +170,7 @@ class CartManager(
             }
         }
         items.clear()
+        customSaleItems.clear()
         appliedCoupons.clear()
         customerId = null
         note = null
@@ -169,6 +189,7 @@ class CartManager(
         val state = _cartState.value
         return OrderDraft(
             lineItems = items.map { it.toLineItem() },
+            feeLines = customSaleItems.map { FeeLine(name = it.description, amount = it.amount) },
             customerId = customerId,
             paymentMethod = paymentMethod,
             idempotencyKey = idempotencyKey ?: Uuid.random().toString(),
@@ -209,11 +230,9 @@ class CartManager(
     }
 
     private fun emitState() {
-        val subtotal = if (items.isEmpty()) {
-            Money.zero(currency)
-        } else {
-            items.fold(Money.zero(currency)) { acc, item -> acc + item.totalPrice }
-        }
+        val productSubtotal = items.fold(Money.zero(currency)) { acc, item -> acc + item.totalPrice }
+        val customSaleTotal = customSaleItems.fold(Money.zero(currency)) { acc, item -> acc + item.amount }
+        val subtotal = productSubtotal + customSaleTotal
 
         // Recalculate discount amounts when cart changes (e.g. percent coupons scale with subtotal)
         val recalculated = appliedCoupons.map { applied ->
@@ -240,6 +259,7 @@ class CartManager(
 
         _cartState.value = CartState(
             items = items.toList(),
+            customSaleItems = customSaleItems.toList(),
             appliedCoupons = appliedCoupons.toList(),
             customerId = customerId,
             note = note,
@@ -248,7 +268,7 @@ class CartManager(
             discountTotal = discountTotal,
             estimatedTax = estimatedTax,
             estimatedTotal = estimatedTotal,
-            itemCount = items.sumOf { it.quantity },
+            itemCount = items.sumOf { it.quantity } + customSaleItems.size,
         )
     }
 }

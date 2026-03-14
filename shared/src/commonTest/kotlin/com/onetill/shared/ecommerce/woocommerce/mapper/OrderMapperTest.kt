@@ -77,14 +77,28 @@ class OrderMapperTest {
     fun draftToWooDtoCardVsCash() {
         val lineItem = LineItem(null, 1, null, "Widget", "SKU", 2, Money(1000, "USD"), Money(2000, "USD"))
 
-        val cardDraft = OrderDraft(listOf(lineItem), null, PaymentMethod.CARD, "key1", null, listOf("SAVE10"))
+        val cardDraft = OrderDraft(
+            lineItems = listOf(lineItem),
+            customerId = null,
+            paymentMethod = PaymentMethod.CARD,
+            idempotencyKey = "key1",
+            note = null,
+            couponCodes = listOf("SAVE10"),
+        )
         val cardWoo = cardDraft.toWooDto("USD")
         assertEquals("stripe", cardWoo.paymentMethod)
         assertEquals(false, cardWoo.setPaid)
         assertEquals(1, cardWoo.couponLines.size)
         assertEquals("SAVE10", cardWoo.couponLines[0].code)
 
-        val cashDraft = OrderDraft(listOf(lineItem), null, PaymentMethod.CASH, "key2", "A note", emptyList())
+        val cashDraft = OrderDraft(
+            lineItems = listOf(lineItem),
+            customerId = null,
+            paymentMethod = PaymentMethod.CASH,
+            idempotencyKey = "key2",
+            note = "A note",
+            couponCodes = emptyList(),
+        )
         val cashWoo = cashDraft.toWooDto("USD")
         assertEquals("cash", cashWoo.paymentMethod)
         assertEquals(true, cashWoo.setPaid)

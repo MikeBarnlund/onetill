@@ -1,0 +1,10 @@
+CREATE TABLE order_fee_line (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    amount_cents INTEGER NOT NULL,
+    currency_code TEXT NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES offline_orders(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_order_fee_line_order_id ON order_fee_line(order_id);

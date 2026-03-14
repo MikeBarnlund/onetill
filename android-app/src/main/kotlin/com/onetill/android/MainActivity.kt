@@ -50,7 +50,7 @@ class MainActivity : ComponentActivity() {
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         IdleEventBus.onTouch()
-        if (VolumeKeyEventBus.isActive && event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+        if (VolumeKeyEventBus.isActive && (event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || event.keyCode == KeyEvent.KEYCODE_VOLUME_UP)) {
             when (event.action) {
                 KeyEvent.ACTION_DOWN -> {
                     if (event.repeatCount == 0) {

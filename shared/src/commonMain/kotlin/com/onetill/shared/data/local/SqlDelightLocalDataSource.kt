@@ -7,6 +7,7 @@ import com.onetill.shared.data.model.ConsentAction
 import com.onetill.shared.data.model.ConsentLogEntry
 import com.onetill.shared.data.model.Coupon
 import com.onetill.shared.data.model.CouponType
+import com.onetill.shared.data.model.FeeLine
 import com.onetill.shared.data.model.LineItem
 import com.onetill.shared.data.model.Money
 import com.onetill.shared.data.model.OfflinePaymentConfig
@@ -301,6 +302,14 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
                     currency_code = item.unitPrice.currencyCode,
                 )
             }
+            for (fee in order.feeLines) {
+                queries.insertOrderFeeLine(
+                    order_id = localId,
+                    name = fee.name,
+                    amount_cents = fee.amount.amountCents,
+                    currency_code = fee.amount.currencyCode,
+                )
+            }
             localId
         }
     }
@@ -406,6 +415,16 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
                         currency_code = item.unitPrice.currencyCode,
                     )
                 }
+                // Replace fee lines
+                queries.deleteFeeLinesByOrderId(match.id)
+                for (fee in order.feeLines) {
+                    queries.insertOrderFeeLine(
+                        order_id = match.id,
+                        name = fee.name,
+                        amount_cents = fee.amount.amountCents,
+                        currency_code = fee.amount.currencyCode,
+                    )
+                }
                 match.id
             } else {
                 // Insert as new row
@@ -439,6 +458,14 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
                         unit_price_cents = item.unitPrice.amountCents,
                         total_price_cents = item.totalPrice.amountCents,
                         currency_code = item.unitPrice.currencyCode,
+                    )
+                }
+                for (fee in order.feeLines) {
+                    queries.insertOrderFeeLine(
+                        order_id = localId,
+                        name = fee.name,
+                        amount_cents = fee.amount.amountCents,
+                        currency_code = fee.amount.currencyCode,
                     )
                 }
                 localId
@@ -600,11 +627,19 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
             )
         }
 
+        val feeLines = queries.selectFeeLinesByOrderId(row.id).executeAsList().map { fl ->
+            FeeLine(
+                name = fl.name,
+                amount = Money(fl.amount_cents, fl.currency_code),
+            )
+        }
+
         return Order(
             id = row.remote_id ?: row.id,
             number = row.order_number ?: "",
             status = OrderStatus.valueOf(row.status),
             lineItems = lineItems,
+            feeLines = feeLines,
             customerId = row.customer_id,
             total = Money(row.total_cents, row.currency_code),
             totalTax = Money(row.total_tax_cents, row.currency_code),

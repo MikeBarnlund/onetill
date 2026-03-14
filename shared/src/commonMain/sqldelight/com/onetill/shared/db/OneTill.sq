@@ -580,3 +580,32 @@ SELECT * FROM offline_payment_consent_log ORDER BY created_at ASC;
 
 selectUnreconciledOfflineOrders:
 SELECT * FROM offline_orders WHERE payment_created_offline = 1 AND (stripe_transaction_id IS NULL OR stripe_transaction_id = '');
+
+-- ----------------------------------------------------------------------------
+-- Order Fee Lines (custom sale items synced as WooCommerce fee_lines)
+-- ----------------------------------------------------------------------------
+
+CREATE TABLE order_fee_line (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    amount_cents INTEGER NOT NULL,
+    currency_code TEXT NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES offline_orders(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_order_fee_line_order_id ON order_fee_line(order_id);
+
+-- ============================================================================
+-- QUERIES: Order Fee Lines
+-- ============================================================================
+
+insertOrderFeeLine:
+INSERT INTO order_fee_line(order_id, name, amount_cents, currency_code)
+VALUES (?, ?, ?, ?);
+
+selectFeeLinesByOrderId:
+SELECT * FROM order_fee_line WHERE order_id = ?;
+
+deleteFeeLinesByOrderId:
+DELETE FROM order_fee_line WHERE order_id = ?;

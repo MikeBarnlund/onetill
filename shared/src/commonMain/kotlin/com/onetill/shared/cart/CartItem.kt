@@ -5,6 +5,12 @@ import com.onetill.shared.data.model.Money
 import com.onetill.shared.data.model.Product
 import com.onetill.shared.data.model.ProductVariant
 
+data class CustomSaleItem(
+    val id: String,
+    val description: String,
+    val amount: Money,
+)
+
 data class CartItem(
     val productId: Long,
     val variantId: Long?,

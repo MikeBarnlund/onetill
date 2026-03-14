@@ -1,5 +1,6 @@
 package com.onetill.shared.ecommerce.woocommerce.mapper
 
+import com.onetill.shared.data.model.FeeLine
 import com.onetill.shared.data.model.LineItem
 import com.onetill.shared.data.model.Money
 import com.onetill.shared.data.model.Order
@@ -13,6 +14,7 @@ import com.onetill.shared.data.model.toMoney
 import com.onetill.shared.ecommerce.woocommerce.dto.OneTillLineItemDto
 import com.onetill.shared.ecommerce.woocommerce.dto.OneTillOrderDto
 import com.onetill.shared.ecommerce.woocommerce.dto.WooCouponLineDto
+import com.onetill.shared.ecommerce.woocommerce.dto.WooCreateFeeLineDto
 import com.onetill.shared.ecommerce.woocommerce.dto.WooCreateLineItemDto
 import com.onetill.shared.ecommerce.woocommerce.dto.WooCreateMetaDataDto
 import com.onetill.shared.ecommerce.woocommerce.dto.WooCreateOrderDto
@@ -75,6 +77,12 @@ fun OrderDraft.toWooDto(currency: String): WooCreateOrderDto = WooCreateOrderDto
             productId = it.productId,
             variationId = it.variantId ?: 0,
             quantity = it.quantity,
+        )
+    },
+    feeLines = feeLines.map {
+        WooCreateFeeLineDto(
+            name = it.name,
+            total = it.amount.amountCents.toDecimalString(),
         )
     },
     couponLines = couponCodes.map { WooCouponLineDto(code = it) },
