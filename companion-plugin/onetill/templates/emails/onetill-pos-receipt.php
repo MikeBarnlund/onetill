@@ -81,14 +81,5 @@ $address_parts = array_filter( array( $store_address, $store_city, $store_state,
 if ( $additional_content ) {
 	echo wp_kses_post( wpautop( wptexturize( $additional_content ) ) );
 }
-?>
-<table border="0" cellpadding="0" cellspacing="0" width="100%">
-	<tr>
-		<td align="center" style="padding: 16px 0 8px 0;">
-			<a href="https://onetill.app?utm_source=receipt&utm_medium=email&utm_campaign=powered_by" target="_blank" rel="noopener" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 11px; color: #b0b0b0; text-decoration: none;">
-				Powered by OneTill
-			</a>
-		</td>
-	</tr>
-</table>
-<?php do_action( 'woocommerce_email_footer', $email ); ?>
+
+do_action( 'woocommerce_email_footer', $email );
