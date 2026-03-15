@@ -277,3 +277,15 @@ function onetill_init() {
 }
 
 add_action( 'plugins_loaded', 'onetill_init' );
+
+/**
+ * Register the OneTill POS Receipt email with WooCommerce.
+ *
+ * @param array $email_classes Registered email classes.
+ * @return array
+ */
+add_filter( 'woocommerce_email_classes', function ( $email_classes ) {
+	require_once ONETILL_PLUGIN_DIR . 'includes/emails/class-wc-onetill-email-pos-receipt.php';
+	$email_classes['WC_OneTill_Email_POS_Receipt'] = new WC_OneTill_Email_POS_Receipt();
+	return $email_classes;
+} );

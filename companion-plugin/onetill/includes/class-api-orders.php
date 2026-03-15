@@ -6,7 +6,8 @@
  * - POST /onetill/v1/orders           — Create order (with idempotency)
  * - POST /onetill/v1/orders/batch     — Batch create orders (offline sync)
  * - GET  /onetill/v1/orders           — List device orders
- * - POST /onetill/v1/orders/{id}/refund — Full order refund
+ * - POST /onetill/v1/orders/{id}/receipt — Send POS receipt email
+ * - POST /onetill/v1/orders/{id}/refund  — Full order refund
  *
  * @package OneTill
  */
@@ -71,6 +72,22 @@ class API_Orders {
 				'methods'             => 'POST',
 				'callback'            => array( $this, 'create_orders_batch' ),
 				'permission_callback' => array( $this, 'check_permissions' ),
+			)
+		);
+
+		register_rest_route(
+			self::NAMESPACE,
+			'/orders/(?P<id>\d+)/receipt',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'send_receipt' ),
+				'permission_callback' => array( $this, 'check_permissions' ),
+				'args'                => array(
+					'id' => array(
+						'required'          => true,
+						'sanitize_callback' => 'absint',
+					),
+				),
 			)
 		);
 
@@ -278,9 +295,12 @@ class API_Orders {
 		// 7. Store idempotency key.
 		$this->store_idempotency( $idempotency_key, $order->get_id(), wp_json_encode( $response_data ) );
 
-		// 8. Trigger digital receipt email if customer_email is set.
+		// 8. Trigger POS receipt email if customer_email is set.
 		if ( $customer_email ) {
-			\WC()->mailer()->get_emails()['WC_Email_Customer_Completed_Order']->trigger( $order->get_id(), $order );
+			$emails = \WC()->mailer()->get_emails();
+			if ( isset( $emails['WC_OneTill_Email_POS_Receipt'] ) ) {
+				$emails['WC_OneTill_Email_POS_Receipt']->trigger( $order->get_id(), $customer_email );
+			}
 		}
 
 		return new \WP_REST_Response( $response_data, 201 );
@@ -511,6 +531,44 @@ class API_Orders {
 	 * @param \WP_REST_Request $request The request.
 	 * @return \WP_REST_Response|\WP_Error
 	 */
+	/**
+	 * Send a POS receipt email for an existing order.
+	 *
+	 * Useful for offline-synced orders where the receipt should send once
+	 * the order has been created on the server.
+	 *
+	 * @param \WP_REST_Request $request The request.
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function send_receipt( $request ) {
+		$order_id = absint( $request->get_param( 'id' ) );
+		$order    = wc_get_order( $order_id );
+
+		if ( ! $order ) {
+			return new \WP_Error( 'order_not_found', 'Order not found.', array( 'status' => 404 ) );
+		}
+
+		if ( 'onetill_pos' !== $order->get_meta( '_onetill_source' ) ) {
+			return new \WP_Error( 'not_pos_order', 'Order is not a OneTill POS order.', array( 'status' => 400 ) );
+		}
+
+		$body  = $request->get_json_params();
+		$email = isset( $body['email'] ) ? sanitize_email( $body['email'] ) : '';
+
+		if ( ! $email || ! is_email( $email ) ) {
+			return new \WP_Error( 'invalid_email', 'A valid email address is required.', array( 'status' => 400 ) );
+		}
+
+		$emails = \WC()->mailer()->get_emails();
+		if ( ! isset( $emails['WC_OneTill_Email_POS_Receipt'] ) ) {
+			return new \WP_Error( 'email_not_registered', 'POS receipt email is not registered.', array( 'status' => 500 ) );
+		}
+
+		$emails['WC_OneTill_Email_POS_Receipt']->trigger( $order_id, $email );
+
+		return new \WP_REST_Response( array( 'success' => true ), 200 );
+	}
+
 	public function refund_order( $request ) {
 		$order_id = absint( $request->get_param( 'id' ) );
 		$order    = wc_get_order( $order_id );
