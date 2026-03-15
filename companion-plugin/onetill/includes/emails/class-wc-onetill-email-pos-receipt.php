@@ -32,8 +32,6 @@ class WC_OneTill_Email_POS_Receipt extends \WC_Email {
 
 		parent::__construct();
 
-		add_filter( 'woocommerce_email_footer_text', array( $this, 'append_powered_by' ), 10, 2 );
-
 		// Suppress WooCommerce's built-in "Completed order" email for OneTill POS orders
 		// so only the OneTill receipt is sent.
 		add_filter( 'woocommerce_email_enabled_customer_completed_order', array( $this, 'suppress_completed_email_for_pos' ), 10, 2 );
@@ -51,20 +49,6 @@ class WC_OneTill_Email_POS_Receipt extends \WC_Email {
 			return false;
 		}
 		return $enabled;
-	}
-
-	/**
-	 * Append "Powered by OneTill" branding to the footer text for this email only.
-	 *
-	 * @param string    $footer_text The footer text.
-	 * @param \WC_Email $email       The email instance.
-	 * @return string
-	 */
-	public function append_powered_by( $footer_text, $email = null ) {
-		if ( $email && 'onetill_pos_receipt' === $email->id ) {
-			$footer_text .= '<br><a href="https://onetill.app?utm_source=receipt&utm_medium=email&utm_campaign=powered_by" target="_blank" rel="noopener" style="font-size: 11px; color: #b0b0b0; text-decoration: none;">Powered by OneTill</a>';
-		}
-		return $footer_text;
 	}
 
 	/**
