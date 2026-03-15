@@ -38,12 +38,13 @@ do_action( 'woocommerce_email_order_details', $order, $sent_to_admin, $plain_tex
  * Payment method.
  */
 ?>
-<table cellspacing="0" cellpadding="6" border="1" style="border-collapse: collapse; width: 100%; border: 1px solid <?php echo esc_attr( $email->get_border_color() ); ?>; margin-bottom: 20px;">
+<?php $border_color = method_exists( $email, 'get_border_color' ) ? $email->get_border_color() : '#e5e5e5'; ?>
+<table cellspacing="0" cellpadding="6" border="1" style="border-collapse: collapse; width: 100%; border: 1px solid <?php echo esc_attr( $border_color ); ?>; margin-bottom: 20px;">
 	<tr>
-		<th scope="row" style="text-align: left; padding: 12px; border: 1px solid <?php echo esc_attr( $email->get_border_color() ); ?>;">
+		<th scope="row" style="text-align: left; padding: 12px; border: 1px solid <?php echo esc_attr( $border_color ); ?>;">
 			<?php esc_html_e( 'Payment method', 'onetill' ); ?>
 		</th>
-		<td style="text-align: left; padding: 12px; border: 1px solid <?php echo esc_attr( $email->get_border_color() ); ?>;">
+		<td style="text-align: left; padding: 12px; border: 1px solid <?php echo esc_attr( $border_color ); ?>;">
 			<?php echo esc_html( $order->get_payment_method_title() ); ?>
 		</td>
 	</tr>
