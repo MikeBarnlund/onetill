@@ -259,7 +259,22 @@ class CartManager(
         )
     }
 
+    private var serverTaxFetchInFlight = false
+
     private fun emitState() {
+        val hasItems = items.isNotEmpty() || customSaleItems.isNotEmpty()
+
+        // When cached rates are empty and cart has items, fetch from server.
+        // This is the only way to discover rates for automated tax services
+        // (WooCommerce Tax, TaxJar, Avalara) which don't pre-populate the rates table.
+        if (hasItems && cachedTaxRates.isEmpty() && !serverTaxFetchInFlight) {
+            serverTaxFetchInFlight = true
+            scope.launch {
+                fetchServerTaxEstimate()
+                serverTaxFetchInFlight = false
+            }
+        }
+
         val productSubtotal = items.fold(Money.zero(currency)) { acc, item -> acc + item.totalPrice }
         val customSaleTotal = customSaleItems.fold(Money.zero(currency)) { acc, item -> acc + item.amount }
         val subtotal = productSubtotal + customSaleTotal
