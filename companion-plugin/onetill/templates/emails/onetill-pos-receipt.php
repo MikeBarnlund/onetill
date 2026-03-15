@@ -81,8 +81,6 @@ $address_parts = array_filter( array( $store_address, $store_city, $store_state,
 if ( $additional_content ) {
 	echo wp_kses_post( wpautop( wptexturize( $additional_content ) ) );
 }
-
-do_action( 'woocommerce_email_footer', $email );
 ?>
 <table border="0" cellpadding="0" cellspacing="0" width="100%">
 	<tr>
@@ -93,3 +91,4 @@ do_action( 'woocommerce_email_footer', $email );
 		</td>
 	</tr>
 </table>
+<?php do_action( 'woocommerce_email_footer', $email ); ?>
