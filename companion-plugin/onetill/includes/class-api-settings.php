@@ -104,6 +104,13 @@ class API_Settings {
 					);
 				}
 			}
+
+			// Fallback: automated tax services (WooCommerce Tax, TaxJar, Avalara)
+			// don't populate the tax_rates table until a calculation is triggered.
+			// Use a temp order to discover effective rates when find_rates() is empty.
+			if ( empty( $tax_rates ) ) {
+				$tax_rates = $this->discover_rates_via_order( $tax_classes, $location );
+			}
 		}
 
 		// Published product count.
@@ -132,5 +139,80 @@ class API_Settings {
 			'product_count'  => $product_count,
 			'timezone'       => wp_timezone_string(),
 		), 200 );
+	}
+
+	/**
+	 * Discover tax rates by creating a temporary order and running calculate_taxes().
+	 *
+	 * Automated tax services (WooCommerce Tax, TaxJar, Avalara) only populate
+	 * rates when a calculation is triggered. This creates a temp order with a
+	 * $100 line item per tax class to discover the effective rates.
+	 *
+	 * @param array $tax_classes Custom tax class names (excludes standard).
+	 * @param array $location    Shop base address components.
+	 * @return array Tax rate objects in the same format as the find_rates() path.
+	 */
+	private function discover_rates_via_order( $tax_classes, $location ) {
+		$order = wc_create_order();
+
+		if ( is_wp_error( $order ) ) {
+			error_log( 'OneTill: failed to create temp order for tax rate discovery: ' . $order->get_error_message() );
+			return array();
+		}
+
+		// Set billing/shipping address to shop base.
+		$order->set_billing_country( $location['country'] );
+		$order->set_billing_state( $location['state'] );
+		$order->set_billing_postcode( $location['postcode'] );
+		$order->set_billing_city( $location['city'] );
+		$order->set_shipping_country( $location['country'] );
+		$order->set_shipping_state( $location['state'] );
+		$order->set_shipping_postcode( $location['postcode'] );
+		$order->set_shipping_city( $location['city'] );
+
+		// Add a $100 line item for each tax class (standard + custom).
+		$all_classes = array_merge( array( '' ), array_map( 'sanitize_title', $tax_classes ) );
+		foreach ( $all_classes as $class_slug ) {
+			$line_item = new \WC_Order_Item_Product();
+			$line_item->set_quantity( 1 );
+			$line_item->set_subtotal( '100' );
+			$line_item->set_total( '100' );
+			$line_item->set_tax_class( $class_slug );
+			$order->add_item( $line_item );
+		}
+
+		$order->calculate_taxes();
+
+		// Extract discovered rates.
+		$tax_rates = array();
+		foreach ( $order->get_taxes() as $tax_item ) {
+			$rate_id = $tax_item->get_rate_id();
+			if ( ! $rate_id ) {
+				continue;
+			}
+
+			$rate_data = \WC_Tax::_get_tax_rate( $rate_id );
+			if ( ! $rate_data ) {
+				continue;
+			}
+
+			$tax_class = $rate_data['tax_rate_class'];
+			$class_key = empty( $tax_class ) ? 'standard' : $tax_class;
+
+			$tax_rates[] = array(
+				'id'       => (int) $rate_id,
+				'country'  => $rate_data['tax_rate_country'],
+				'state'    => $rate_data['tax_rate_state'],
+				'rate'     => $rate_data['tax_rate'],
+				'name'     => $rate_data['tax_rate_name'],
+				'shipping' => ( '1' === $rate_data['tax_rate_shipping'] ) ? 'yes' : 'no',
+				'compound' => ( '1' === $rate_data['tax_rate_compound'] ) ? 'yes' : 'no',
+				'class'    => $class_key,
+			);
+		}
+
+		$order->delete( true );
+
+		return $tax_rates;
 	}
 }

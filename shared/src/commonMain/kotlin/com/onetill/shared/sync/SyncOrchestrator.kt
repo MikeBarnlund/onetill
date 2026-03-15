@@ -202,6 +202,8 @@ class SyncOrchestrator(
         orderSyncManager.drainPendingOrders()
         productSyncManager.syncCoupons()
         cartManager.refreshCoupons()
+        productSyncManager.syncTaxRates()
+        cartManager.refreshTaxRates()
         syncUsers()
     }
 }
