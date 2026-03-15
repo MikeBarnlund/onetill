@@ -33,6 +33,24 @@ class WC_OneTill_Email_POS_Receipt extends \WC_Email {
 		parent::__construct();
 
 		add_filter( 'woocommerce_email_footer_text', array( $this, 'append_powered_by' ), 10, 2 );
+
+		// Suppress WooCommerce's built-in "Completed order" email for OneTill POS orders
+		// so only the OneTill receipt is sent.
+		add_filter( 'woocommerce_email_enabled_customer_completed_order', array( $this, 'suppress_completed_email_for_pos' ), 10, 2 );
+	}
+
+	/**
+	 * Disable the standard "Completed order" email for OneTill POS orders.
+	 *
+	 * @param bool      $enabled Whether the email is enabled.
+	 * @param \WC_Order $order   The order object.
+	 * @return bool
+	 */
+	public function suppress_completed_email_for_pos( $enabled, $order = null ) {
+		if ( $order && is_a( $order, 'WC_Order' ) && 'onetill_pos' === $order->get_meta( '_onetill_source' ) ) {
+			return false;
+		}
+		return $enabled;
 	}
 
 	/**
