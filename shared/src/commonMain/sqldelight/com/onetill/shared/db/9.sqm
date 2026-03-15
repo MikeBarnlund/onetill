@@ -1,1 +1,18 @@
-ALTER TABLE store_config ADD COLUMN register_name TEXT NOT NULL DEFAULT 'Register 1';
+-- register_name may already exist on databases created fresh at schema v8.
+-- Rebuild the table to handle both cases since ALTER TABLE IF NOT EXISTS
+-- isn't available on the S700's SQLite version (3.28).
+CREATE TABLE store_config_new (
+    id INTEGER NOT NULL PRIMARY KEY DEFAULT 1,
+    site_url TEXT NOT NULL,
+    consumer_key TEXT NOT NULL,
+    consumer_secret TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    register_name TEXT NOT NULL DEFAULT 'Register 1'
+);
+
+INSERT INTO store_config_new (id, site_url, consumer_key, consumer_secret, currency)
+SELECT id, site_url, consumer_key, consumer_secret, currency FROM store_config;
+
+DROP TABLE store_config;
+
+ALTER TABLE store_config_new RENAME TO store_config;
