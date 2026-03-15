@@ -80,8 +80,8 @@ class API_Settings {
 					'state'    => $rate['state'],
 					'rate'     => $rate['rate'],
 					'name'     => $rate['label'],
-					'shipping' => $rate['shipping'],
-					'compound' => $rate['compound'],
+					'shipping' => 'yes' === $rate['shipping'],
+					'compound' => 'yes' === $rate['compound'],
 					'class'    => 'standard',
 				);
 			}
@@ -98,8 +98,8 @@ class API_Settings {
 						'state'    => $rate['state'],
 						'rate'     => $rate['rate'],
 						'name'     => $rate['label'],
-						'shipping' => $rate['shipping'],
-						'compound' => $rate['compound'],
+						'shipping' => 'yes' === $rate['shipping'],
+						'compound' => 'yes' === $rate['compound'],
 						'class'    => $slug,
 					);
 				}
@@ -205,8 +205,8 @@ class API_Settings {
 				'state'    => $rate_data['tax_rate_state'],
 				'rate'     => $rate_data['tax_rate'],
 				'name'     => $rate_data['tax_rate_name'],
-				'shipping' => ( '1' === $rate_data['tax_rate_shipping'] ) ? 'yes' : 'no',
-				'compound' => ( '1' === $rate_data['tax_rate_compound'] ) ? 'yes' : 'no',
+				'shipping' => '1' === $rate_data['tax_rate_shipping'],
+				'compound' => '1' === $rate_data['tax_rate_compound'],
 				'class'    => $class_key,
 			);
 		}
