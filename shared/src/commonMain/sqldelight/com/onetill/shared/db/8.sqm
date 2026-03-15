@@ -1,0 +1,2 @@
+ALTER TABLE product_cache ADD COLUMN tax_class TEXT NOT NULL DEFAULT '';
+ALTER TABLE tax_rate ADD COLUMN tax_class TEXT NOT NULL DEFAULT 'standard';

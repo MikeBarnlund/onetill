@@ -61,32 +61,45 @@ class API_Settings {
 		$tax_enabled  = wc_tax_enabled();
 
 		if ( $tax_enabled ) {
-			$raw_rates = \WC_Tax::get_rates_for_tax_class( '' ); // Standard class.
-			foreach ( $raw_rates as $rate ) {
+			// Use WC_Tax::find_rates() with the shop's base address so only
+			// location-applicable rates are returned (works with tax plugins,
+			// automated tax services, and manually entered rates).
+			$location = array(
+				'country'  => WC()->countries->get_base_country(),
+				'state'    => WC()->countries->get_base_state(),
+				'postcode' => WC()->countries->get_base_postcode(),
+				'city'     => WC()->countries->get_base_city(),
+			);
+
+			// Standard class rates at shop location.
+			$standard_rates = \WC_Tax::find_rates( $location );
+			foreach ( $standard_rates as $rate_id => $rate ) {
 				$tax_rates[] = array(
-					'id'       => (int) $rate->tax_rate_id,
-					'country'  => $rate->tax_rate_country,
-					'state'    => $rate->tax_rate_state,
-					'rate'     => $rate->tax_rate,
-					'name'     => $rate->tax_rate_name,
-					'shipping' => '1' === $rate->tax_rate_shipping,
+					'id'       => (int) $rate_id,
+					'country'  => $rate['country'],
+					'state'    => $rate['state'],
+					'rate'     => $rate['rate'],
+					'name'     => $rate['label'],
+					'shipping' => $rate['shipping'],
+					'compound' => $rate['compound'],
 					'class'    => 'standard',
 				);
 			}
 
-			// Also include rates for other tax classes.
+			// Per-class rates at shop location.
 			$tax_classes = \WC_Tax::get_tax_classes();
 			foreach ( $tax_classes as $tax_class ) {
-				$slug       = sanitize_title( $tax_class );
-				$class_rates = \WC_Tax::get_rates_for_tax_class( $slug );
-				foreach ( $class_rates as $rate ) {
+				$slug        = sanitize_title( $tax_class );
+				$class_rates = \WC_Tax::find_rates( array_merge( $location, array( 'tax_class' => $slug ) ) );
+				foreach ( $class_rates as $rate_id => $rate ) {
 					$tax_rates[] = array(
-						'id'       => (int) $rate->tax_rate_id,
-						'country'  => $rate->tax_rate_country,
-						'state'    => $rate->tax_rate_state,
-						'rate'     => $rate->tax_rate,
-						'name'     => $rate->tax_rate_name,
-						'shipping' => '1' === $rate->tax_rate_shipping,
+						'id'       => (int) $rate_id,
+						'country'  => $rate['country'],
+						'state'    => $rate['state'],
+						'rate'     => $rate['rate'],
+						'name'     => $rate['label'],
+						'shipping' => $rate['shipping'],
+						'compound' => $rate['compound'],
 						'class'    => $slug,
 					);
 				}

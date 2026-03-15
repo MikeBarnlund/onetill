@@ -11,4 +11,5 @@ data class TaxRate(
     val state: String,
     val isCompound: Boolean,
     val isShipping: Boolean,
+    val taxClass: String = "standard",
 )

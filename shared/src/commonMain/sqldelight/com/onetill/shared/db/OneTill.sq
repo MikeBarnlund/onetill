@@ -22,7 +22,8 @@ CREATE TABLE product_cache (
     status TEXT NOT NULL DEFAULT 'PUBLISHED',
     type TEXT NOT NULL DEFAULT 'SIMPLE',
     created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL
+    updated_at INTEGER NOT NULL,
+    tax_class TEXT NOT NULL DEFAULT ''
 );
 
 CREATE INDEX idx_product_cache_sku ON product_cache(sku);
@@ -185,7 +186,8 @@ CREATE TABLE tax_rate (
     country TEXT NOT NULL,
     state TEXT NOT NULL,
     is_compound INTEGER NOT NULL DEFAULT 0,
-    is_shipping INTEGER NOT NULL DEFAULT 0
+    is_shipping INTEGER NOT NULL DEFAULT 0,
+    tax_class TEXT NOT NULL DEFAULT 'standard'
 );
 
 -- ----------------------------------------------------------------------------
@@ -217,8 +219,8 @@ CREATE TABLE store_config (
 insertOrReplaceProduct:
 INSERT OR REPLACE INTO product_cache(
     id, name, sku, barcode, price_cents, regular_price_cents, sale_price_cents,
-    currency_code, stock_quantity, manage_stock, status, type, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    currency_code, stock_quantity, manage_stock, status, type, created_at, updated_at, tax_class
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 selectAllProducts:
 SELECT * FROM product_cache ORDER BY name ASC;
@@ -443,8 +445,8 @@ ORDER BY last_name ASC, first_name ASC;
 -- ============================================================================
 
 insertOrReplaceTaxRate:
-INSERT OR REPLACE INTO tax_rate(id, name, rate, country, state, is_compound, is_shipping)
-VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO tax_rate(id, name, rate, country, state, is_compound, is_shipping, tax_class)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 selectAllTaxRates:
 SELECT * FROM tax_rate;

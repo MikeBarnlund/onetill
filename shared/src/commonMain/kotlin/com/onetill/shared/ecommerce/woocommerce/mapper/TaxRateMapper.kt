@@ -11,4 +11,5 @@ fun WooTaxRateDto.toDomain(): TaxRate = TaxRate(
     state = state,
     isCompound = compound,
     isShipping = shipping,
+    taxClass = taxClass,
 )

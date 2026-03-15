@@ -11,4 +11,5 @@ data class WooTaxRateDto(
     val state: String = "",
     val compound: Boolean = false,
     val shipping: Boolean = false,
+    @kotlinx.serialization.SerialName("class") val taxClass: String = "standard",
 )

@@ -1,5 +1,6 @@
 package com.onetill.shared.cart
 
+import com.onetill.shared.data.AppResult
 import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.shared.data.model.Coupon
 import com.onetill.shared.data.model.CouponType
@@ -10,6 +11,7 @@ import com.onetill.shared.data.model.PaymentMethod
 import com.onetill.shared.data.model.Product
 import com.onetill.shared.data.model.ProductVariant
 import com.onetill.shared.data.model.TaxRate
+import com.onetill.shared.ecommerce.ECommerceBackend
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +27,7 @@ class CartManager(
     private val localDataSource: LocalDataSource,
     private val currency: String,
     private val scope: CoroutineScope,
+    private val backend: ECommerceBackend? = null,
 ) {
     private val taxCalculator = TaxCalculator()
 
@@ -203,6 +206,33 @@ class CartManager(
         )
     }
 
+    /**
+     * Fetches server-side tax estimate at checkout time.
+     * On success, updates cached rates and cart state with exact tax.
+     * On failure (offline), keeps local estimate — returns error for caller to handle.
+     */
+    suspend fun fetchServerTaxEstimate(): AppResult<Money> {
+        val be = backend ?: return AppResult.Error("No backend configured")
+        if (items.isEmpty() && customSaleItems.isEmpty()) {
+            return AppResult.Success(Money.zero(currency))
+        }
+
+        return when (val result = be.estimateTax(items.toList())) {
+            is AppResult.Success -> {
+                // Update cached rates from server response
+                val allRates = result.data.ratesByClass.flatMap { (_, rates) -> rates }
+                if (allRates.isNotEmpty()) {
+                    cachedTaxRates = allRates
+                    localDataSource.saveTaxRates(allRates)
+                }
+                // Update cart state with exact tax from server
+                emitState()
+                AppResult.Success(result.data.taxTotal)
+            }
+            is AppResult.Error -> result
+        }
+    }
+
     suspend fun refreshTaxRates() {
         cachedTaxRates = localDataSource.getAllTaxRates()
         emitState()
@@ -252,9 +282,28 @@ class CartManager(
             appliedCoupons.fold(Money.zero(currency)) { acc, c -> acc + c.discountAmount }
         }
 
-        // Tax is calculated on the discounted subtotal (matches WooCommerce behavior)
+        // Tax is calculated on the discounted subtotal (matches WooCommerce behavior).
+        // Distribute discount proportionally across items, then group by tax class.
         val discountedSubtotal = subtotal - discountTotal
-        val estimatedTax = taxCalculator.calculateTax(discountedSubtotal, cachedTaxRates)
+        val discountRatio = if (subtotal.amountCents > 0) {
+            discountedSubtotal.amountCents.toDouble() / subtotal.amountCents.toDouble()
+        } else {
+            1.0
+        }
+
+        val taxableItems = items.map { item ->
+            TaxableItem(
+                subtotalCents = (item.totalPrice.amountCents * discountRatio).roundToLong(),
+                taxClass = item.taxClass,
+            )
+        } + customSaleItems.map { item ->
+            TaxableItem(
+                subtotalCents = (item.amount.amountCents * discountRatio).roundToLong(),
+                taxClass = "", // Custom sales use standard tax class
+            )
+        }
+
+        val estimatedTax = taxCalculator.calculateTax(taxableItems, cachedTaxRates, currency)
         val estimatedTotal = discountedSubtotal + estimatedTax
 
         _cartState.value = CartState(

@@ -139,6 +139,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
                 type = product.type.name,
                 created_at = product.createdAt.toEpochMilliseconds(),
                 updated_at = product.updatedAt.toEpochMilliseconds(),
+                tax_class = product.taxClass,
             )
 
             queries.deleteVariantsByProductId(product.id)
@@ -210,6 +211,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
                     type = product.type.name,
                     created_at = product.createdAt.toEpochMilliseconds(),
                     updated_at = product.updatedAt.toEpochMilliseconds(),
+                    tax_class = product.taxClass,
                 )
 
                 queries.deleteVariantsByProductId(product.id)
@@ -495,6 +497,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
                     state = rate.state,
                     is_compound = if (rate.isCompound) 1L else 0L,
                     is_shipping = if (rate.isShipping) 1L else 0L,
+                    tax_class = rate.taxClass,
                 )
             }
         }
@@ -510,6 +513,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
                 state = it.state,
                 isCompound = it.is_compound != 0L,
                 isShipping = it.is_shipping != 0L,
+                taxClass = it.tax_class,
             )
         }
     }
@@ -610,6 +614,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
             type = ProductType.valueOf(row.type),
             createdAt = Instant.fromEpochMilliseconds(row.created_at),
             updatedAt = Instant.fromEpochMilliseconds(row.updated_at),
+            taxClass = row.tax_class,
         )
     }
 

@@ -10,9 +10,15 @@ import com.onetill.shared.data.model.OrderUpdate
 import com.onetill.shared.data.model.Product
 import com.onetill.shared.data.model.Refund
 import com.onetill.shared.data.model.StoreConfig
+import com.onetill.shared.data.model.Money
 import com.onetill.shared.data.model.TaxRate
+import com.onetill.shared.data.model.toCents
 import com.onetill.shared.data.model.toDecimalString
+import com.onetill.shared.cart.CartItem
 import com.onetill.shared.ecommerce.ECommerceBackend
+import com.onetill.shared.ecommerce.TaxEstimateResult
+import com.onetill.shared.ecommerce.woocommerce.dto.TaxEstimateLineItemDto
+import com.onetill.shared.ecommerce.woocommerce.dto.TaxEstimateRequestDto
 import com.onetill.shared.ecommerce.woocommerce.dto.WooCreateRefundDto
 import com.onetill.shared.ecommerce.woocommerce.mapper.toDomain
 import com.onetill.shared.ecommerce.woocommerce.mapper.toWooDto
@@ -159,11 +165,57 @@ class WooCommerceBackend(
             client.createCustomer(wooCustomer).toDomain()
         }
 
+    // -- Tax --
+
+    override suspend fun estimateTax(items: List<CartItem>): AppResult<TaxEstimateResult> =
+        apiCall {
+            val request = TaxEstimateRequestDto(
+                lineItems = items.map { item ->
+                    TaxEstimateLineItemDto(
+                        productId = item.productId,
+                        variationId = item.variantId,
+                        quantity = item.quantity,
+                        price = item.unitPrice.amountCents.toDecimalString(),
+                    )
+                }
+            )
+            val response = pluginClient.estimateTax(request)
+            TaxEstimateResult(
+                taxTotal = response.taxTotal.toCents().let { Money(it, currency) },
+                ratesByClass = response.ratesByClass.mapValues { (taxClass, rates) ->
+                    rates.map { rate ->
+                        TaxRate(
+                            id = rate.id,
+                            name = rate.name,
+                            rate = rate.rate,
+                            country = "",
+                            state = "",
+                            isCompound = rate.compound,
+                            isShipping = false,
+                            taxClass = taxClass,
+                        )
+                    }
+                },
+            )
+        }
+
     // -- Settings --
 
     override suspend fun fetchTaxRates(): AppResult<List<TaxRate>> =
         apiCall {
-            client.getTaxRates().map { it.toDomain() }
+            val settings = pluginClient.getSettings()
+            settings.tax.taxRates.map { rate ->
+                TaxRate(
+                    id = rate.id,
+                    name = rate.name,
+                    rate = rate.rate,
+                    country = rate.country,
+                    state = rate.state,
+                    isCompound = rate.compound,
+                    isShipping = rate.shipping,
+                    taxClass = rate.taxClass,
+                )
+            }
         }
 
     override suspend fun fetchStoreCurrency(): AppResult<String> =

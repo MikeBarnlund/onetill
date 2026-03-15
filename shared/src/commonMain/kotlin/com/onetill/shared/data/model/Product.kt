@@ -22,6 +22,7 @@ data class Product(
     val type: ProductType,
     val createdAt: Instant,
     val updatedAt: Instant,
+    val taxClass: String = "",
 )
 
 @Serializable

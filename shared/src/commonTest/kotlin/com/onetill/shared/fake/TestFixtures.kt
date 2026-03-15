@@ -115,6 +115,7 @@ fun testTaxRate(
     name: String = "State Tax",
     rate: String = "10.0",
     isCompound: Boolean = false,
+    taxClass: String = "standard",
 ) = TaxRate(
     id = id,
     name = name,
@@ -123,6 +124,7 @@ fun testTaxRate(
     state = "CA",
     isCompound = isCompound,
     isShipping = false,
+    taxClass = taxClass,
 )
 
 fun testCoupon(

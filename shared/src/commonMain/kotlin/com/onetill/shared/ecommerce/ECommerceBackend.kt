@@ -9,8 +9,15 @@ import com.onetill.shared.data.model.OrderDraft
 import com.onetill.shared.data.model.OrderUpdate
 import com.onetill.shared.data.model.Product
 import com.onetill.shared.data.model.Refund
+import com.onetill.shared.data.model.Money
 import com.onetill.shared.data.model.TaxRate
+import com.onetill.shared.cart.CartItem
 import kotlinx.datetime.Instant
+
+data class TaxEstimateResult(
+    val taxTotal: Money,
+    val ratesByClass: Map<String, List<TaxRate>>,
+)
 
 /**
  * Swappable e-commerce backend contract. WooCommerce is the first implementation.
@@ -48,6 +55,10 @@ interface ECommerceBackend {
     suspend fun searchCustomers(query: String): AppResult<List<Customer>>
 
     suspend fun createCustomer(customer: CustomerDraft): AppResult<Customer>
+
+    // -- Tax --
+
+    suspend fun estimateTax(items: List<CartItem>): AppResult<TaxEstimateResult>
 
     // -- Settings --
 

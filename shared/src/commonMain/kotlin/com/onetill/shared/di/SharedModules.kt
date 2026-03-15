@@ -57,5 +57,5 @@ val syncModule = module {
 }
 
 fun cartModule(currency: String) = module {
-    single { CartManager(get(), currency, get()) }
+    single { CartManager(get(), currency, get(), get()) }
 }

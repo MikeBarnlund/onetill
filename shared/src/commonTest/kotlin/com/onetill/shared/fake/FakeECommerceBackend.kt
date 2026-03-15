@@ -10,7 +10,9 @@ import com.onetill.shared.data.model.OrderUpdate
 import com.onetill.shared.data.model.Product
 import com.onetill.shared.data.model.Refund
 import com.onetill.shared.data.model.TaxRate
+import com.onetill.shared.cart.CartItem
 import com.onetill.shared.ecommerce.ECommerceBackend
+import com.onetill.shared.ecommerce.TaxEstimateResult
 import kotlinx.datetime.Instant
 
 class FakeECommerceBackend : ECommerceBackend {
@@ -79,6 +81,9 @@ class FakeECommerceBackend : ECommerceBackend {
         AppResult.Success(emptyList())
 
     override suspend fun createCustomer(customer: CustomerDraft): AppResult<Customer> =
+        AppResult.Error("Not implemented in fake")
+
+    override suspend fun estimateTax(items: List<CartItem>): AppResult<TaxEstimateResult> =
         AppResult.Error("Not implemented in fake")
 
     override suspend fun fetchTaxRates(): AppResult<List<TaxRate>> {

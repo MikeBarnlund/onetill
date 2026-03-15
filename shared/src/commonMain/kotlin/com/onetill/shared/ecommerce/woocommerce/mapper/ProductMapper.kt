@@ -46,6 +46,7 @@ fun WooProductDto.toDomain(
     type = mapType(type),
     createdAt = parseWooDateTime(dateCreated),
     updatedAt = parseWooDateTime(dateModified),
+    taxClass = taxClass,
 )
 
 fun WooVariationDto.toDomain(productId: Long, currency: String): ProductVariant {

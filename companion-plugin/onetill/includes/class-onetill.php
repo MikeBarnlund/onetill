@@ -81,6 +81,13 @@ class OneTill {
 	private $api_users;
 
 	/**
+	 * API Tax handler.
+	 *
+	 * @var API_Tax
+	 */
+	private $api_tax;
+
+	/**
 	 * API Stripe handler.
 	 *
 	 * @var API_Stripe
@@ -107,6 +114,7 @@ class OneTill {
 		$this->api_settings  = new API_Settings();
 		$this->api_sync      = new API_Sync();
 		$this->api_users     = new API_Users();
+		$this->api_tax       = new API_Tax();
 		$this->api_stripe    = new API_Stripe();
 		$this->pairing       = new Pairing();
 		$this->webhooks      = new Webhooks();
@@ -127,6 +135,7 @@ class OneTill {
 		add_action( 'rest_api_init', array( $this->api_settings, 'register_routes' ) );
 		add_action( 'rest_api_init', array( $this->api_sync, 'register_routes' ) );
 		add_action( 'rest_api_init', array( $this->api_users, 'register_routes' ) );
+		add_action( 'rest_api_init', array( $this->api_tax, 'register_routes' ) );
 		add_action( 'rest_api_init', array( $this->api_stripe, 'register_routes' ) );
 		add_action( 'rest_api_init', array( $this->pairing, 'register_routes' ) );
 

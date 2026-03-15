@@ -23,6 +23,7 @@ data class WooProductDto(
     @SerialName("global_unique_id") val globalUniqueId: String = "",
     @SerialName("date_created") val dateCreated: String = "",
     @SerialName("date_modified") val dateModified: String = "",
+    @SerialName("tax_class") val taxClass: String = "",
 )
 
 @Serializable
