@@ -774,6 +774,15 @@ class API_Orders {
 			delete_user_meta( $customer_id, '_order_count' );
 			delete_user_meta( $customer_id, '_money_spent' );
 		}
+
+		// Trigger POS receipt email if the order has a billing email.
+		$receipt_email = $order->get_billing_email();
+		if ( $receipt_email ) {
+			$emails = \WC()->mailer()->get_emails();
+			if ( isset( $emails['WC_OneTill_Email_POS_Receipt'] ) ) {
+				$emails['WC_OneTill_Email_POS_Receipt']->trigger( $order->get_id(), $receipt_email );
+			}
+		}
 	}
 
 	/**
