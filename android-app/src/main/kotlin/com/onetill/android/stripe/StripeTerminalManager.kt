@@ -136,9 +136,9 @@ class StripeTerminalManager(
     }
 
     private suspend fun ensureInitialized() {
-        if (initialized && Terminal.isInitialized()) return
+        if (initialized || Terminal.isInitialized()) return
         initMutex.withLock {
-            if (initialized && Terminal.isInitialized()) return
+            if (initialized || Terminal.isInitialized()) return
 
             withContext(Dispatchers.Main) {
                 Terminal.init(
