@@ -83,10 +83,9 @@ if ( $additional_content ) {
 	echo wp_kses_post( wpautop( wptexturize( $additional_content ) ) );
 }
 
-// Add "Powered by OneTill" to the footer text for this render only.
-add_filter( 'woocommerce_email_footer_text', function ( $text ) {
-	$text .= '<br><a href="https://onetill.app?utm_source=receipt&utm_medium=email&utm_campaign=powered_by" target="_blank" rel="noopener" style="font-size: 11px; color: #b0b0b0; text-decoration: none;">Powered by OneTill</a>';
-	return $text;
+// Replace footer text with "Powered by OneTill" branding for this render only.
+add_filter( 'woocommerce_email_footer_text', function () {
+	return '<a href="https://onetill.app?utm_source=receipt&utm_medium=email&utm_campaign=powered_by" target="_blank" rel="noopener" style="font-size: 11px; color: #b0b0b0; text-decoration: none;">Powered by OneTill</a>';
 } );
 
 do_action( 'woocommerce_email_footer', $email );
