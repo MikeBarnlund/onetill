@@ -295,7 +295,13 @@ class API_Orders {
 		// 7. Store idempotency key.
 		$this->store_idempotency( $idempotency_key, $order->get_id(), wp_json_encode( $response_data ) );
 
-		// Receipt email is triggered by on_rest_order_created() hook — no need to trigger here.
+		// 8. Trigger POS receipt email if customer_email is set.
+		if ( $customer_email ) {
+			$emails = \WC()->mailer()->get_emails();
+			if ( isset( $emails['WC_OneTill_Email_POS_Receipt'] ) ) {
+				$emails['WC_OneTill_Email_POS_Receipt']->trigger( $order->get_id(), $customer_email );
+			}
+		}
 
 		return new \WP_REST_Response( $response_data, 201 );
 	}

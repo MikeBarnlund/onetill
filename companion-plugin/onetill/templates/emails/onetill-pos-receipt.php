@@ -82,10 +82,10 @@ $address_parts = array_filter( array( $store_address, $store_city, $store_state,
 if ( $additional_content ) {
 	echo wp_kses_post( wpautop( wptexturize( $additional_content ) ) );
 }
+?>
 
-// Replace footer text with "Powered by OneTill" branding for this render only.
-add_filter( 'woocommerce_email_footer_text', function () {
-	return '<a href="https://onetill.app?utm_source=receipt&utm_medium=email&utm_campaign=powered_by" target="_blank" rel="noopener" style="font-size: 11px; color: #b0b0b0; text-decoration: none;">Powered by OneTill</a>';
-} );
+<p style="text-align: center; margin: 20px 0 0;">
+	<a href="https://onetill.app?utm_source=receipt&utm_medium=email&utm_campaign=powered_by" target="_blank" rel="noopener" style="font-size: 11px; color: #b0b0b0; text-decoration: none;">Powered by OneTill</a>
+</p>
 
-do_action( 'woocommerce_email_footer', $email );
+<?php do_action( 'woocommerce_email_footer', $email );

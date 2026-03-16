@@ -40,16 +40,12 @@ class WC_OneTill_Email_POS_Receipt extends \WC_Email {
 	/**
 	 * Disable the standard "Completed order" email for OneTill POS orders.
 	 *
-	 * The woocommerce_email_enabled_{id} filter passes ($enabled, $email_instance),
-	 * not ($enabled, $order). The order is on $email->object after trigger() runs.
-	 *
 	 * @param bool      $enabled Whether the email is enabled.
-	 * @param \WC_Email $email   The email instance.
+	 * @param \WC_Order $order   The order object.
 	 * @return bool
 	 */
-	public function suppress_completed_email_for_pos( $enabled, $email = null ) {
-		$order = $email && isset( $email->object ) && is_a( $email->object, 'WC_Order' ) ? $email->object : null;
-		if ( $order && 'onetill_pos' === $order->get_meta( '_onetill_source' ) ) {
+	public function suppress_completed_email_for_pos( $enabled, $order = null ) {
+		if ( $order && is_a( $order, 'WC_Order' ) && 'onetill_pos' === $order->get_meta( '_onetill_source' ) ) {
 			return false;
 		}
 		return $enabled;
