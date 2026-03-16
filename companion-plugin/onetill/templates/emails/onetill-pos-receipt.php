@@ -17,38 +17,11 @@ do_action( 'woocommerce_email_header', $email_heading, $email ); ?>
 
 <p><?php esc_html_e( 'Thanks for your purchase! Here are the details of your transaction.', 'onetill' ); ?></p>
 
-<h2>
-	<?php
-	printf(
-		/* translators: %s: order number */
-		esc_html__( 'Order #%s', 'onetill' ),
-		esc_html( $order->get_order_number() )
-	);
-	?>
-	(<time datetime="<?php echo esc_attr( $order->get_date_created()->date_i18n( 'c' ) ); ?>"><?php echo esc_html( wc_format_datetime( $order->get_date_created() ) ); ?></time>)
-</h2>
-
 <?php
 /*
  * Order items table — uses WooCommerce's built-in template.
  */
 do_action( 'woocommerce_email_order_details', $order, $sent_to_admin, $plain_text, $email );
-
-/*
- * Payment method.
- */
-?>
-<?php $border_color = method_exists( $email, 'get_border_color' ) ? $email->get_border_color() : '#e5e5e5'; ?>
-<table cellspacing="0" cellpadding="6" border="1" style="border-collapse: collapse; width: 100%; border: 1px solid <?php echo esc_attr( $border_color ); ?>; margin-bottom: 20px;">
-	<tr>
-		<th scope="row" style="text-align: left; padding: 12px; border: 1px solid <?php echo esc_attr( $border_color ); ?>;">
-			<?php esc_html_e( 'Payment method', 'onetill' ); ?>
-		</th>
-		<td style="text-align: left; padding: 12px; border: 1px solid <?php echo esc_attr( $border_color ); ?>;">
-			<?php echo esc_html( $order->get_payment_method_title() ); ?>
-		</td>
-	</tr>
-</table>
 
 <?php
 /*

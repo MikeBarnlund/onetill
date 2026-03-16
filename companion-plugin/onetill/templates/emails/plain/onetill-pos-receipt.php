@@ -19,24 +19,12 @@ echo "\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
 echo esc_html__( 'Thanks for your purchase! Here are the details of your transaction.', 'onetill' ) . "\n\n";
 
-printf(
-	/* translators: %s: order number */
-	esc_html__( 'Order #%s', 'onetill' ),
-	esc_html( $order->get_order_number() )
-);
-echo ' (' . esc_html( wc_format_datetime( $order->get_date_created() ) ) . ")\n\n";
-
 /*
  * Order items.
  */
 do_action( 'woocommerce_email_order_details', $order, $sent_to_admin, $plain_text, $email );
 
 echo "\n";
-
-/*
- * Payment method.
- */
-echo esc_html__( 'Payment method', 'onetill' ) . ': ' . esc_html( $order->get_payment_method_title() ) . "\n\n";
 
 /*
  * Store address.
