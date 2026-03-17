@@ -3,12 +3,14 @@ package com.onetill.android.ui.orders
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.onetill.shared.data.local.LocalDataSource
+import com.onetill.shared.data.model.Money
 import com.onetill.shared.data.model.Order
 import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.data.model.PaymentMethod
 import com.onetill.shared.orders.OrderAnalytics
 import com.onetill.shared.orders.OrderFilter
 import com.onetill.shared.orders.RefundManager
+import com.onetill.shared.orders.RefundManager.Companion.REFUNDABLE_STATUSES
 import com.onetill.shared.orders.RefundResult
 import com.onetill.shared.sync.ConnectivityMonitor
 import com.onetill.shared.sync.SyncOrchestrator
@@ -47,6 +49,9 @@ data class OrderUiModel(
     val time: String,
     val itemCount: Int,
     val paymentMethod: String,
+    val subtotalFormatted: String,
+    val taxFormatted: String,
+    val hasTax: Boolean,
     val totalFormatted: String,
     val totalCents: Long,
     val currencyCode: String,
@@ -219,15 +224,20 @@ private fun Order.toUiModel(tz: TimeZone, isOnline: Boolean): OrderUiModel {
         else -> SyncStatus.Synced
     }
 
-    // Eligibility: completed, synced, and online
-    val eligibleForRefund = status == OrderStatus.COMPLETED && isOnline
+    // Eligibility: completed or processing (synced but not yet fetched back), and online
+    val eligibleForRefund = status in REFUNDABLE_STATUSES && isOnline
     val ineligibleReason = when {
         status == OrderStatus.REFUNDED -> null  // hidden, not disabled
         status == OrderStatus.PENDING_SYNC -> null
-        status != OrderStatus.COMPLETED -> null
+        status !in REFUNDABLE_STATUSES -> null
         !isOnline -> "Refunds require internet"
         else -> null
     }
+
+    val subtotal = Money(
+        amountCents = (total.amountCents - totalTax.amountCents).coerceAtLeast(0),
+        currencyCode = total.currencyCode,
+    )
 
     return OrderUiModel(
         id = id.toString(),
@@ -236,6 +246,9 @@ private fun Order.toUiModel(tz: TimeZone, isOnline: Boolean): OrderUiModel {
         time = timeStr,
         itemCount = lineItems.sumOf { it.quantity },
         paymentMethod = paymentStr,
+        subtotalFormatted = subtotal.formatDisplay(),
+        taxFormatted = totalTax.formatDisplay(),
+        hasTax = totalTax.amountCents > 0,
         totalFormatted = total.formatDisplay(),
         totalCents = total.amountCents,
         currencyCode = total.currencyCode,

@@ -43,8 +43,9 @@ class OrderSyncManager(
         // Build a local Order to persist
         val lineItemTotal = draft.lineItems.fold(Money.zero(currency)) { acc, li -> acc + li.totalPrice }
         val feeLineTotal = draft.feeLines.fold(Money.zero(currency)) { acc, fl -> acc + fl.amount }
+        val subtotal = (lineItemTotal.amountCents + feeLineTotal.amountCents - draft.discountCents).coerceAtLeast(0)
         val total = Money(
-            amountCents = (lineItemTotal.amountCents + feeLineTotal.amountCents - draft.discountCents).coerceAtLeast(0),
+            amountCents = subtotal + draft.estimatedTaxCents,
             currencyCode = currency,
         )
         val localOrder = Order(
@@ -55,7 +56,7 @@ class OrderSyncManager(
             feeLines = draft.feeLines,
             customerId = draft.customerId,
             total = total,
-            totalTax = Money.zero(currency),
+            totalTax = Money(draft.estimatedTaxCents, currency),
             paymentMethod = draft.paymentMethod,
             stripeTransactionId = draft.stripeTransactionId,
             idempotencyKey = draft.idempotencyKey,

@@ -65,8 +65,14 @@ class RefundManager(
     fun checkEligibility(order: Order): String? = when {
         order.status == OrderStatus.REFUNDED -> "This order has already been refunded"
         order.status == OrderStatus.PENDING_SYNC -> "This order hasn't been synced yet"
-        order.status != OrderStatus.COMPLETED -> "Only completed orders can be refunded"
+        order.status !in REFUNDABLE_STATUSES -> "Only completed orders can be refunded"
         else -> null
+    }
+
+    companion object {
+        // PROCESSING is included because drainPendingOrders sets this status
+        // before fetchRemoteOrders updates it to COMPLETED from WooCommerce.
+        val REFUNDABLE_STATUSES = setOf(OrderStatus.COMPLETED, OrderStatus.PROCESSING)
     }
 
     private fun mapErrorMessage(error: String?, message: String?): String = when (error) {

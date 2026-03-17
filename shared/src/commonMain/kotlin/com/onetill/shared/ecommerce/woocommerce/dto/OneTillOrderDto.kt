@@ -9,8 +9,8 @@ data class OneTillOrderDto(
     val number: String,
     val status: String,
     val total: String,
-    @SerialName("total_tax") val totalTax: String,
-    val currency: String,
+    @SerialName("total_tax") val totalTax: String = "0",
+    val currency: String = "",
     @SerialName("payment_method") val paymentMethod: String,
     @SerialName("stripe_transaction_id") val stripeTransactionId: String? = null,
     @SerialName("idempotency_key") val idempotencyKey: String = "",
@@ -28,6 +28,18 @@ data class OneTillLineItemDto(
     val name: String,
     val sku: String? = null,
     val quantity: Int,
-    @SerialName("unit_price") val unitPrice: String,
+    @SerialName("unit_price") val unitPrice: String = "0",
     val total: String,
+)
+
+/**
+ * Response wrapper for GET /onetill/v1/orders.
+ * The plugin returns {"orders": [...], "total": N, "page": N, "total_pages": N}.
+ */
+@Serializable
+data class OneTillOrderListResponse(
+    val orders: List<OneTillOrderDto> = emptyList(),
+    val total: Int = 0,
+    val page: Int = 1,
+    @SerialName("total_pages") val totalPages: Int = 1,
 )

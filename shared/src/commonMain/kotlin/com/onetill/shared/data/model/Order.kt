@@ -47,6 +47,7 @@ data class OrderDraft(
     val cardLast4: String? = null,
     val customerEmail: String? = null,
     val paymentCreatedOffline: Boolean = false,
+    val estimatedTaxCents: Long = 0,
 )
 
 @Serializable

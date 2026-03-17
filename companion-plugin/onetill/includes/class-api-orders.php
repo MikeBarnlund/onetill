@@ -507,17 +507,21 @@ class API_Orders {
 		$customer_name = trim( $wc_order->get_billing_first_name() . ' ' . $wc_order->get_billing_last_name() );
 
 		return array(
-			'id'             => $wc_order->get_id(),
-			'number'         => $wc_order->get_order_number(),
-			'status'         => $wc_order->get_status(),
-			'total'          => wc_format_decimal( $wc_order->get_total(), 2 ),
-			'payment_method' => $wc_order->get_meta( '_onetill_payment_method' ) ?: $wc_order->get_payment_method(),
-			'card_brand'     => $wc_order->get_meta( '_onetill_card_brand' ) ?: null,
-			'card_last4'     => $wc_order->get_meta( '_onetill_card_last4' ) ?: null,
-			'customer_name'  => $customer_name ?: null,
-			'customer_email' => $wc_order->get_billing_email() ?: null,
-			'item_count'     => $item_count,
-			'created_at'     => $wc_order->get_date_created() ? $wc_order->get_date_created()->format( 'Y-m-d\TH:i:s\Z' ) : '',
+			'id'                     => $wc_order->get_id(),
+			'number'                 => $wc_order->get_order_number(),
+			'status'                 => $wc_order->get_status(),
+			'total'                  => wc_format_decimal( $wc_order->get_total(), 2 ),
+			'total_tax'              => wc_format_decimal( $wc_order->get_total_tax(), 2 ),
+			'currency'               => $wc_order->get_currency(),
+			'payment_method'         => $wc_order->get_meta( '_onetill_payment_method' ) ?: $wc_order->get_payment_method(),
+			'stripe_transaction_id'  => $wc_order->get_meta( '_onetill_stripe_id' ) ?: $wc_order->get_transaction_id() ?: null,
+			'idempotency_key'        => $wc_order->get_meta( '_onetill_idempotency_key' ) ?: '',
+			'card_brand'             => $wc_order->get_meta( '_onetill_card_brand' ) ?: null,
+			'card_last4'             => $wc_order->get_meta( '_onetill_card_last4' ) ?: null,
+			'customer_name'          => $customer_name ?: null,
+			'customer_email'         => $wc_order->get_billing_email() ?: null,
+			'item_count'             => $item_count,
+			'created_at'             => $wc_order->get_date_created() ? $wc_order->get_date_created()->format( 'Y-m-d\TH:i:s\Z' ) : '',
 		);
 	}
 

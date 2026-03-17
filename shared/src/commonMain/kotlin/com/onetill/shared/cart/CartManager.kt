@@ -203,6 +203,7 @@ class CartManager(
             cardBrand = cardBrand,
             cardLast4 = cardLast4,
             paymentCreatedOffline = paymentCreatedOffline,
+            estimatedTaxCents = state.estimatedTax.amountCents,
         )
     }
 

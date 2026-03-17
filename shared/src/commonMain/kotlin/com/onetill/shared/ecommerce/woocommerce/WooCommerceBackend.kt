@@ -115,7 +115,8 @@ class WooCommerceBackend(
     override suspend fun fetchOrders(page: Int, perPage: Int, dateAfter: Instant?): AppResult<List<Order>> =
         apiCall {
             val dateAfterStr = dateAfter?.toString()
-            pluginClient.getOrders(page, perPage, dateAfterStr).map { it.toDomain() }
+            val response = pluginClient.getOrders(page, perPage, dateAfterStr)
+            response.orders.map { it.toDomain() }
         }
 
     override suspend fun createOrder(order: OrderDraft): AppResult<Order> =

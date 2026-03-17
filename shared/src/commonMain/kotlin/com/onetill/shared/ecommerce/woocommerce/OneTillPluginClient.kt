@@ -1,7 +1,7 @@
 package com.onetill.shared.ecommerce.woocommerce
 
 import com.onetill.shared.ecommerce.woocommerce.dto.OneTillCouponDto
-import com.onetill.shared.ecommerce.woocommerce.dto.OneTillOrderDto
+import com.onetill.shared.ecommerce.woocommerce.dto.OneTillOrderListResponse
 import com.onetill.shared.ecommerce.woocommerce.dto.OneTillRefundRequestDto
 import com.onetill.shared.ecommerce.woocommerce.dto.OneTillRefundResponseDto
 import com.onetill.shared.ecommerce.woocommerce.dto.OneTillSettingsDto
@@ -28,7 +28,7 @@ class OneTillPluginClient(private val httpClient: HttpClient) {
         page: Int,
         perPage: Int,
         dateAfter: String? = null,
-    ): List<OneTillOrderDto> =
+    ): OneTillOrderListResponse =
         httpClient.get("orders") {
             parameter("page", page)
             parameter("per_page", perPage)

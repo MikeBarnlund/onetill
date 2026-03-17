@@ -134,6 +134,45 @@ fun OrderDetailSheet(
             HorizontalDivider(thickness = 1.dp, color = colors.border)
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Subtotal
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = "Subtotal",
+                    fontSize = 13.sp,
+                    color = colors.textSecondary,
+                )
+                Text(
+                    text = order.subtotalFormatted,
+                    fontSize = 13.sp,
+                    color = colors.textSecondary,
+                )
+            }
+
+            // Tax
+            if (order.hasTax) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = "Tax",
+                        fontSize = 13.sp,
+                        color = colors.textSecondary,
+                    )
+                    Text(
+                        text = order.taxFormatted,
+                        fontSize = 13.sp,
+                        color = colors.textSecondary,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             // Total
             Row(
                 modifier = Modifier.fillMaxWidth(),
