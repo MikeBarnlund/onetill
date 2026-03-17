@@ -609,8 +609,14 @@ class API_Orders {
 		$reason  = isset( $body['reason'] ) ? sanitize_text_field( $body['reason'] ) : 'Refunded via OneTill POS';
 		$restock = isset( $body['restock'] ) ? (bool) $body['restock'] : false;
 
-		$payment_method   = $order->get_meta( '_onetill_payment_method' );
-		$is_card_payment  = in_array( $payment_method, array( 'stripe_terminal', 'card_manual' ), true );
+		$payment_method  = $order->get_meta( '_onetill_payment_method' );
+		// Fallback: if _onetill_payment_method is not set (older orders), check for Stripe transaction ID.
+		if ( empty( $payment_method ) ) {
+			$has_stripe_id  = $order->get_meta( '_onetill_stripe_id' ) || $order->get_transaction_id();
+			$is_card_payment = ! empty( $has_stripe_id );
+		} else {
+			$is_card_payment = in_array( $payment_method, array( 'stripe_terminal', 'card_manual' ), true );
+		}
 		$stripe_refund_id = null;
 
 		// Step 1: For card payments, call Stripe Refund API.

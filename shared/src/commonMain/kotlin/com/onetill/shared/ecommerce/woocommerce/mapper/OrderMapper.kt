@@ -89,6 +89,13 @@ fun OrderDraft.toWooDto(currency: String): WooCreateOrderDto = WooCreateOrderDto
     metaData = buildList {
         add(WooCreateMetaDataDto(key = "_onetill_idempotency_key", value = idempotencyKey))
         add(WooCreateMetaDataDto(key = "_onetill_source", value = "onetill_pos"))
+        add(WooCreateMetaDataDto(
+            key = "_onetill_payment_method",
+            value = when (paymentMethod) {
+                PaymentMethod.CARD -> "stripe_terminal"
+                PaymentMethod.CASH -> "cash"
+            },
+        ))
         if (note != null) add(WooCreateMetaDataDto(key = "_onetill_note", value = note))
         if (stripeTransactionId != null) add(WooCreateMetaDataDto(key = "_onetill_stripe_id", value = stripeTransactionId))
         if (cardBrand != null) add(WooCreateMetaDataDto(key = "_onetill_card_brand", value = cardBrand))

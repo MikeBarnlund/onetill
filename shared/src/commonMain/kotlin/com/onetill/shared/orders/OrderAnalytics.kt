@@ -3,6 +3,7 @@ package com.onetill.shared.orders
 import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.shared.data.model.DailySummary
 import com.onetill.shared.data.model.Order
+import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.data.model.PaymentMethod
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -59,7 +60,7 @@ class OrderAnalytics(
         val tz = TimeZone.currentSystemDefault()
         val todayDate = Clock.System.now().toLocalDateTime(tz).date
         val todayOrders = orders.filter {
-            it.createdAt.toLocalDateTime(tz).date == todayDate
+            it.createdAt.toLocalDateTime(tz).date == todayDate && it.status != OrderStatus.REFUNDED
         }
 
         val totalCents = todayOrders.sumOf { it.total.amountCents }
