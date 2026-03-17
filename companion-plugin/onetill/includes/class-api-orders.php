@@ -659,9 +659,13 @@ class API_Orders {
 		}
 
 		// Add order note for audit trail.
-		$note = $stripe_refund_id
-			? 'Full refund processed via OneTill POS. Stripe refund ID: ' . $stripe_refund_id . '.'
-			: 'Full cash refund recorded via OneTill POS.';
+		if ( $is_card_payment && $stripe_refund_id ) {
+			$note = 'Full refund processed via OneTill POS. Stripe refund ID: ' . $stripe_refund_id . '.';
+		} elseif ( $is_card_payment ) {
+			$note = 'Full card refund processed via OneTill POS.';
+		} else {
+			$note = 'Full cash refund recorded via OneTill POS.';
+		}
 		$order->add_order_note( $note, false, false );
 
 		return new \WP_REST_Response( array(
