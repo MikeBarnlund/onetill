@@ -950,8 +950,10 @@ class API_Orders {
 		}
 
 		// Add order note with staff name for audit trail.
-		$staff_name = $order->get_meta( '_onetill_staff_name' );
-		$device_name = $order->get_meta( '_onetill_device_name' );
+		// Read from the REST request meta_data array rather than order meta,
+		// because WooCommerce may not have flushed meta to the object cache yet.
+		$staff_name  = $this->extract_request_meta( $request, '_onetill_staff_name' );
+		$device_name = $this->extract_request_meta( $request, '_onetill_device_name' );
 		$note = 'POS order placed via OneTill';
 		if ( $staff_name ) {
 			$note .= ' by ' . $staff_name;
@@ -1013,6 +1015,25 @@ class API_Orders {
 		$user->set_role( 'customer' );
 
 		return $customer->get_id();
+	}
+
+	/**
+	 * Extract a meta value from the REST request's meta_data array.
+	 *
+	 * @param \WP_REST_Request $request The REST request.
+	 * @param string           $key     The meta key to find.
+	 * @return string The meta value, or empty string if not found.
+	 */
+	private function extract_request_meta( $request, $key ) {
+		$meta_data = $request->get_param( 'meta_data' );
+		if ( is_array( $meta_data ) ) {
+			foreach ( $meta_data as $meta ) {
+				if ( isset( $meta['key'] ) && $key === $meta['key'] ) {
+					return sanitize_text_field( $meta['value'] );
+				}
+			}
+		}
+		return '';
 	}
 
 	private function resolve_stock_target( $product_id, $variation_id ) {
