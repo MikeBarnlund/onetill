@@ -27,6 +27,7 @@ data class WooCreateRefundDto(
 data class OneTillRefundRequestDto(
     val reason: String = "",
     val restock: Boolean = true,
+    @SerialName("staff_name") val staffName: String? = null,
 )
 
 /**

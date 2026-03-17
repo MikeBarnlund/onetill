@@ -188,6 +188,7 @@ class CartManager(
         cardLast4: String? = null,
         idempotencyKey: String? = null,
         paymentCreatedOffline: Boolean = false,
+        staffName: String? = null,
     ): OrderDraft {
         val state = _cartState.value
         return OrderDraft(
@@ -204,6 +205,7 @@ class CartManager(
             cardLast4 = cardLast4,
             paymentCreatedOffline = paymentCreatedOffline,
             estimatedTaxCents = state.estimatedTax.amountCents,
+            staffName = staffName,
         )
     }
 

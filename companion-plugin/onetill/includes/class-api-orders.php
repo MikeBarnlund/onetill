@@ -265,6 +265,11 @@ class API_Orders {
 			$order->update_meta_data( '_onetill_card_last4', sanitize_text_field( $payment['card_last4'] ) );
 		}
 
+		$staff_name = isset( $body['staff_name'] ) ? sanitize_text_field( $body['staff_name'] ) : '';
+		if ( $staff_name ) {
+			$order->update_meta_data( '_onetill_staff_name', $staff_name );
+		}
+
 		$note = isset( $body['note'] ) ? sanitize_text_field( $body['note'] ) : '';
 		if ( $note ) {
 			$order->update_meta_data( '_onetill_note', $note );
@@ -274,6 +279,17 @@ class API_Orders {
 		// Set status to completed (POS orders are paid at point of sale).
 		$order->set_status( 'completed' );
 		$order->save();
+
+		// Add POS order note for audit trail.
+		$pos_note = 'POS order placed via OneTill';
+		if ( $staff_name ) {
+			$pos_note .= ' by ' . $staff_name;
+		}
+		if ( $device_name ) {
+			$pos_note .= ' on ' . $device_name;
+		}
+		$pos_note .= '.';
+		$order->add_order_note( $pos_note, false, false );
 
 		// 6. Decrement stock for each line item.
 		foreach ( $line_items as $item ) {
@@ -659,12 +675,15 @@ class API_Orders {
 		}
 
 		// Add order note for audit trail.
+		$staff_name = isset( $body['staff_name'] ) ? sanitize_text_field( $body['staff_name'] ) : '';
+		$by_staff   = $staff_name ? ' by ' . $staff_name : '';
+
 		if ( $is_card_payment && $stripe_refund_id ) {
-			$note = 'Full refund processed via OneTill POS. Stripe refund ID: ' . $stripe_refund_id . '.';
+			$note = 'Full refund processed via OneTill POS' . $by_staff . '. Stripe refund ID: ' . $stripe_refund_id . '.';
 		} elseif ( $is_card_payment ) {
-			$note = 'Full card refund processed via OneTill POS.';
+			$note = 'Full card refund processed via OneTill POS' . $by_staff . '.';
 		} else {
-			$note = 'Full cash refund recorded via OneTill POS.';
+			$note = 'Full cash refund recorded via OneTill POS' . $by_staff . '.';
 		}
 		$order->add_order_note( $note, false, false );
 
@@ -905,6 +924,19 @@ class API_Orders {
 			delete_user_meta( $customer_id, '_order_count' );
 			delete_user_meta( $customer_id, '_money_spent' );
 		}
+
+		// Add order note with staff name for audit trail.
+		$staff_name = $order->get_meta( '_onetill_staff_name' );
+		$device_name = $order->get_meta( '_onetill_device_name' );
+		$note = 'POS order placed via OneTill';
+		if ( $staff_name ) {
+			$note .= ' by ' . $staff_name;
+		}
+		if ( $device_name ) {
+			$note .= ' on ' . $device_name;
+		}
+		$note .= '.';
+		$order->add_order_note( $note, false, false );
 
 		// Trigger POS receipt email if the order has a billing email.
 		$receipt_email = $order->get_billing_email();

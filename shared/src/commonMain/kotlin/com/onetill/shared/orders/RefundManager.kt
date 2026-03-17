@@ -26,7 +26,7 @@ class RefundManager(
     private val localDataSource: LocalDataSource,
     private val connectivityMonitor: ConnectivityMonitor,
 ) {
-    suspend fun refundOrder(order: Order, restock: Boolean, currency: String): RefundResult {
+    suspend fun refundOrder(order: Order, restock: Boolean, currency: String, staffName: String? = null): RefundResult {
         if (!connectivityMonitor.isOnline.value) {
             return RefundResult.Error("Refunds require internet connection")
         }
@@ -34,7 +34,7 @@ class RefundManager(
         checkEligibility(order)?.let { return RefundResult.Error(it) }
 
         return try {
-            val request = OneTillRefundRequestDto(restock = restock)
+            val request = OneTillRefundRequestDto(restock = restock, staffName = staffName)
             val response = pluginClient.refundOrder(order.id, request)
 
             if (response.success && response.refund != null) {

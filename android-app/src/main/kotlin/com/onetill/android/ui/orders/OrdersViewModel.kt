@@ -2,6 +2,7 @@ package com.onetill.android.ui.orders
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.onetill.shared.auth.StaffAuthManager
 import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.shared.data.model.Money
 import com.onetill.shared.data.model.Order
@@ -84,6 +85,7 @@ class OrdersViewModel(
     private val orderAnalytics: OrderAnalytics,
     private val refundManager: RefundManager,
     private val connectivityMonitor: ConnectivityMonitor,
+    private val staffAuthManager: StaffAuthManager,
 ) : ViewModel() {
 
     private val recentOrders: StateFlow<List<Order>> =
@@ -179,7 +181,8 @@ class OrdersViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             _refundState.value = RefundUiState.Processing
 
-            when (val result = refundManager.refundOrder(domainOrder, restock, order.currencyCode)) {
+            val staffName = staffAuthManager.currentStaffName
+            when (val result = refundManager.refundOrder(domainOrder, restock, order.currencyCode, staffName)) {
                 is RefundResult.Success -> {
                     _refundState.value = RefundUiState.Success(order.orderNumber)
                     _showRefundConfirmation.value = false

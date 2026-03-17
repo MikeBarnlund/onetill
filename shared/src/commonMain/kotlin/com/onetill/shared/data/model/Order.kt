@@ -48,6 +48,7 @@ data class OrderDraft(
     val customerEmail: String? = null,
     val paymentCreatedOffline: Boolean = false,
     val estimatedTaxCents: Long = 0,
+    val staffName: String? = null,
 )
 
 @Serializable

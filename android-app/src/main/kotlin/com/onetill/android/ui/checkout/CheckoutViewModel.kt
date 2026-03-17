@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.onetill.android.stripe.StripeTerminalManager
 import com.onetill.android.stripe.StripeTerminalManager.PaymentResult
 import com.onetill.shared.cart.CartManager
+import com.onetill.shared.auth.StaffAuthManager
 import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.data.model.PaymentMethod
@@ -42,6 +43,7 @@ class CheckoutViewModel(
     private val syncOrchestrator: SyncOrchestrator,
     private val stripeTerminalManager: StripeTerminalManager,
     private val localDataSource: LocalDataSource,
+    private val staffAuthManager: StaffAuthManager,
 ) : ViewModel() {
 
     val items: StateFlow<List<OrderSummaryItem>> =
@@ -100,7 +102,7 @@ class CheckoutViewModel(
             _isSubmitting.value = true
             val totalFormatted = orderTotalFormatted.value
             val currency = cartManager.cartState.value.currency
-            val draft = cartManager.buildOrderDraft(PaymentMethod.CASH)
+            val draft = cartManager.buildOrderDraft(PaymentMethod.CASH, staffName = staffAuthManager.currentStaffName)
             val localId = orderSyncManager.submitOrder(draft, currency, OrderStatus.PENDING_RECEIPT)
             cartManager.clearCart(sold = true)
             _isSubmitting.value = false
@@ -162,6 +164,7 @@ class CheckoutViewModel(
                         cardLast4 = result.cardLast4,
                         idempotencyKey = idempotencyKey,
                         paymentCreatedOffline = result.wasCreatedOffline,
+                        staffName = staffAuthManager.currentStaffName,
                     )
                     val localId = orderSyncManager.submitOrder(draft, currency, OrderStatus.PENDING_RECEIPT)
                     cartManager.clearCart(sold = true)
