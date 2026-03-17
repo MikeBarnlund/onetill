@@ -1,10 +1,8 @@
 package com.onetill.android.ui.orders
 
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +19,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,6 +37,9 @@ import com.onetill.android.ui.components.AppStatusBar
 import com.onetill.android.ui.components.HeaderNavAction
 import com.onetill.android.ui.components.ScreenHeader
 import com.onetill.android.ui.components.StatusChip
+import com.onetill.android.ui.components.ToastHost
+import com.onetill.android.ui.components.ToastState
+import com.onetill.android.ui.components.ToastType
 import com.onetill.shared.orders.OrderFilter
 import com.onetill.android.ui.theme.OneTillTheme
 import com.onetill.android.ui.theme.screenGradientBackground
@@ -52,87 +54,127 @@ fun OrderHistoryScreen(
 
     val orders by viewModel.orders.collectAsState()
     val selectedFilter by viewModel.selectedFilter.collectAsState()
-    val expandedOrderId by viewModel.expandedOrderId.collectAsState()
+    val selectedOrder by viewModel.selectedOrder.collectAsState()
+    val showRefundConfirmation by viewModel.showRefundConfirmation.collectAsState()
+    val refundState by viewModel.refundState.collectAsState()
+    val isOnline by viewModel.isOnline.collectAsState()
     var showFilterMenu by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .screenGradientBackground(),
-    ) {
-        // Status bar
-        AppStatusBar()
+    val toastState = remember { ToastState() }
 
-        // Header — Back + "Orders" + filter dropdown
-        ScreenHeader(
-            title = "Orders",
-            navAction = HeaderNavAction.Back,
-            onNavAction = onBack,
-            rightActions = {
-                Row(
-                    modifier = Modifier.clickable { showFilterMenu = true },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = selectedFilter.label,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = colors.accentLight,
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    ChevronDownIcon(
-                        color = colors.accentLight,
-                        modifier = Modifier.size(12.dp),
-                    )
-                }
-                DropdownMenu(
-                    expanded = showFilterMenu,
-                    onDismissRequest = { showFilterMenu = false },
-                ) {
-                    OrderFilter.entries.forEach { filter ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = filter.label,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = colors.textPrimary,
-                                )
-                            },
-                            onClick = {
-                                viewModel.setFilter(filter)
-                                showFilterMenu = false
-                            },
-                        )
-                    }
-                }
-            },
-        )
+    // Show toast on refund success
+    LaunchedEffect(refundState) {
+        if (refundState is RefundUiState.Success) {
+            val orderNumber = (refundState as RefundUiState.Success).orderNumber
+            toastState.show("Order $orderNumber refunded", ToastType.Success)
+            viewModel.dismissRefundResult()
+        }
+    }
 
-        // Order list
-        LazyColumn(
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = dimens.md),
+                .screenGradientBackground(),
         ) {
-            itemsIndexed(items = orders, key = { _, order -> order.id }) { index, order ->
-                OrderRow(
-                    order = order,
-                    isExpanded = expandedOrderId == order.id,
-                    onClick = { viewModel.toggleOrderExpanded(order.id) },
-                )
-                if (index < orders.lastIndex) {
-                    HorizontalDivider(thickness = 1.dp, color = colors.border)
+            // Status bar
+            AppStatusBar()
+
+            // Header
+            ScreenHeader(
+                title = "Orders",
+                navAction = HeaderNavAction.Back,
+                onNavAction = onBack,
+                rightActions = {
+                    Row(
+                        modifier = Modifier.clickable { showFilterMenu = true },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = selectedFilter.label,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = colors.accentLight,
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        ChevronDownIcon(
+                            color = colors.accentLight,
+                            modifier = Modifier.size(12.dp),
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showFilterMenu,
+                        onDismissRequest = { showFilterMenu = false },
+                    ) {
+                        OrderFilter.entries.forEach { filter ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = filter.label,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = colors.textPrimary,
+                                    )
+                                },
+                                onClick = {
+                                    viewModel.setFilter(filter)
+                                    showFilterMenu = false
+                                },
+                            )
+                        }
+                    }
+                },
+            )
+
+            // Order list
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = dimens.md),
+            ) {
+                itemsIndexed(items = orders, key = { _, order -> order.id }) { index, order ->
+                    OrderRow(
+                        order = order,
+                        onClick = { viewModel.selectOrder(order) },
+                    )
+                    if (index < orders.lastIndex) {
+                        HorizontalDivider(thickness = 1.dp, color = colors.border)
+                    }
                 }
             }
         }
+
+        // Toast overlay
+        ToastHost(
+            state = toastState,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
+    }
+
+    // Order detail bottom sheet
+    if (selectedOrder != null) {
+        OrderDetailSheet(
+            order = selectedOrder!!,
+            isOnline = isOnline,
+            onDismiss = { viewModel.dismissOrderDetail() },
+            onRefundClick = { viewModel.showRefundConfirmation() },
+        )
+    }
+
+    // Refund confirmation bottom sheet
+    if (showRefundConfirmation && selectedOrder != null) {
+        RefundConfirmationSheet(
+            order = selectedOrder!!,
+            refundState = refundState,
+            onDismiss = { viewModel.dismissRefundConfirmation() },
+            onConfirmRefund = { restock -> viewModel.initiateRefund(restock) },
+        )
     }
 }
 
 @Composable
 private fun OrderRow(
     order: OrderUiModel,
-    isExpanded: Boolean,
     onClick: () -> Unit,
 ) {
     val colors = OneTillTheme.colors
@@ -141,12 +183,6 @@ private fun OrderRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .animateContentSize(
-                animationSpec = tween(
-                    durationMillis = 200,
-                    easing = FastOutSlowInEasing,
-                ),
-            )
             .padding(vertical = 14.dp),
     ) {
         // Row 1: Order ID + Status chip + Time
@@ -171,18 +207,21 @@ private fun OrderRow(
                         SyncStatus.Pending -> "Pending sync"
                         SyncStatus.Failed -> "Failed"
                         SyncStatus.ForwardingFailed -> "Payment declined"
+                        SyncStatus.Refunded -> "Refunded"
                     },
                     variant = when (order.syncStatus) {
                         SyncStatus.Synced -> ChipVariant.Success
                         SyncStatus.Pending -> ChipVariant.Warning
                         SyncStatus.Failed -> ChipVariant.Error
                         SyncStatus.ForwardingFailed -> ChipVariant.Error
+                        SyncStatus.Refunded -> ChipVariant.Error
                     },
                     icon = when (order.syncStatus) {
-                        SyncStatus.Synced -> "✓"
-                        SyncStatus.Pending -> "⏳"
-                        SyncStatus.Failed -> "✕"
-                        SyncStatus.ForwardingFailed -> "✕"
+                        SyncStatus.Synced -> "\u2713"
+                        SyncStatus.Pending -> "\u23F3"
+                        SyncStatus.Failed -> "\u2715"
+                        SyncStatus.ForwardingFailed -> "\u2715"
+                        SyncStatus.Refunded -> "\u21A9"
                     },
                 )
             }
@@ -203,7 +242,7 @@ private fun OrderRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "${order.itemCount} ${if (order.itemCount == 1) "item" else "items"} · ${order.paymentMethod}",
+                text = "${order.itemCount} ${if (order.itemCount == 1) "item" else "items"} \u00B7 ${order.paymentMethod}",
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Normal,
                 color = colors.textTertiary,
@@ -214,36 +253,6 @@ private fun OrderRow(
                 fontWeight = FontWeight.SemiBold,
                 color = colors.textPrimary,
             )
-        }
-
-        // Expanded: line item details
-        if (isExpanded && order.lineItems.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(10.dp))
-            HorizontalDivider(thickness = 1.dp, color = colors.border)
-            Spacer(modifier = Modifier.height(8.dp))
-
-            order.lineItems.forEach { item ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 3.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "${item.quantity}× ${item.name}",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Normal,
-                        color = colors.textSecondary,
-                    )
-                    Text(
-                        text = item.totalFormatted,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = colors.textSecondary,
-                    )
-                }
-            }
         }
     }
 }

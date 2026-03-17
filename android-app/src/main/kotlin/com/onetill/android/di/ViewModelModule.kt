@@ -23,7 +23,7 @@ val postWizardViewModelModule = module {
     viewModel { CartViewModel(get()) }
     viewModel { CheckoutViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { ReceiptEmailViewModel(get(), get()) }
-    viewModel { OrdersViewModel(get(), get(), get()) }
+    viewModel { OrdersViewModel(get(), get(), get(), get(), get()) }
     viewModel { SettingsViewModel(get(), get()) }
     viewModel { QrPairingViewModel(get(), get(), get()) }
     viewModel { OfflinePaymentSettingsViewModel(get(), get()) }

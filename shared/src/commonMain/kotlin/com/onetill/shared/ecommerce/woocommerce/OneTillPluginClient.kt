@@ -2,6 +2,8 @@ package com.onetill.shared.ecommerce.woocommerce
 
 import com.onetill.shared.ecommerce.woocommerce.dto.OneTillCouponDto
 import com.onetill.shared.ecommerce.woocommerce.dto.OneTillOrderDto
+import com.onetill.shared.ecommerce.woocommerce.dto.OneTillRefundRequestDto
+import com.onetill.shared.ecommerce.woocommerce.dto.OneTillRefundResponseDto
 import com.onetill.shared.ecommerce.woocommerce.dto.OneTillSettingsDto
 import com.onetill.shared.ecommerce.woocommerce.dto.StaffUserDto
 import com.onetill.shared.ecommerce.woocommerce.dto.StripeConnectionTokenResponse
@@ -49,6 +51,12 @@ class OneTillPluginClient(private val httpClient: HttpClient) {
 
     suspend fun estimateTax(request: TaxEstimateRequestDto): TaxEstimateResponseDto =
         httpClient.post("taxes/estimate") {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }.body()
+
+    suspend fun refundOrder(orderId: Long, request: OneTillRefundRequestDto): OneTillRefundResponseDto =
+        httpClient.post("orders/$orderId/refund") {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()

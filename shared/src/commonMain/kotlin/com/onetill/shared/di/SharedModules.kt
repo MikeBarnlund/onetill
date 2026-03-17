@@ -7,6 +7,7 @@ import com.onetill.shared.data.local.SqlDelightLocalDataSource
 import com.onetill.shared.data.model.StoreConfig
 import com.onetill.shared.db.createDatabase
 import com.onetill.shared.orders.OrderAnalytics
+import com.onetill.shared.orders.RefundManager
 import com.onetill.shared.ecommerce.ECommerceBackend
 import com.onetill.shared.ecommerce.woocommerce.OneTillPluginClient
 import com.onetill.shared.ecommerce.woocommerce.WooCommerceBackend
@@ -54,6 +55,7 @@ val syncModule = module {
     single { OrderSyncManager(get(), get()) }
     single { SyncOrchestrator(get(), get(), get(), get(), get(), get(), get()) }
     single { OrderAnalytics(get()) }
+    single { RefundManager(get(), get(), get()) }
 }
 
 fun cartModule(currency: String) = module {

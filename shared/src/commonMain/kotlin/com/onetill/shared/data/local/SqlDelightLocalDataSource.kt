@@ -481,6 +481,15 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
             .mapToList(Dispatchers.Default)
             .map { rows -> rows.map { assembleOrder(it) } }
 
+    override suspend fun markOrderRefunded(remoteId: Long, refundedAt: Instant, stripeRefundId: String?) =
+        withContext(Dispatchers.Default) {
+            queries.updateOrderRefundStatus(
+                refunded_at = refundedAt.toEpochMilliseconds(),
+                stripe_refund_id = stripeRefundId,
+                remote_id = remoteId,
+            )
+        }
+
     // ========================================================================
     // Tax Rates
     // ========================================================================

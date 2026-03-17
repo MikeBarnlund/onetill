@@ -134,7 +134,9 @@ CREATE TABLE offline_orders (
     coupon_codes TEXT,
     created_at INTEGER NOT NULL,
     customer_email TEXT,
-    payment_created_offline INTEGER NOT NULL DEFAULT 0
+    payment_created_offline INTEGER NOT NULL DEFAULT 0,
+    refunded_at INTEGER,
+    stripe_refund_id TEXT
 );
 
 CREATE INDEX idx_offline_orders_status ON offline_orders(status);
@@ -408,6 +410,9 @@ DELETE FROM order_line_item WHERE order_id = ?;
 
 selectRecentOrders:
 SELECT * FROM offline_orders ORDER BY created_at DESC LIMIT ?;
+
+updateOrderRefundStatus:
+UPDATE offline_orders SET status = 'REFUNDED', refunded_at = ?, stripe_refund_id = ? WHERE remote_id = ?;
 
 -- ============================================================================
 -- QUERIES: Order Line Items

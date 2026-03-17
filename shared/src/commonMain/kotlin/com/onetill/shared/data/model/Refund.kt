@@ -9,5 +9,7 @@ data class Refund(
     val orderId: Long,
     val amount: Money,
     val reason: String?,
+    val stripeRefundId: String? = null,
+    val restocked: Boolean = false,
     val createdAt: Instant,
 )

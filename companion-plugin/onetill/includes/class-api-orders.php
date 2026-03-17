@@ -522,16 +522,6 @@ class API_Orders {
 	}
 
 	/**
-	 * Full refund an order.
-	 *
-	 * Creates WooCommerce refund record. The actual Stripe refund is
-	 * initiated by the S700 app via Stripe Terminal SDK — the plugin
-	 * does NOT touch Stripe directly (no PCI scope).
-	 *
-	 * @param \WP_REST_Request $request The request.
-	 * @return \WP_REST_Response|\WP_Error
-	 */
-	/**
 	 * Send a POS receipt email for an existing order.
 	 *
 	 * Useful for offline-synced orders where the receipt should send once
@@ -569,6 +559,16 @@ class API_Orders {
 		return new \WP_REST_Response( array( 'success' => true ), 200 );
 	}
 
+	/**
+	 * Full refund an order.
+	 *
+	 * For card payments: calls Stripe Refund API first, then wc_create_refund().
+	 * For cash payments: calls wc_create_refund() only.
+	 * Stripe secret key stays on the server — never on the device.
+	 *
+	 * @param \WP_REST_Request $request The request.
+	 * @return \WP_REST_Response|\WP_Error
+	 */
 	public function refund_order( $request ) {
 		$order_id = absint( $request->get_param( 'id' ) );
 		$order    = wc_get_order( $order_id );
@@ -577,58 +577,181 @@ class API_Orders {
 			return new \WP_Error( 'order_not_found', 'Order not found.', array( 'status' => 404 ) );
 		}
 
-		// Check that this is a OneTill POS order.
 		if ( 'onetill_pos' !== $order->get_meta( '_onetill_source' ) ) {
 			return new \WP_Error( 'not_pos_order', 'This order was not created by OneTill POS.', array( 'status' => 400 ) );
 		}
 
-		// Check the order hasn't already been fully refunded.
 		if ( 'refunded' === $order->get_status() ) {
 			return new \WP_Error( 'already_refunded', 'This order has already been refunded.', array( 'status' => 400 ) );
 		}
 
 		$body    = $request->get_json_params();
-		$reason  = isset( $body['reason'] ) ? sanitize_text_field( $body['reason'] ) : '';
+		$reason  = isset( $body['reason'] ) ? sanitize_text_field( $body['reason'] ) : 'Refunded via OneTill POS';
 		$restock = isset( $body['restock'] ) ? (bool) $body['restock'] : false;
 
-		// Create WooCommerce refund for the full amount.
-		$refund = wc_create_refund( array(
+		$payment_method   = $order->get_meta( '_onetill_payment_method' );
+		$is_card_payment  = in_array( $payment_method, array( 'stripe_terminal', 'card_manual' ), true );
+		$stripe_refund_id = null;
+
+		// Step 1: For card payments, call Stripe Refund API.
+		if ( $is_card_payment ) {
+			// Check for Interac (requires in-person card re-presentation — not supported in v1.0).
+			$card_brand = $order->get_meta( '_onetill_card_brand' );
+			if ( 'interac' === strtolower( (string) $card_brand ) ) {
+				return new \WP_Error(
+					'interac_not_supported',
+					'Interac refunds must be processed from Stripe Dashboard.',
+					array( 'status' => 400 )
+				);
+			}
+
+			$stripe_result = $this->create_stripe_refund( $order );
+			if ( is_wp_error( $stripe_result ) ) {
+				return $stripe_result;
+			}
+			$stripe_refund_id = $stripe_result;
+		}
+
+		// Step 2: Create WooCommerce refund (handles status change + refund record + optional restock).
+		$refund_args = array(
 			'amount'         => $order->get_total(),
 			'reason'         => $reason,
 			'order_id'       => $order_id,
-			'refund_payment' => false, // Stripe refund is handled by the S700 app via Terminal SDK.
+			'refund_payment' => false,
 			'restock_items'  => $restock,
-		) );
+		);
+
+		// Map line items for restock — wc_create_refund needs explicit line_items to restock correctly.
+		if ( $restock ) {
+			$line_items = array();
+			foreach ( $order->get_items() as $item_id => $item ) {
+				$line_items[ $item_id ] = array(
+					'qty'          => $item->get_quantity(),
+					'refund_total' => $item->get_total(),
+					'refund_tax'   => array(),
+				);
+			}
+			$refund_args['line_items'] = $line_items;
+		}
+
+		$refund = wc_create_refund( $refund_args );
 
 		if ( is_wp_error( $refund ) ) {
+			// Stripe refund already succeeded — warn about inconsistency.
+			if ( $stripe_refund_id ) {
+				return new \WP_Error(
+					'woo_refund_failed',
+					'Stripe refund succeeded (ID: ' . $stripe_refund_id . ') but WooCommerce refund failed: ' . $refund->get_error_message() . '. The order status may need manual correction.',
+					array( 'status' => 500 )
+				);
+			}
 			return new \WP_Error( 'refund_failed', $refund->get_error_message(), array( 'status' => 500 ) );
 		}
 
-		// If restock requested and wc_create_refund didn't handle it, do it manually.
-		if ( $restock ) {
-			foreach ( $order->get_items() as $item ) {
-				$product_id   = $item->get_product_id();
-				$variation_id = $item->get_variation_id() ?: null;
-				$quantity     = $item->get_quantity();
-
-				$stock_target_id = $this->resolve_stock_target( $product_id, $variation_id );
-				$target_product  = wc_get_product( $stock_target_id );
-
-				if ( $target_product && $target_product->get_manage_stock() ) {
-					wc_update_product_stock( $stock_target_id, $quantity, 'increase' );
-				}
-			}
+		// Store Stripe refund ID as order meta for audit trail.
+		if ( $stripe_refund_id ) {
+			$order->update_meta_data( '_onetill_stripe_refund_id', $stripe_refund_id );
+			$order->save();
 		}
+
+		// Add order note for audit trail.
+		$note = $stripe_refund_id
+			? 'Full refund processed via OneTill POS. Stripe refund ID: ' . $stripe_refund_id . '.'
+			: 'Full cash refund recorded via OneTill POS.';
+		$order->add_order_note( $note, false, false );
 
 		return new \WP_REST_Response( array(
 			'success' => true,
 			'refund'  => array(
-				'id'         => $refund->get_id(),
-				'amount'     => wc_format_decimal( $refund->get_amount(), 2 ),
-				'reason'     => $refund->get_reason(),
-				'created_at' => $refund->get_date_created() ? $refund->get_date_created()->format( 'Y-m-d\TH:i:s\Z' ) : '',
+				'id'               => $refund->get_id(),
+				'amount'           => wc_format_decimal( $refund->get_amount(), 2 ),
+				'reason'           => $refund->get_reason(),
+				'stripe_refund_id' => $stripe_refund_id,
+				'restocked'        => $restock,
+				'created_at'       => $refund->get_date_created() ? $refund->get_date_created()->format( 'Y-m-d\TH:i:s\Z' ) : '',
 			),
 		), 200 );
+	}
+
+	/**
+	 * Call Stripe Refund API for the full charge amount.
+	 *
+	 * @param \WC_Order $order The order.
+	 * @return string|\WP_Error Stripe refund ID on success, WP_Error on failure.
+	 */
+	private function create_stripe_refund( $order ) {
+		$secret_key = get_option( 'onetill_stripe_secret_key', '' );
+
+		if ( empty( $secret_key ) ) {
+			return new \WP_Error(
+				'stripe_not_configured',
+				'Stripe secret key is not configured.',
+				array( 'status' => 400 )
+			);
+		}
+
+		// Get the payment intent ID from order meta or transaction_id.
+		$payment_intent_id = $order->get_meta( '_onetill_stripe_id' );
+		if ( empty( $payment_intent_id ) ) {
+			$payment_intent_id = $order->get_transaction_id();
+		}
+
+		if ( empty( $payment_intent_id ) ) {
+			return new \WP_Error(
+				'no_payment_intent',
+				'No Stripe payment intent found on this order.',
+				array( 'status' => 400 )
+			);
+		}
+
+		$response = wp_remote_post(
+			'https://api.stripe.com/v1/refunds',
+			array(
+				'headers' => array(
+					'Authorization' => 'Bearer ' . $secret_key,
+					'Content-Type'  => 'application/x-www-form-urlencoded',
+				),
+				'body'    => array(
+					'payment_intent' => $payment_intent_id,
+					'reason'         => 'requested_by_customer',
+				),
+				'timeout' => 30,
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return new \WP_Error(
+				'stripe_api_error',
+				'Failed to connect to Stripe: ' . $response->get_error_message(),
+				array( 'status' => 502 )
+			);
+		}
+
+		$status_code = wp_remote_retrieve_response_code( $response );
+		$body        = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		if ( $status_code >= 400 ) {
+			$error_code    = isset( $body['error']['code'] ) ? $body['error']['code'] : 'unknown';
+			$error_message = isset( $body['error']['message'] ) ? $body['error']['message'] : 'Stripe refund failed.';
+
+			$friendly_messages = array(
+				'charge_already_refunded'    => 'This order has already been refunded.',
+				'balance_insufficient'       => 'Insufficient Stripe balance to process refund.',
+				'charge_expired_for_refund'  => 'This order is too old to refund via Stripe.',
+			);
+
+			$message = isset( $friendly_messages[ $error_code ] ) ? $friendly_messages[ $error_code ] : $error_message;
+
+			return new \WP_Error( $error_code, $message, array( 'status' => 400 ) );
+		}
+
+		$refund_status = isset( $body['status'] ) ? $body['status'] : '';
+		if ( 'failed' === $refund_status ) {
+			return new \WP_Error( 'stripe_refund_failed', 'Stripe refund failed.', array( 'status' => 400 ) );
+		}
+
+		// 'succeeded' or 'pending' — both are acceptable.
+		return isset( $body['id'] ) ? $body['id'] : '';
 	}
 
 	/**

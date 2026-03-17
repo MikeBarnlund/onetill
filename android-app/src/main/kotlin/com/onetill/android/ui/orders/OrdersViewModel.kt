@@ -8,9 +8,13 @@ import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.data.model.PaymentMethod
 import com.onetill.shared.orders.OrderAnalytics
 import com.onetill.shared.orders.OrderFilter
+import com.onetill.shared.orders.RefundManager
+import com.onetill.shared.orders.RefundResult
+import com.onetill.shared.sync.ConnectivityMonitor
 import com.onetill.shared.sync.SyncOrchestrator
 import com.onetill.shared.util.formatCents
 import com.onetill.shared.util.formatDisplay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -27,6 +31,7 @@ enum class SyncStatus {
     Pending,
     Failed,
     ForwardingFailed,
+    Refunded,
 }
 
 data class OrderLineItem(
@@ -37,13 +42,18 @@ data class OrderLineItem(
 
 data class OrderUiModel(
     val id: String,
+    val remoteId: Long,
     val orderNumber: String,
     val time: String,
     val itemCount: Int,
     val paymentMethod: String,
     val totalFormatted: String,
+    val totalCents: Long,
+    val currencyCode: String,
     val syncStatus: SyncStatus,
     val lineItems: List<OrderLineItem> = emptyList(),
+    val isEligibleForRefund: Boolean = false,
+    val refundIneligibleReason: String? = null,
 )
 
 data class DailySummaryUiModel(
@@ -56,10 +66,19 @@ data class DailySummaryUiModel(
     val pendingSyncCount: Int,
 )
 
+sealed class RefundUiState {
+    data object Idle : RefundUiState()
+    data object Processing : RefundUiState()
+    data class Success(val orderNumber: String) : RefundUiState()
+    data class Error(val message: String) : RefundUiState()
+}
+
 class OrdersViewModel(
     localDataSource: LocalDataSource,
     private val syncOrchestrator: SyncOrchestrator,
     private val orderAnalytics: OrderAnalytics,
+    private val refundManager: RefundManager,
+    private val connectivityMonitor: ConnectivityMonitor,
 ) : ViewModel() {
 
     private val recentOrders: StateFlow<List<Order>> =
@@ -72,14 +91,22 @@ class OrdersViewModel(
     private val _selectedFilter = MutableStateFlow(OrderFilter.Today)
     val selectedFilter: StateFlow<OrderFilter> = _selectedFilter.asStateFlow()
 
+    val isOnline: StateFlow<Boolean> = connectivityMonitor.isOnline
+
     val orders: StateFlow<List<OrderUiModel>> =
-        combine(recentOrders, _selectedFilter) { orders, filter ->
+        combine(recentOrders, _selectedFilter, connectivityMonitor.isOnline) { orders, filter, online ->
             val tz = TimeZone.currentSystemDefault()
-            orderAnalytics.filterOrders(orders, filter).map { it.toUiModel(tz) }
+            orderAnalytics.filterOrders(orders, filter).map { it.toUiModel(tz, online) }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _expandedOrderId = MutableStateFlow<String?>(null)
-    val expandedOrderId: StateFlow<String?> = _expandedOrderId.asStateFlow()
+    private val _selectedOrder = MutableStateFlow<OrderUiModel?>(null)
+    val selectedOrder: StateFlow<OrderUiModel?> = _selectedOrder.asStateFlow()
+
+    private val _showRefundConfirmation = MutableStateFlow(false)
+    val showRefundConfirmation: StateFlow<Boolean> = _showRefundConfirmation.asStateFlow()
+
+    private val _refundState = MutableStateFlow<RefundUiState>(RefundUiState.Idle)
+    val refundState: StateFlow<RefundUiState> = _refundState.asStateFlow()
 
     val dailySummary: StateFlow<DailySummaryUiModel> =
         orderAnalytics.observeDailySummary(syncOrchestrator.pendingOrderCount)
@@ -120,12 +147,52 @@ class OrdersViewModel(
         _selectedFilter.value = filter
     }
 
-    fun toggleOrderExpanded(orderId: String) {
-        _expandedOrderId.value = if (_expandedOrderId.value == orderId) null else orderId
+    fun selectOrder(order: OrderUiModel) {
+        _selectedOrder.value = order
+    }
+
+    fun dismissOrderDetail() {
+        _selectedOrder.value = null
+        _refundState.value = RefundUiState.Idle
+    }
+
+    fun showRefundConfirmation() {
+        _showRefundConfirmation.value = true
+    }
+
+    fun dismissRefundConfirmation() {
+        _showRefundConfirmation.value = false
+        _refundState.value = RefundUiState.Idle
+    }
+
+    fun initiateRefund(restock: Boolean) {
+        val order = _selectedOrder.value ?: return
+
+        // Find the domain Order from the recent orders list
+        val domainOrder = recentOrders.value.find { it.id == order.remoteId } ?: return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            _refundState.value = RefundUiState.Processing
+
+            when (val result = refundManager.refundOrder(domainOrder, restock, order.currencyCode)) {
+                is RefundResult.Success -> {
+                    _refundState.value = RefundUiState.Success(order.orderNumber)
+                    _showRefundConfirmation.value = false
+                    _selectedOrder.value = null
+                }
+                is RefundResult.Error -> {
+                    _refundState.value = RefundUiState.Error(result.message)
+                }
+            }
+        }
+    }
+
+    fun dismissRefundResult() {
+        _refundState.value = RefundUiState.Idle
     }
 }
 
-private fun Order.toUiModel(tz: TimeZone): OrderUiModel {
+private fun Order.toUiModel(tz: TimeZone, isOnline: Boolean): OrderUiModel {
     val localTime = createdAt.toLocalDateTime(tz)
     val hour = localTime.hour
     val minute = localTime.minute
@@ -148,16 +215,30 @@ private fun Order.toUiModel(tz: TimeZone): OrderUiModel {
         OrderStatus.PENDING_SYNC -> SyncStatus.Pending
         OrderStatus.FAILED -> SyncStatus.Failed
         OrderStatus.FORWARDING_FAILED -> SyncStatus.ForwardingFailed
+        OrderStatus.REFUNDED -> SyncStatus.Refunded
         else -> SyncStatus.Synced
+    }
+
+    // Eligibility: completed, synced, and online
+    val eligibleForRefund = status == OrderStatus.COMPLETED && isOnline
+    val ineligibleReason = when {
+        status == OrderStatus.REFUNDED -> null  // hidden, not disabled
+        status == OrderStatus.PENDING_SYNC -> null
+        status != OrderStatus.COMPLETED -> null
+        !isOnline -> "Refunds require internet"
+        else -> null
     }
 
     return OrderUiModel(
         id = id.toString(),
+        remoteId = id,
         orderNumber = displayNumber,
         time = timeStr,
         itemCount = lineItems.sumOf { it.quantity },
         paymentMethod = paymentStr,
         totalFormatted = total.formatDisplay(),
+        totalCents = total.amountCents,
+        currencyCode = total.currencyCode,
         syncStatus = syncStatus,
         lineItems = lineItems.map { li ->
             OrderLineItem(
@@ -166,5 +247,7 @@ private fun Order.toUiModel(tz: TimeZone): OrderUiModel {
                 totalFormatted = li.totalPrice.formatDisplay(),
             )
         },
+        isEligibleForRefund = eligibleForRefund,
+        refundIneligibleReason = ineligibleReason,
     )
 }

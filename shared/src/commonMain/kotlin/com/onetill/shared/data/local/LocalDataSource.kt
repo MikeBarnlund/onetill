@@ -45,6 +45,7 @@ interface LocalDataSource {
     suspend fun getOrderByIdempotencyKey(key: String): Order?
     suspend fun upsertRemoteOrder(order: Order): Long
     fun observeRecentOrders(limit: Int): Flow<List<Order>>
+    suspend fun markOrderRefunded(remoteId: Long, refundedAt: Instant, stripeRefundId: String?)
 
     // Tax Rates
     suspend fun saveTaxRates(rates: List<TaxRate>)
