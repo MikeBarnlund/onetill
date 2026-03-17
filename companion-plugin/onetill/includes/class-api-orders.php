@@ -894,6 +894,24 @@ class API_Orders {
 			return;
 		}
 
+		// Idempotency check — prevent duplicate orders when the app retries
+		// after a successful creation whose response failed to parse.
+		$idempotency_key = $order->get_meta( '_onetill_idempotency_key' );
+		if ( ! empty( $idempotency_key ) ) {
+			$existing_orders = wc_get_orders( array(
+				'meta_key'   => '_onetill_idempotency_key',
+				'meta_value' => $idempotency_key,
+				'limit'      => 2,
+				'return'     => 'ids',
+				'exclude'    => array( $order->get_id() ),
+			) );
+			if ( ! empty( $existing_orders ) ) {
+				// Duplicate detected — delete this order silently.
+				$order->delete( true );
+				return;
+			}
+		}
+
 		// WooCommerce Order Attribution — powers the analytics meta box.
 		$order->update_meta_data( '_wc_order_attribution_source_type', 'pos' );
 		$order->update_meta_data( '_wc_order_attribution_origin', 'Point of Sale' );
