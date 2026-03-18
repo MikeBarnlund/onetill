@@ -53,7 +53,7 @@ class OneTillApplication : Application(), SingletonImageLoader.Factory {
                     .maxSizeBytes(50L * 1024 * 1024) // 50 MB
                     .build()
             }
-            .crossfade(150)
+            .crossfade(false)
             .build()
     }
 }

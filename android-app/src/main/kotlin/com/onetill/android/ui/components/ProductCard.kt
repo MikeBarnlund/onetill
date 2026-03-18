@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -19,12 +20,17 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import coil3.compose.LocalPlatformContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import coil3.size.Size
 import com.onetill.android.ui.theme.OneTillTheme
 
 private val cardScrimGradient = Brush.verticalGradient(
@@ -33,8 +39,6 @@ private val cardScrimGradient = Brush.verticalGradient(
         Color.Black.copy(alpha = 0.5f),
         Color.Black.copy(alpha = 0.82f),
     ),
-    startY = 0f,
-    endY = Float.POSITIVE_INFINITY,
 )
 
 @Composable
@@ -54,6 +58,7 @@ fun ProductCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .graphicsLayer { }
             .clickable(enabled = !isOutOfStock, onClick = onClick),
     ) {
         // Image area — 4:3 aspect ratio with gradient scrim + name overlay
@@ -66,7 +71,11 @@ fun ProductCard(
         ) {
             if (imageUrl != null) {
                 AsyncImage(
-                    model = imageUrl,
+                    model = ImageRequest.Builder(LocalPlatformContext.current)
+                        .data(imageUrl)
+                        .size(Size(490, 367))
+                        .crossfade(false)
+                        .build(),
                     contentDescription = name,
                     modifier = Modifier
                         .fillMaxSize()
@@ -75,11 +84,11 @@ fun ProductCard(
                 )
             }
 
-            // Gradient scrim at bottom of image
+            // Gradient scrim — only bottom half to reduce overdraw
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(4f / 3f)
+                    .fillMaxHeight(0.5f)
                     .align(Alignment.BottomCenter)
                     .background(cardScrimGradient),
             )

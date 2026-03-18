@@ -13,6 +13,7 @@ import com.onetill.shared.data.model.Product
 import com.onetill.shared.data.model.ProductType
 import com.onetill.shared.sync.SyncOrchestrator
 import com.onetill.shared.util.formatDisplay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,11 +21,22 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+
+data class ProductUiModel(
+    val id: Long,
+    val name: String,
+    val priceFormatted: String,
+    val stockText: String,
+    val imageUrl: String?,
+    val isOutOfStock: Boolean,
+    val product: Product,
+)
 
 class CatalogViewModel(
     private val localDataSource: LocalDataSource,
@@ -44,9 +56,9 @@ class CatalogViewModel(
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
     @OptIn(FlowPreview::class)
-    val searchResults: StateFlow<List<Product>> =
+    val searchResults: StateFlow<List<ProductUiModel>> =
         combine(allProducts, _searchQuery.debounce(150)) { products, query ->
-            if (query.isBlank()) products
+            val filtered = if (query.isBlank()) products
             else {
                 val nameMatches = mutableListOf<Product>()
                 val categoryMatches = mutableListOf<Product>()
@@ -63,7 +75,9 @@ class CatalogViewModel(
                 }
                 nameMatches + categoryMatches + tagMatches
             }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+            filtered.map { product -> product.toUiModel() }
+        }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val cartItemCount: StateFlow<Int> =
         cartManager.cartState
@@ -268,4 +282,30 @@ class CatalogViewModel(
         _isCustomSaleVisible.value = false
         toastState.show("Custom sale added", ToastType.Success)
     }
+}
+
+private fun Product.toUiModel(): ProductUiModel {
+    val stock = if (type == ProductType.VARIABLE) {
+        variants.sumOf { it.stockQuantity ?: 0 }
+    } else {
+        stockQuantity ?: 0
+    }
+    val hasStockManagement = if (type == ProductType.VARIABLE) {
+        variants.any { it.manageStock }
+    } else {
+        manageStock
+    }
+    return ProductUiModel(
+        id = id,
+        name = name,
+        priceFormatted = if (type == ProductType.VARIABLE) {
+            "From ${price.formatDisplay()}"
+        } else {
+            price.formatDisplay()
+        },
+        stockText = "$stock left",
+        imageUrl = images.firstOrNull()?.url,
+        isOutOfStock = hasStockManagement && stock <= 0,
+        product = this,
+    )
 }

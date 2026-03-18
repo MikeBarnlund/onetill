@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.baselineProfile)
 }
 
 android {
@@ -33,6 +34,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
         }
     }
 
@@ -104,4 +111,8 @@ dependencies {
 
     // Ktor engine for Coil network image loading
     implementation(libs.ktor.client.okhttp)
+
+    // Baseline Profile
+    implementation(libs.profileinstaller)
+    baselineProfile(project(":baselineprofile"))
 }

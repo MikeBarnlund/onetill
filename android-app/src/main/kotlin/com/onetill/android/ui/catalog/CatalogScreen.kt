@@ -25,9 +25,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -84,8 +87,6 @@ import com.onetill.android.ui.components.OneTillButton
 import com.onetill.android.ui.components.ProductCard
 import com.onetill.android.ui.components.SearchIcon
 import com.onetill.android.ui.components.ToastHost
-import com.onetill.shared.data.model.ProductType
-import com.onetill.shared.util.formatDisplay
 import com.onetill.android.stripe.StripeTerminalManager
 import com.onetill.android.ui.theme.OneTillTheme
 import com.onetill.android.ui.theme.screenGradientBackground
@@ -280,8 +281,16 @@ fun CatalogScreen(
                             onCustomSale = { viewModel.openCustomSaleSheet() },
                         )
                     } else {
+                        @OptIn(ExperimentalFoundationApi::class)
+                        val gridState = rememberLazyGridState(
+                            cacheWindow = LazyLayoutCacheWindow(
+                                ahead = 200.dp,
+                                behind = 100.dp,
+                            ),
+                        )
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(2),
+                            state = gridState,
                             contentPadding = PaddingValues(
                                 start = dimens.md,
                                 end = dimens.md,
@@ -295,30 +304,15 @@ fun CatalogScreen(
                                 items = products,
                                 key = { it.id },
                                 contentType = { "product" },
-                            ) { product ->
-                                val stock = if (product.type == ProductType.VARIABLE) {
-                                    product.variants.sumOf { it.stockQuantity ?: 0 }
-                                } else {
-                                    product.stockQuantity ?: 0
-                                }
-                                val hasStockManagement = if (product.type == ProductType.VARIABLE) {
-                                    product.variants.any { it.manageStock }
-                                } else {
-                                    product.manageStock
-                                }
-                                val isOutOfStock = hasStockManagement && stock <= 0
-                                val priceFormatted = if (product.type == ProductType.VARIABLE) {
-                                    "From ${product.price.formatDisplay()}"
-                                } else {
-                                    product.price.formatDisplay()
-                                }
+                            ) { item ->
+                                val onClick = remember(item.id) { { viewModel.onProductTap(item.product) } }
                                 ProductCard(
-                                    name = product.name,
-                                    priceFormatted = priceFormatted,
-                                    stockText = "$stock left",
-                                    imageUrl = product.images.firstOrNull()?.url,
-                                    isOutOfStock = isOutOfStock,
-                                    onClick = { viewModel.onProductTap(product) },
+                                    name = item.name,
+                                    priceFormatted = item.priceFormatted,
+                                    stockText = item.stockText,
+                                    imageUrl = item.imageUrl,
+                                    isOutOfStock = item.isOutOfStock,
+                                    onClick = onClick,
                                 )
                             }
 
