@@ -339,9 +339,8 @@ fun CartScreen(
             val cardSubtitle = when {
                 isSubmitting && selectedMethod == PaymentMethodUi.Card -> "Processing payment..."
                 cardPaymentError != null -> cardPaymentError!!
-                isOnline -> "Tap, chip, or swipe"
-                offlinePaymentsEnabled -> "Offline — Tap or chip only"
-                else -> "Requires internet"
+                !isOnline -> "Offline — Tap or chip only"
+                else -> "Tap, chip, or swipe"
             }
 
             PaymentMethodCard(
@@ -358,12 +357,10 @@ fun CartScreen(
                 onClick = {
                     if (isSubmitting || state.isEmpty) return@PaymentMethodCard
                     checkoutViewModel.selectPaymentMethod(PaymentMethodUi.Card)
-                    if (isOnline || offlinePaymentsEnabled) {
-                        checkoutViewModel.submitCardPayment(
-                            onComplete = { orderId, amount -> onCardPaymentComplete(orderId, amount) },
-                            onFailed = { message -> onCardPaymentFailed(message) },
-                        )
-                    }
+                    checkoutViewModel.submitCardPayment(
+                        onComplete = { orderId, amount -> onCardPaymentComplete(orderId, amount) },
+                        onFailed = { message -> onCardPaymentFailed(message) },
+                    )
                 },
             )
             Spacer(modifier = Modifier.height(8.dp))

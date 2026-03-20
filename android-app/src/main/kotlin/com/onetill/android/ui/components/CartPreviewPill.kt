@@ -76,20 +76,20 @@ fun CartPreviewPill(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 CartIcon(
-                    color = Color.White,
+                    color = colors.textOnAccent,
                     modifier = Modifier.size(16.dp),
                 )
                 Text(
                     text = totalFormatted,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = colors.textOnAccent,
                 )
                 Text(
                     text = "$itemCount items",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Normal,
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = colors.textOnAccent.copy(alpha = 0.6f),
                 )
             }
 
@@ -97,7 +97,7 @@ fun CartPreviewPill(
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .background(Color.White.copy(alpha = 0.15f))
+                    .background(colors.textOnAccent.copy(alpha = 0.12f))
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.Center,
             ) {
@@ -105,7 +105,7 @@ fun CartPreviewPill(
                     text = "Checkout",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White,
+                    color = colors.textOnAccent,
                 )
             }
         }

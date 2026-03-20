@@ -7,21 +7,23 @@ This skill activates automatically when working on ANY file in `android-app/ui/`
 ## Rules
 
 1. **Read the full design system below before writing any UI code.** It is the sole source of truth for all design decisions.
-2. **The React mockup at `skills/ui-design-system/references/onetill-header-mockup.jsx` is the visual reference.** When this document and the mockup conflict, this document wins.
+2. **The brand skill at `onetill-brand/SKILL.md` defines the brand identity.** This document translates that into Compose implementation details.
 3. **Every new screen or component must use the design tokens defined here.** Do not invent new colors, font sizes, or spacing values.
 4. **If you need a token not defined here, stop and ask before inventing one.**
 5. **DM Sans is the app font.** Bundled in `res/font/`, weights 400/500/600/700. No system default Roboto.
 6. **Dark theme only.** Pure black background with warm neutral surfaces. No light theme.
+7. **Brass accent (`#C9A66B`), not blue.** All primary actions, links, active states, and interactive highlights use the brass color. Text on brass backgrounds must be dark (`#1A1A18`), not white.
+8. **The logo is an isometric cash register SVG.** Stored as `res/drawable/onetill_logo.xml` (Android vector drawable converted from SVG). Use it wherever the logo appears — drawer, header, setup wizard, splash.
 
 ---
 
 # OneTill — UI Design System & Screen Specifications
 
-**Version:** 2.0
-**Date:** March 1, 2026
-**Purpose:** Complete design system and screen specs for the OneTill Jetpack Compose UI. This document is the **sole source of truth** for all UI implementation. It supersedes v1.0 of `onetill-ui-design-spec.md`.
+**Version:** 3.0
+**Date:** March 19, 2026
+**Purpose:** Complete design system and screen specs for the OneTill Jetpack Compose UI. This document is the **sole source of truth** for all UI implementation. It supersedes v2.0.
 
-**Visual reference:** The mockup artifact `onetill-header-mockup.jsx` contains pixel-accurate React mockups of every screen described here. When this document and the mockup conflict, this document wins. Use the mockup for visual reference, use this document for implementation details.
+**Brand reference:** The OneTill brand skill (`onetill-brand/SKILL.md`) defines the broader brand identity — colors, voice, logo usage, and photography direction. This document translates that brand into specific Compose implementation details for the S700/S710 app.
 
 ---
 
@@ -60,7 +62,7 @@ These five principles resolve every design decision.
 
 ## Color System
 
-Dark theme with warm neutrals and a single blue accent. High contrast for outdoor readability. This is a transaction tool, not a lifestyle app.
+Dark theme with warm brass accent. High contrast for outdoor readability. This is a transaction tool, not a lifestyle app.
 
 ### Core Palette
 
@@ -73,11 +75,14 @@ Dark theme with warm neutrals and a single blue accent. High contrast for outdoo
 | `textPrimary` | `#FAF9F7` | Primary text (warm off-white) |
 | `textSecondary` | `#9A9894` | Secondary text, labels, descriptions |
 | `textTertiary` | `#6B6965` | Timestamps, metadata, placeholders |
-| `accent` | `#2A609C` | Primary actions (Charge button, links, active states) |
-| `accentLight` | `#3A7BC8` | Hover/pressed accent states, filter text |
-| `accentMuted` | `#2A609C` at 20% | Accent backgrounds (e.g. selected payment method) |
+| `accent` | `#C9A66B` | Primary actions (Charge button, links, active states) — warm brass |
+| `accentLight` | `#E0C992` | Hover/pressed accent states, filter text |
+| `accentDark` | `#8A6E35` | Deep accent contexts, logo dark face |
+| `accentMuted` | `#C9A66B` at 15% | Accent backgrounds (e.g. selected payment method) |
 | `border` | `#222220` | Primary borders, dividers |
 | `borderSubtle` | `#1A1A18` | Subtle dividers (status bar bottom, drawer sections) |
+
+**Important:** The accent color is brass (`#C9A66B`), not blue. All UI elements that previously used `#2A609C` (blue) must use `#C9A66B` (brass). Text rendered ON the brass accent must use `#1A1A18` (dark), not white — brass is a lighter accent and white text on it has poor contrast.
 
 ### Semantic Colors
 
@@ -245,7 +250,7 @@ The drawer is the primary way to access secondary screens: Orders, Summary, Sett
 - There is **no scrim/overlay** — the slide-over effect is the only visual cue.
 
 **Drawer contents (top to bottom):**
-1. **Logo + brand** — OneTill logo (36×36dp) + "OneTill" text (20sp, weight 600). Padding: 20dp all sides.
+1. **Logo + brand** — OneTill isometric register icon (36×36dp, loaded from `res/drawable/onetill_logo.xml` vector drawable) + "OneTill" text (20sp, weight 600). Padding: 20dp all sides.
 2. **Divider** — 1dp `borderSubtle`, 20dp horizontal margin
 3. **Nav items section** — "Orders" and "Summary", 12dp vertical padding
 4. **Flex spacer** — pushes Settings to the bottom
@@ -275,8 +280,8 @@ The drawer is the primary way to access secondary screens: Orders, Summary, Sett
 #### Primary CTA (Charge, Complete Sale, New Sale, etc.)
 - Full width (minus 16dp horizontal margin)
 - Height: 52dp
-- Background: `accent` (`#2A609C`)
-- Text: `textPrimary`, 16sp, weight 600
+- Background: `accent` (`#C9A66B`)
+- Text: `#1A1A18` (dark on brass), 16sp, weight 600
 - Border radius: 26dp (full pill)
 - No border, no shadow
 - Container: No extra background behind the button. The button floats directly against the screen gradient. Padding: 10dp top, 14dp bottom.
@@ -323,7 +328,7 @@ Each card:
 Appears when cart has items. Fixed 16dp from bottom, 16dp horizontal margin.
 
 **Split design — two sections in one pill:**
-- Left section: `accent` background. Cart icon (16dp) + total amount (14sp bold) + item count badge (10sp, `surface` background circle).
+- Left section: `accent` background. Cart icon (16dp, `#1A1A18`) + total amount (14sp bold, `#1A1A18`) + item count badge (10sp, `surface` background circle).
 - Right section: `surface` background with subtle border. "Checkout" text (13sp, weight 500, `textSecondary`).
 - Overall: 48dp height, pill shape (24dp radius).
 - Tap: Navigates to Cart screen.
@@ -392,7 +397,7 @@ Used inside the Variation Picker for attribute selection (size, color, finish, e
 - Height: 36dp, minimum padding: 0 14dp
 - Border radius: 10dp
 - Unselected: `surface` background, 1dp `border`, `textPrimary` text (13sp, weight 500)
-- Selected: `accent` background, `accent` border, white text (13sp, weight 600)
+- Selected: `accent` background, `accent` border, `#1A1A18` text (dark on brass, 13sp, weight 600)
 - Out of stock: 35% opacity, strikethrough text
 - Price adjustment suffix: Inside the chip, 10sp, weight 400. Unselected: `textTertiary`. Selected: `rgba(255,255,255,0.6)`.
 - Layout: flex-wrap row with 8dp gap between chips
@@ -408,7 +413,7 @@ The screen merchants spend 90% of their time on. Optimized for product lookup.
 
 **Header (52dp):**
 - Left: Hamburger icon (☰) in 40dp circle, `surface` background — opens navigation drawer
-- Center: OneTill logo (24×24dp) + "OneTill" text — or store name
+- Center: OneTill isometric register icon (24×24dp) + "OneTill" text — or store name
 - Right: Search icon (20dp) + Barcode scan icon (20dp), both `textSecondary`, 48dp tap targets
 
 **Search bar:** Appears below header when search icon is tapped. Full width, 48dp height, `surface` background. Left: magnifying glass icon. Placeholder: "Search products...". On focus: keyboard rises, grid replaced by search results list. Back arrow or clear dismisses.
@@ -460,7 +465,7 @@ Appears when a variable product is tapped or scanned. Slides up from the bottom 
 **"Add to Cart" CTA (pinned below scroll area):**
 - 6dp top, 14dp bottom padding, 16dp horizontal.
 - Primary pill button: 52dp height, 26dp radius, `accent` background.
-- Cart icon (18dp, white) + "Add to Cart" text (16sp, weight 600, white).
+- Cart icon (18dp, `#1A1A18`) + "Add to Cart" text (16sp, weight 600, `#1A1A18`).
 - Icon and text centered with 8dp gap.
 
 ### 3. Cart Screen
@@ -589,7 +594,7 @@ Confirmation shown after successful payment. **No status bar** on this screen �
 
 4-step linear flow. After completion, goes directly to Catalog on all future launches.
 
-**Step 1 — Welcome:** OneTill logo centered (120dp) + "Connect your WooCommerce store" heading + "Sell in person. Stay in sync." tagline. Bottom CTA: "Get Started".
+**Step 1 — Welcome:** OneTill isometric register icon centered (120dp, loaded from `res/drawable/onetill_logo.xml`) + "Connect your WooCommerce store" heading + "Sell in person. Stay in sync." tagline. Bottom CTA: "Get Started".
 
 **Step 2 — Store Connection:** Three input fields (Store URL, Consumer Key, Consumer Secret) + helper text. Bottom CTA: "Connect". On success: green checkmark, auto-advance.
 
@@ -625,12 +630,14 @@ Confirmation shown after successful payment. **No status bar** on this screen �
 - Failure (offline): Toast "You're offline. Products will sync when connected."
 
 ### Offline Behavior
-- Status bar: amber "Offline" indicator
-- All browsing, cart, and cash checkout work normally
-- "Card Payment" shows subtle label: "Requires internet"
-- Tapping "Card Payment" while offline: non-modal banner "Connect to WiFi to accept card payments"
-- Offline orders show "⏳ Pending sync" in order history
-- On reconnect: Status bar flashes green "Syncing...", queue drains, status updates per order
+- Status bar: amber "Offline" indicator with pending payment count if applicable (e.g. "Offline · 3 pending")
+- All browsing, cart, and checkout work normally
+- **Card payments work offline** — tap, chip, and NFC wallets accepted. Payments stored locally and forwarded to Stripe on reconnect.
+- Cash payments always work offline
+- "Card Payment" card in checkout: no "Requires internet" label. Card payments are always available.
+- If merchant's offline limits are reached (per-transaction or cumulative), show non-modal banner: "Offline card limit reached. Cash payments still available."
+- Offline orders show "⏳ Pending sync" in order history. Offline card payments additionally show "⏳ Payment forwarding" until Stripe confirms.
+- On reconnect: Status bar flashes green "Syncing...", order queue drains, offline payments forward to Stripe, status updates per order
 
 ---
 
@@ -686,6 +693,13 @@ The Snapdragon 665 handles Compose well but is not a flagship GPU. Stay within t
 - Define a `FontFamily` in the theme
 - No Google Fonts dependency (no GMS on S700)
 - Monitor APK size impact — DM Sans TTFs are small (~100KB total for 4 weights)
+
+### Logo Asset
+- The master logo is `onetill-brand-logo.svg` (in the brand skill assets folder)
+- For the Android app, convert to an Android Vector Drawable (`res/drawable/onetill_logo.xml`) using Android Studio's SVG-to-VectorDrawable importer or `vd-tool`
+- The logo uses 4 colors: `#8A6E35` (dark brass), `#C9A66B` (mid brass), `#E0C992` (light brass), `#FFFFFF` (the "1")
+- These colors are hardcoded in the vector drawable, NOT themed — the logo never changes color
+- Display sizes: 24dp (header), 36dp (drawer), 120dp (setup wizard welcome)
 
 ### Future Device Compatibility
 The S700 (1080×1920 portrait) is the only v1.0 target. To avoid costly refactoring later:

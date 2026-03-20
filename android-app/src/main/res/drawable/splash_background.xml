@@ -1,9 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@android:color/black" />
-    <item android:gravity="center">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:startColor="#FF1A1A18"
+                android:endColor="#FF000000"
+                android:angle="315" />
+        </shape>
+    </item>
+    <!-- Logo: centered, shifted up 15dp (inset = 15*2 = 30dp) -->
+    <item
+        android:drawable="@drawable/onetill_logo"
+        android:gravity="center"
+        android:width="72dp"
+        android:height="72dp"
+        android:bottom="30dp" />
+    <!-- Text: centered, shifted down 44dp (inset = 44*2 = 88dp) -->
+    <item
+        android:gravity="center"
+        android:width="51dp"
+        android:height="17dp"
+        android:top="88dp">
         <bitmap
             android:gravity="center"
-            android:src="@drawable/onetill_logo_splash" />
+            android:src="@drawable/splash_onetill_text" />
     </item>
 </layer-list>

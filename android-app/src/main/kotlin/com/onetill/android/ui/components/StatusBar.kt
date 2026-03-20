@@ -102,8 +102,7 @@ fun AppStatusBar(
 
     val connectivityLabel = when {
         isOnline -> null
-        offlinePaymentsEnabled && pendingOfflineCount > 0 -> "Offline payments: $pendingOfflineCount pending"
-        offlinePaymentsEnabled -> "Offline (payments enabled)"
+        pendingOfflineCount > 0 -> "Offline · $pendingOfflineCount pending"
         else -> null
     }
 

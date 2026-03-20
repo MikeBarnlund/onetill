@@ -11,10 +11,12 @@ val TextPrimary = Color(0xFFFAF9F7)
 val TextSecondary = Color(0xFF9A9894)
 val TextTertiary = Color(0xFF6B6965)
 
-// Accent — single blue
-val Accent = Color(0xFF2A609C)
-val AccentLight = Color(0xFF3A7BC8)
-val AccentMuted = Color(0x332A609C) // 20% opacity
+// Accent — warm brass
+val Accent = Color(0xFFC9A66B)
+val AccentLight = Color(0xFFE0C992)
+val AccentDark = Color(0xFF8A6E35)
+val AccentMuted = Color(0x26C9A66B) // 15% opacity
+val TextOnAccent = Color(0xFF1A1A18) // near-black for text on brass backgrounds
 
 // Borders
 val Border = Color(0xFF222220)

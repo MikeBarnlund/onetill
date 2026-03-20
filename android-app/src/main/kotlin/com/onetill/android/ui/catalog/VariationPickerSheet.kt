@@ -424,11 +424,11 @@ fun VariationPickerSheet(
                         ),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = colors.accent,
-                            contentColor = Color.White,
+                            contentColor = colors.textOnAccent,
                         ),
                     ) {
                         CartIcon(
-                            color = Color.White,
+                            color = colors.textOnAccent,
                             modifier = Modifier.size(18.dp),
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -436,7 +436,7 @@ fun VariationPickerSheet(
                             text = "Add to Cart",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White,
+                            color = colors.textOnAccent,
                         )
                     }
                 }

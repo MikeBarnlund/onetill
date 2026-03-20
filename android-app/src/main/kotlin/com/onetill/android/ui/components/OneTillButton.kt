@@ -53,7 +53,7 @@ fun OneTillButton(
                 ),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colors.accent,
-                    contentColor = colors.textPrimary,
+                    contentColor = colors.textOnAccent,
                     disabledContainerColor = colors.surface,
                     disabledContentColor = colors.textTertiary,
                 ),

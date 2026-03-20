@@ -18,7 +18,7 @@ import androidx.compose.ui.graphics.toArgb
 
 private val DarkColorScheme = darkColorScheme(
     primary = Accent,
-    onPrimary = TextPrimary,
+    onPrimary = TextOnAccent,
     surface = Surface,
     onSurface = TextPrimary,
     surfaceVariant = Surface,
@@ -43,7 +43,9 @@ data class OneTillColors(
     val textTertiary: Color = TextTertiary,
     val accent: Color = Accent,
     val accentLight: Color = AccentLight,
+    val accentDark: Color = AccentDark,
     val accentMuted: Color = AccentMuted,
+    val textOnAccent: Color = TextOnAccent,
     val border: Color = Border,
     val borderSubtle: Color = BorderSubtle,
     val success: Color = Success,

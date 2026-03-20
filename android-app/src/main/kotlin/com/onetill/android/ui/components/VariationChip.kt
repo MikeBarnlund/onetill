@@ -37,12 +37,12 @@ fun VariationChip(
 
     val bgColor = if (isSelected) colors.accent else colors.surface
     val borderColor = if (isSelected) colors.accent else colors.border
-    val textColor = if (isSelected) Color.White else colors.textPrimary
+    val textColor = if (isSelected) colors.textOnAccent else colors.textPrimary
     val fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
     val textDecoration = if (!isAvailable) TextDecoration.LineThrough else TextDecoration.None
 
     val priceColor = if (isSelected) {
-        Color.White.copy(alpha = 0.6f)
+        colors.textOnAccent.copy(alpha = 0.6f)
     } else {
         colors.textTertiary
     }
