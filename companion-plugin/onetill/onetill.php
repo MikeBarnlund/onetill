@@ -6,6 +6,7 @@
  * Version: 1.1.0
  * Requires at least: 6.0
  * Requires PHP: 7.4
+ * Requires Plugins: woocommerce
  * WC requires at least: 8.0
  * WC tested up to: 9.6
  * Author: OneTill
