@@ -149,6 +149,33 @@ Yes. OneTill is fully compatible with WooCommerce's High-Performance Order Stora
 4. Staff management — create staff accounts with PIN codes
 5. Settings — configure Stripe connection and barcode preferences
 
+== External Services ==
+
+This plugin connects to the Stripe API (https://api.stripe.com/) to provide payment terminal functionality for your WooCommerce store.
+
+= Stripe =
+
+The plugin sends requests to Stripe's API in the following circumstances:
+
+* **Connection tokens** — When the OneTill app requests a connection token to communicate with a Stripe terminal, the plugin calls the Stripe API (`/v1/terminal/connection_tokens`) using your Stripe secret key. No customer or order data is sent in this request.
+* **Refunds** — When a refund is initiated from the terminal, the plugin calls the Stripe API (`/v1/refunds`) with the Stripe payment intent ID, refund amount, and an idempotency key. No card data is sent — Stripe identifies the original payment by its internal ID.
+
+Your Stripe secret key (configured in **OneTill > Settings**) is stored in the WordPress database and transmitted to Stripe with each API request for authentication.
+
+No card numbers, PANs, or other PCI-scoped data ever pass through this plugin or your WordPress server. All card data is handled exclusively by the Stripe Terminal SDK on the S700/S710 device.
+
+* Stripe Terms of Service: https://stripe.com/legal
+* Stripe Privacy Policy: https://stripe.com/privacy
+
+= OneTill App =
+
+This plugin is a companion to the OneTill POS app, which runs on Stripe S700/S710 smart terminals. The plugin has no functionality on its own — it provides REST API endpoints that the app calls to sync products, create orders, and manage inventory in WooCommerce.
+
+The OneTill app is a separate commercial product with its own pricing. Visit https://onetill.app for details.
+
+* OneTill Terms of Service: https://onetill.app/terms
+* OneTill Privacy Policy: https://onetill.app/privacy
+
 == Changelog ==
 
 = 1.1.0 =
