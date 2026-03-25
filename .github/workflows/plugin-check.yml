@@ -1,0 +1,26 @@
+name: WordPress Plugin Check
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'companion-plugin/onetill/**'
+
+jobs:
+  plugin-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Composer dependencies
+        run: composer install --no-dev --optimize-autoloader
+        working-directory: companion-plugin/onetill
+
+      - uses: wordpress/plugin-check-action@v1
+        with:
+          build-dir: './companion-plugin/onetill'
+          exclude-directories: 'vendor'
+          categories: |
+            security
+            plugin_repo
+            performance
+            general
