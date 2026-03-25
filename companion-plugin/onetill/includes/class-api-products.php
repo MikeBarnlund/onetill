@@ -260,6 +260,7 @@ class API_Products {
 		$total_deleted = 0;
 		if ( $include_deleted ) {
 			global $wpdb;
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom table, no WP API available.
 			$deleted = $wpdb->get_col(
 				$wpdb->prepare(
 					"SELECT product_id FROM {$wpdb->prefix}onetill_deleted_products WHERE deleted_at > %s ORDER BY product_id ASC",
@@ -344,7 +345,7 @@ class API_Products {
 
 		$where = implode( ' OR ', $placeholders );
 
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- dynamic WHERE clause built from prepared placeholders.
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT p.ID, p.post_type, p.post_parent

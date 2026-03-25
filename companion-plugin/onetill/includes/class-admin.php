@@ -393,10 +393,13 @@ class Admin {
 	 * @param int $post_id The product post ID.
 	 */
 	public function save_barcode_field( $post_id ) {
+		// Nonce is already verified by WooCommerce in woocommerce_process_product_meta.
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
 		if ( isset( $_POST['_onetill_barcode'] ) ) {
 			update_post_meta(
 				$post_id,
 				'_onetill_barcode',
+				// phpcs:ignore WordPress.Security.NonceVerification.Missing
 				sanitize_text_field( wp_unslash( $_POST['_onetill_barcode'] ) )
 			);
 		}
@@ -433,10 +436,13 @@ class Admin {
 	 * @param int $loop_index   The variation loop index.
 	 */
 	public function save_variation_barcode_field( $variation_id, $loop_index ) {
+		// Nonce is already verified by WooCommerce in woocommerce_save_product_variation.
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
 		if ( isset( $_POST['onetill_variation_barcode'][ $loop_index ] ) ) {
 			update_post_meta(
 				$variation_id,
 				'_onetill_barcode',
+				// phpcs:ignore WordPress.Security.NonceVerification.Missing
 				sanitize_text_field( wp_unslash( $_POST['onetill_variation_barcode'][ $loop_index ] ) )
 			);
 		}
