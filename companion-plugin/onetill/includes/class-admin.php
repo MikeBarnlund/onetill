@@ -105,6 +105,7 @@ class Admin {
 				'pinRequired'       => __( 'PIN is required.', 'onetill' ),
 				'pinFormat'         => __( 'PIN must be exactly 4 digits.', 'onetill' ),
 				'pinLeaveBlank'     => __( '(leave blank to keep current)', 'onetill' ),
+				/* translators: %s: staff member's name */
 				'deleteConfirm'     => __( 'Are you sure you want to delete %s?', 'onetill' ),
 				'userError'         => __( 'Something went wrong. Please try again.', 'onetill' ),
 			),
@@ -168,6 +169,7 @@ class Admin {
 
 		$now = current_time( 'mysql', true );
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- custom table, no WP API available.
 		$wpdb->insert(
 			$wpdb->prefix . 'onetill_users',
 			array(
@@ -218,6 +220,7 @@ class Admin {
 
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom table, no WP API available.
 		$existing = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT id FROM {$wpdb->prefix}onetill_users WHERE id = %d",
@@ -252,6 +255,7 @@ class Admin {
 			$format[]           = '%s';
 		}
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom table, no WP API available.
 		$wpdb->update(
 			$wpdb->prefix . 'onetill_users',
 			$data,
@@ -288,6 +292,7 @@ class Admin {
 
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom table, no WP API available.
 		$deleted = $wpdb->delete(
 			$wpdb->prefix . 'onetill_users',
 			array( 'id' => $user_id ),
@@ -319,6 +324,7 @@ class Admin {
 
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom table, no WP API available.
 		$device = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT api_key_id FROM {$wpdb->prefix}onetill_devices WHERE id = %s",
@@ -333,6 +339,7 @@ class Admin {
 
 		// Revoke the WooCommerce API key.
 		if ( ! empty( $device['api_key_id'] ) ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- WC API keys table, no public API to revoke.
 			$wpdb->delete(
 				$wpdb->prefix . 'woocommerce_api_keys',
 				array( 'key_id' => $device['api_key_id'] ),
@@ -340,7 +347,7 @@ class Admin {
 			);
 		}
 
-		// Delete the device record.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- custom table, no WP API available.
 		$wpdb->delete(
 			$wpdb->prefix . 'onetill_devices',
 			array( 'id' => $device_id ),
