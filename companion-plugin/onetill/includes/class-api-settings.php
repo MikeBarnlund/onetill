@@ -156,7 +156,6 @@ class API_Settings {
 		$order = wc_create_order();
 
 		if ( is_wp_error( $order ) ) {
-			error_log( 'OneTill: failed to create temp order for tax rate discovery: ' . $order->get_error_message() );
 			return array();
 		}
 

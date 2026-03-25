@@ -17,16 +17,18 @@ defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 global $wpdb;
 
 // 1. Revoke WooCommerce API keys created by OneTill.
-$device_key_ids = $wpdb->get_col(
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- uninstall cleanup, custom table.
+$onetill_device_key_ids = $wpdb->get_col(
 	"SELECT api_key_id FROM {$wpdb->prefix}onetill_devices"
 );
 
-if ( ! empty( $device_key_ids ) ) {
-	$placeholders = implode( ',', array_fill( 0, count( $device_key_ids ), '%d' ) );
+if ( ! empty( $onetill_device_key_ids ) ) {
+	$onetill_placeholders = implode( ',', array_fill( 0, count( $onetill_device_key_ids ), '%d' ) );
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- dynamic IN clause.
 	$wpdb->query(
 		$wpdb->prepare(
-			"DELETE FROM {$wpdb->prefix}woocommerce_api_keys WHERE key_id IN ($placeholders)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			...$device_key_ids
+			"DELETE FROM {$wpdb->prefix}woocommerce_api_keys WHERE key_id IN ($onetill_placeholders)",
+			...$onetill_device_key_ids
 		)
 	);
 }
