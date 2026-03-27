@@ -1,7 +1,6 @@
 <?php
 /**
- * Plugin Name: OneTill — WooCommerce POS Connector
- * Plugin URI: https://onetill.app
+ * Plugin Name: OneTill — POS Connector for WooCommerce
  * Description: Connects your WooCommerce store to the OneTill POS app running on Stripe S700/S710 terminals. Enables real-time product sync, inventory management, and order creation from your point of sale.
  * Version: 1.1.0
  * Requires at least: 6.0

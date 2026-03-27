@@ -432,12 +432,12 @@ class Admin {
 		$value = get_post_meta( $variation->ID, '_onetill_barcode', true );
 		?>
 		<p class="form-row form-row-full">
-			<label for="onetill_barcode_<?php echo esc_attr( $loop ); ?>">
+			<label for="onetill_barcode_<?php echo esc_attr( (string) $loop ); ?>">
 				<?php esc_html_e( 'Barcode / UPC / EAN', 'onetill' ); ?>
 			</label>
 			<input type="text"
-				id="onetill_barcode_<?php echo esc_attr( $loop ); ?>"
-				name="onetill_variation_barcode[<?php echo esc_attr( $loop ); ?>]"
+				id="onetill_barcode_<?php echo esc_attr( (string) $loop ); ?>"
+				name="onetill_variation_barcode[<?php echo esc_attr( (string) $loop ); ?>]"
 				value="<?php echo esc_attr( $value ); ?>"
 				placeholder="<?php esc_attr_e( 'e.g. 0123456789012', 'onetill' ); ?>"
 			/>

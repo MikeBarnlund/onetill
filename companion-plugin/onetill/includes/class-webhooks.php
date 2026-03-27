@@ -90,7 +90,7 @@ class Webhooks {
 	/**
 	 * Handle product stock changed hook.
 	 *
-	 * @param \WC_Product $product The product whose stock changed.
+	 * @param \WC_Product|int $product The product whose stock changed, or a product ID.
 	 */
 	public function on_product_stock_changed( $product ) {
 		if ( is_numeric( $product ) ) {

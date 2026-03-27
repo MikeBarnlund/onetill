@@ -200,8 +200,8 @@ class API_Products {
 			'page'        => $page,
 		), 200 );
 
-		$response->header( 'X-OneTill-Total', $total );
-		$response->header( 'X-OneTill-TotalPages', $total_pages );
+		$response->header( 'X-OneTill-Total', (string) $total );
+		$response->header( 'X-OneTill-TotalPages', (string) $total_pages );
 
 		return $response;
 	}

@@ -1,4 +1,4 @@
-=== OneTill — Point of Sale for WooCommerce ===
+=== OneTill — POS Connector for WooCommerce ===
 Contributors: onetill
 Tags: pos, point of sale, woocommerce pos, stripe terminal, in-store sales
 Requires at least: 6.0
@@ -211,4 +211,4 @@ The OneTill app is a separate commercial product with its own pricing. Visit htt
 Adds staff management, refunds, digital receipts, and tax calculation. Database tables are upgraded automatically.
 
 = 1.0.0 =
-Initial release of the OneTill WooCommerce POS Connector.
+Initial release of the OneTill POS Connector for WooCommerce.
