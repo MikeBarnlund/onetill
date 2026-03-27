@@ -11,8 +11,10 @@
  * WC tested up to: 9.6
  * Author: OneTill
  * Author URI: https://onetill.app
- * License: GPL v2 or later
- * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Developer: OneTill
+ * Developer URI: https://onetill.app
+ * License: GNU General Public License v3.0
+ * License URI: https://www.gnu.org/licenses/gpl-3.0.html
  * Text Domain: onetill
  * Domain Path: /languages
  *
@@ -34,6 +36,11 @@ add_action( 'before_woocommerce_init', function () {
 	if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
 		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility(
 			'custom_order_tables',
+			__FILE__,
+			true
+		);
+		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility(
+			'cart_checkout_blocks',
 			__FILE__,
 			true
 		);

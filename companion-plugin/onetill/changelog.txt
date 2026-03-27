@@ -1,0 +1,27 @@
+*** OneTill — POS Connector for WooCommerce Changelog ***
+
+2025-03-25 - version 1.1.0
+* Added - Staff user management with PIN authentication
+* Added - Full order refund support (synced to WooCommerce and Stripe)
+* Added - POS receipt email with dedicated template
+* Added - Server-side tax calculation with support for automated tax services
+* Added - WooCommerce Order Attribution for POS sales in analytics
+* Added - Idempotency check for WC REST API order creation path
+* Added - Automatic database migration on version updates
+* Added - Stripe secret key configuration in Settings page
+* Update - Order notes now include staff name for user-initiated actions
+* Update - Order metadata includes card brand, last four digits, and Stripe transaction ID
+* Fix - Refund notes incorrectly showing "cash" for card payment refunds
+* Fix - Order totals missing tax in certain configurations
+* Fix - Customer history stats for POS-created customers
+
+2025-01-15 - version 1.0.0
+* Added - QR code device pairing with rate limiting
+* Added - Product catalog sync with delta updates
+* Added - POS order creation with full metadata and idempotency
+* Added - Barcode scanning with multi-source meta key fallback
+* Added - Offline order queuing with batch sync
+* Added - Batch stock updates with manage_stock=parent resolution
+* Added - Coupon validation using WooCommerce coupon engine
+* Added - Customer search and creation
+* Added - HPOS compatible

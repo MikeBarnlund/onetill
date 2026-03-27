@@ -7,8 +7,8 @@ Requires PHP: 7.4
 WC requires at least: 8.0
 WC tested up to: 9.6
 Stable tag: 1.1.0
-License: GPLv2 or later
-License URI: https://www.gnu.org/licenses/gpl-2.0.html
+License: GPLv3
+License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
 Turn your WooCommerce store into a full point of sale. Accept card payments on Stripe S700/S710 terminals with real-time inventory sync.
 
