@@ -23,14 +23,14 @@ $onetill_device_key_ids = $wpdb->get_col(
 );
 
 if ( ! empty( $onetill_device_key_ids ) ) {
-	$onetill_placeholders = implode( ',', array_fill( 0, count( $onetill_device_key_ids ), '%d' ) );
-	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- dynamic IN clause.
-	$wpdb->query(
-		$wpdb->prepare(
-			"DELETE FROM {$wpdb->prefix}woocommerce_api_keys WHERE key_id IN ($onetill_placeholders)",
-			...$onetill_device_key_ids
-		)
-	);
+	foreach ( $onetill_device_key_ids as $onetill_key_id ) {
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- uninstall cleanup, WooCommerce table.
+		$wpdb->delete(
+			$wpdb->prefix . 'woocommerce_api_keys',
+			array( 'key_id' => absint( $onetill_key_id ) ),
+			array( '%d' )
+		);
+	}
 }
 
 // 2. Drop all custom tables.

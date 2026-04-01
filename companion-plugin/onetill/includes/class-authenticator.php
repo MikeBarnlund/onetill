@@ -6,9 +6,11 @@
  * for requests to the /wc/ namespace. Our /onetill/v1/ endpoints need to
  * authenticate the same consumer_key/consumer_secret credentials manually.
  *
- * This class extracts the credentials, validates them against the
- * woocommerce_api_keys table, and sets the current WordPress user so
- * that subsequent current_user_can() checks work correctly.
+ * Authentication happens in two stages:
+ * 1. The `determine_current_user` filter extracts and validates credentials,
+ *    returning the associated WordPress user ID so WordPress sets the user.
+ * 2. The `check()` permission callback verifies the user has the required
+ *    capability (manage_woocommerce).
  *
  * @package OneTill
  */
@@ -23,37 +25,47 @@ defined( 'ABSPATH' ) || exit;
 class Authenticator {
 
 	/**
-	 * Authenticate a REST request using WooCommerce API keys.
+	 * Authentication error from the determine_current_user filter.
 	 *
-	 * Extracts consumer_key/consumer_secret from the request, validates
-	 * them against the woocommerce_api_keys table, sets the current user,
-	 * and checks that the user has the manage_woocommerce capability.
-	 *
-	 * @param \WP_REST_Request $request The REST request.
-	 * @return bool|\WP_Error True if authenticated, WP_Error otherwise.
+	 * @var \WP_Error|null
 	 */
-	public static function check( $request ) {
-		// If a user is already authenticated (e.g. cookie auth in wp-admin), check capability directly.
-		if ( get_current_user_id() ) {
-			if ( current_user_can( 'manage_woocommerce' ) ) {
-				return true;
-			}
-			return self::forbidden();
+	private static $auth_error = null;
+
+	/**
+	 * Filter: Determine the current user for OneTill REST requests.
+	 *
+	 * Hooked to `determine_current_user` at priority 20. Validates WooCommerce
+	 * API key credentials and returns the associated user ID.
+	 *
+	 * @param int $user_id The current user ID (0 if not yet determined).
+	 * @return int The authenticated user ID, or the original value.
+	 */
+	public static function determine_current_user( $user_id ) {
+		// If a user is already determined (e.g. cookie auth), don't override.
+		if ( $user_id ) {
+			return $user_id;
+		}
+
+		// Only process requests to our REST namespace.
+		if ( ! self::is_onetill_rest_request() ) {
+			return $user_id;
 		}
 
 		// Extract consumer key and secret from the request.
-		$credentials = self::extract_credentials( $request );
+		$credentials = self::extract_credentials_from_globals();
 		if ( ! $credentials ) {
-			return new \WP_Error(
+			self::$auth_error = new \WP_Error(
 				'onetill_rest_unauthorized',
 				__( 'Missing or invalid API credentials.', 'onetill' ),
 				array( 'status' => 401 )
 			);
+			return $user_id;
 		}
 
 		// Look up the key in the WooCommerce API keys table.
 		global $wpdb;
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- auth lookup, not cacheable.
 		$key_row = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT key_id, user_id, permissions, consumer_secret FROM {$wpdb->prefix}woocommerce_api_keys WHERE consumer_key = %s",
@@ -63,36 +75,36 @@ class Authenticator {
 		);
 
 		if ( ! $key_row ) {
-			return new \WP_Error(
+			self::$auth_error = new \WP_Error(
 				'onetill_rest_unauthorized',
 				__( 'Invalid API credentials.', 'onetill' ),
 				array( 'status' => 401 )
 			);
+			return $user_id;
 		}
 
 		// Verify the consumer secret.
 		if ( ! hash_equals( $key_row['consumer_secret'], $credentials['consumer_secret'] ) ) {
-			return new \WP_Error(
+			self::$auth_error = new \WP_Error(
 				'onetill_rest_unauthorized',
 				__( 'Invalid API credentials.', 'onetill' ),
 				array( 'status' => 401 )
 			);
+			return $user_id;
 		}
 
 		// Check the key has read_write or read permissions.
 		if ( 'read' !== $key_row['permissions'] && 'read_write' !== $key_row['permissions'] ) {
-			return self::forbidden();
-		}
-
-		// Set the current user so capability checks work.
-		wp_set_current_user( $key_row['user_id'] );
-
-		// Verify the user has WooCommerce management capability.
-		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			return self::forbidden();
+			self::$auth_error = new \WP_Error(
+				'onetill_rest_forbidden',
+				__( 'Sorry, you are not allowed to access this resource.', 'onetill' ),
+				array( 'status' => 403 )
+			);
+			return $user_id;
 		}
 
 		// Update last_access timestamp on the API key.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- auth timestamp update.
 		$wpdb->update(
 			$wpdb->prefix . 'woocommerce_api_keys',
 			array( 'last_access' => current_time( 'mysql', true ) ),
@@ -101,21 +113,66 @@ class Authenticator {
 			array( '%d' )
 		);
 
-		return true;
+		// Return the user ID — WordPress will set the current user.
+		return (int) $key_row['user_id'];
 	}
 
 	/**
-	 * Extract consumer key and secret from the request.
+	 * Permission callback for authenticated OneTill REST endpoints.
 	 *
-	 * Supports HTTP Basic Auth header, query parameters, and PHP_AUTH_USER.
+	 * Called after determine_current_user has already set the user.
+	 * Checks that the authenticated user has the manage_woocommerce capability.
 	 *
 	 * @param \WP_REST_Request $request The REST request.
+	 * @return bool|\WP_Error True if authenticated, WP_Error otherwise.
+	 */
+	public static function check( $request ) {
+		// If the determine_current_user filter stored an error, return it.
+		if ( self::$auth_error ) {
+			return self::$auth_error;
+		}
+
+		// Check the current user has the required capability.
+		if ( current_user_can( 'manage_woocommerce' ) ) {
+			return true;
+		}
+
+		return new \WP_Error(
+			'onetill_rest_forbidden',
+			__( 'Sorry, you are not allowed to access this resource.', 'onetill' ),
+			array( 'status' => 403 )
+		);
+	}
+
+	/**
+	 * Check if the current request targets the OneTill REST namespace.
+	 *
+	 * @return bool
+	 */
+	private static function is_onetill_rest_request() {
+		if ( empty( $_SERVER['REQUEST_URI'] ) ) {
+			return false;
+		}
+
+		$request_uri = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) );
+		$rest_prefix = trailingslashit( rest_get_url_prefix() );
+
+		return false !== strpos( $request_uri, $rest_prefix . 'onetill/v1/' );
+	}
+
+	/**
+	 * Extract consumer key and secret from global request data.
+	 *
+	 * Supports HTTP Basic Auth header, query parameters, and PHP_AUTH_USER.
+	 * Used by the determine_current_user filter (before WP_REST_Request exists).
+	 *
 	 * @return array|null Array with consumer_key and consumer_secret, or null.
 	 */
-	private static function extract_credentials( $request ) {
+	private static function extract_credentials_from_globals() {
 		// 1. Check Authorization header (HTTP Basic Auth).
-		$auth_header = $request->get_header( 'authorization' );
+		$auth_header = isset( $_SERVER['HTTP_AUTHORIZATION'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_AUTHORIZATION'] ) ) : '';
 		if ( $auth_header && 0 === strpos( $auth_header, 'Basic ' ) ) {
+			// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- decoding HTTP Basic Auth header.
 			$decoded = base64_decode( substr( $auth_header, 6 ) );
 			if ( $decoded && strpos( $decoded, ':' ) !== false ) {
 				list( $key, $secret ) = explode( ':', $decoded, 2 );
@@ -127,11 +184,13 @@ class Authenticator {
 		}
 
 		// 2. Check query parameters.
-		$params = $request->get_query_params();
-		if ( ! empty( $params['consumer_key'] ) && ! empty( $params['consumer_secret'] ) ) {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- API key auth, not form submission.
+		if ( ! empty( $_GET['consumer_key'] ) && ! empty( $_GET['consumer_secret'] ) ) {
 			return array(
-				'consumer_key'    => sanitize_text_field( $params['consumer_key'] ),
-				'consumer_secret' => sanitize_text_field( $params['consumer_secret'] ),
+				// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- API key auth, not form submission.
+				'consumer_key'    => sanitize_text_field( wp_unslash( $_GET['consumer_key'] ) ),
+				// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- API key auth, not form submission.
+				'consumer_secret' => sanitize_text_field( wp_unslash( $_GET['consumer_secret'] ) ),
 			);
 		}
 
@@ -144,18 +203,5 @@ class Authenticator {
 		}
 
 		return null;
-	}
-
-	/**
-	 * Return a forbidden error.
-	 *
-	 * @return \WP_Error
-	 */
-	private static function forbidden() {
-		return new \WP_Error(
-			'onetill_rest_forbidden',
-			__( 'Sorry, you are not allowed to access this resource.', 'onetill' ),
-			array( 'status' => 403 )
-		);
 	}
 }

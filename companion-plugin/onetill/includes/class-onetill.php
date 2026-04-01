@@ -127,6 +127,9 @@ class OneTill {
 	 * Register all hooks.
 	 */
 	private function register_hooks() {
+		// REST API authentication via WooCommerce API keys.
+		add_filter( 'determine_current_user', array( Authenticator::class, 'determine_current_user' ), 20 );
+
 		// REST API routes.
 		add_action( 'rest_api_init', array( $this->api_products, 'register_routes' ) );
 		add_action( 'rest_api_init', array( $this->api_orders, 'register_routes' ) );

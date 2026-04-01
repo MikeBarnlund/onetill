@@ -333,30 +333,31 @@ class API_Products {
 
 		global $wpdb;
 
-		// Build a single query that checks all barcode meta keys.
-		// This is a direct meta lookup — not a full table scan.
-		$placeholders = array();
-		$values       = array();
-		foreach ( self::BARCODE_META_KEYS as $meta_key ) {
-			$placeholders[] = '(pm.meta_key = %s AND pm.meta_value = %s)';
-			$values[]       = $meta_key;
-			$values[]       = $code;
-		}
-
-		$where = implode( ' OR ', $placeholders );
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- dynamic WHERE clause built from prepared placeholders.
+		// Direct meta lookup across all barcode meta keys — not a full table scan.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- barcode lookup requires direct meta query for performance.
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT p.ID, p.post_type, p.post_parent
 				FROM {$wpdb->postmeta} pm
 				INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
-				WHERE ({$where})
+				WHERE (
+					(pm.meta_key = %s AND pm.meta_value = %s)
+					OR (pm.meta_key = %s AND pm.meta_value = %s)
+					OR (pm.meta_key = %s AND pm.meta_value = %s)
+					OR (pm.meta_key = %s AND pm.meta_value = %s)
+					OR (pm.meta_key = %s AND pm.meta_value = %s)
+					OR (pm.meta_key = %s AND pm.meta_value = %s)
+				)
 				AND p.post_status IN ('publish', 'inherit')
 				AND p.post_type IN ('product', 'product_variation')
 				ORDER BY FIELD(pm.meta_key, '_global_unique_id', '_onetill_barcode', '_barcode', '_ean', '_upc', '_gtin')
 				LIMIT 1",
-				...$values
+				'_global_unique_id', $code,
+				'_onetill_barcode', $code,
+				'_barcode', $code,
+				'_ean', $code,
+				'_upc', $code,
+				'_gtin', $code
 			),
 			ARRAY_A
 		);

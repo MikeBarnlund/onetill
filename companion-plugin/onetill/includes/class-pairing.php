@@ -59,7 +59,7 @@ class Pairing {
 			array(
 				'methods'             => 'POST',
 				'callback'            => array( $this, 'complete_pairing' ),
-				'permission_callback' => '__return_true',
+				'permission_callback' => array( $this, 'allow_unauthenticated' ),
 			)
 		);
 
@@ -69,9 +69,23 @@ class Pairing {
 			array(
 				'methods'             => 'GET',
 				'callback'            => array( $this, 'get_pairing_status' ),
-				'permission_callback' => '__return_true',
+				'permission_callback' => array( $this, 'allow_unauthenticated' ),
 			)
 		);
+	}
+
+	/**
+	 * Permission callback for pairing endpoints.
+	 *
+	 * Pairing endpoints must be publicly accessible because the S700
+	 * device calls them before it has API credentials. Security is
+	 * enforced via short-lived tokens (5 min), one-time use, rate
+	 * limiting (5/hour/IP), and cryptographic nonce verification.
+	 *
+	 * @return true
+	 */
+	public function allow_unauthenticated() {
+		return true;
 	}
 
 	/**
