@@ -32,6 +32,13 @@ class Authenticator {
 	private static $auth_error = null;
 
 	/**
+	 * Permission level of the authenticated API key ('read' or 'read_write').
+	 *
+	 * @var string|null
+	 */
+	private static $api_key_permissions = null;
+
+	/**
 	 * Filter: Determine the current user for OneTill REST requests.
 	 *
 	 * Hooked to `determine_current_user` at priority 20. Validates WooCommerce
@@ -103,6 +110,9 @@ class Authenticator {
 			return $user_id;
 		}
 
+		// Store the permission level for use in check_write().
+		self::$api_key_permissions = $key_row['permissions'];
+
 		// Update last_access timestamp on the API key.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- auth timestamp update.
 		$wpdb->update(
@@ -142,6 +152,29 @@ class Authenticator {
 			__( 'Sorry, you are not allowed to access this resource.', 'onetill' ),
 			array( 'status' => 403 )
 		);
+	}
+
+	/**
+	 * Permission callback for write endpoints that require read_write API keys.
+	 *
+	 * @param \WP_REST_Request $request The REST request.
+	 * @return bool|\WP_Error True if authenticated with write access, WP_Error otherwise.
+	 */
+	public static function check_write( $request ) {
+		$read_check = self::check( $request );
+		if ( true !== $read_check ) {
+			return $read_check;
+		}
+
+		if ( 'read_write' !== self::$api_key_permissions ) {
+			return new \WP_Error(
+				'onetill_rest_forbidden',
+				__( 'This endpoint requires read_write API key permissions.', 'onetill' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		return true;
 	}
 
 	/**

@@ -39,7 +39,7 @@ class API_Orders {
 				array(
 					'methods'             => 'POST',
 					'callback'            => array( $this, 'create_order' ),
-					'permission_callback' => array( $this, 'check_permissions' ),
+					'permission_callback' => array( $this, 'check_write_permissions' ),
 				),
 				array(
 					'methods'             => 'GET',
@@ -71,7 +71,7 @@ class API_Orders {
 			array(
 				'methods'             => 'POST',
 				'callback'            => array( $this, 'create_orders_batch' ),
-				'permission_callback' => array( $this, 'check_permissions' ),
+				'permission_callback' => array( $this, 'check_write_permissions' ),
 			)
 		);
 
@@ -81,7 +81,7 @@ class API_Orders {
 			array(
 				'methods'             => 'POST',
 				'callback'            => array( $this, 'send_receipt' ),
-				'permission_callback' => array( $this, 'check_permissions' ),
+				'permission_callback' => array( $this, 'check_write_permissions' ),
 				'args'                => array(
 					'id' => array(
 						'required'          => true,
@@ -97,7 +97,7 @@ class API_Orders {
 			array(
 				'methods'             => 'POST',
 				'callback'            => array( $this, 'refund_order' ),
-				'permission_callback' => array( $this, 'check_permissions' ),
+				'permission_callback' => array( $this, 'check_write_permissions' ),
 				'args'                => array(
 					'id' => array(
 						'required'          => true,
@@ -116,6 +116,16 @@ class API_Orders {
 	 */
 	public function check_permissions( $request ) {
 		return Authenticator::check( $request );
+	}
+
+	/**
+	 * Check that the request has valid WooCommerce API credentials with write access.
+	 *
+	 * @param \WP_REST_Request $request The request.
+	 * @return bool|\WP_Error
+	 */
+	public function check_write_permissions( $request ) {
+		return Authenticator::check_write( $request );
 	}
 
 	/**
@@ -314,8 +324,8 @@ class API_Orders {
 		// 8. Trigger POS receipt email if customer_email is set.
 		if ( $customer_email ) {
 			$emails = \WC()->mailer()->get_emails();
-			if ( isset( $emails['WC_OneTill_Email_POS_Receipt'] ) ) {
-				$emails['WC_OneTill_Email_POS_Receipt']->trigger( $order->get_id(), $customer_email );
+			if ( isset( $emails['OneTill_Email_POS_Receipt'] ) ) {
+				$emails['OneTill_Email_POS_Receipt']->trigger( $order->get_id(), $customer_email );
 			}
 		}
 
@@ -570,11 +580,11 @@ class API_Orders {
 		}
 
 		$emails = \WC()->mailer()->get_emails();
-		if ( ! isset( $emails['WC_OneTill_Email_POS_Receipt'] ) ) {
+		if ( ! isset( $emails['OneTill_Email_POS_Receipt'] ) ) {
 			return new \WP_Error( 'email_not_registered', 'POS receipt email is not registered.', array( 'status' => 500 ) );
 		}
 
-		$emails['WC_OneTill_Email_POS_Receipt']->trigger( $order_id, $email );
+		$emails['OneTill_Email_POS_Receipt']->trigger( $order_id, $email );
 
 		return new \WP_REST_Response( array( 'success' => true ), 200 );
 	}
@@ -968,8 +978,8 @@ class API_Orders {
 		$receipt_email = $order->get_billing_email();
 		if ( $receipt_email ) {
 			$emails = \WC()->mailer()->get_emails();
-			if ( isset( $emails['WC_OneTill_Email_POS_Receipt'] ) ) {
-				$emails['WC_OneTill_Email_POS_Receipt']->trigger( $order->get_id(), $receipt_email );
+			if ( isset( $emails['OneTill_Email_POS_Receipt'] ) ) {
+				$emails['OneTill_Email_POS_Receipt']->trigger( $order->get_id(), $receipt_email );
 			}
 		}
 	}

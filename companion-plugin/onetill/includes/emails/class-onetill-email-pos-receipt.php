@@ -11,9 +11,9 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Class WC_OneTill_Email_POS_Receipt
+ * Class OneTill_Email_POS_Receipt
  */
-class WC_OneTill_Email_POS_Receipt extends \WC_Email {
+class OneTill_Email_POS_Receipt extends \WC_Email {
 
 	/**
 	 * Constructor.

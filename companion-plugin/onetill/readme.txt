@@ -1,5 +1,5 @@
 === OneTill — POS Connector for WooCommerce ===
-Contributors: onetill
+Contributors: onetillmike
 Tags: pos, point of sale, woocommerce pos, stripe terminal, in-store sales
 Requires at least: 6.0
 Tested up to: 6.9
@@ -14,7 +14,7 @@ Turn your WooCommerce store into a full point of sale. Accept card payments on S
 
 == Description ==
 
-OneTill is the first WooCommerce POS system built natively for Stripe's S700 and S710 smart terminals. Sell in person using the same products, prices, inventory, coupons, and tax settings you already have in WooCommerce — no duplicate setup, no third-party payment processor.
+OneTill is a WooCommerce POS system built natively for Stripe's S700 and S710 smart terminals. Sell in person using the same products, prices, inventory, coupons, and tax settings you already have in WooCommerce — no duplicate setup, no third-party payment processor.
 
 This free companion plugin is the bridge between your WooCommerce store and the OneTill app running on your terminal. It handles product sync, order creation, inventory updates, and everything else your POS needs from WooCommerce.
 

@@ -293,7 +293,7 @@ add_action( 'plugins_loaded', 'onetill_init' );
  * @return array
  */
 add_filter( 'woocommerce_email_classes', function ( $email_classes ) {
-	require_once ONETILL_PLUGIN_DIR . 'includes/emails/class-wc-onetill-email-pos-receipt.php';
-	$email_classes['WC_OneTill_Email_POS_Receipt'] = new WC_OneTill_Email_POS_Receipt();
+	require_once ONETILL_PLUGIN_DIR . 'includes/emails/class-onetill-email-pos-receipt.php';
+	$email_classes['OneTill_Email_POS_Receipt'] = new OneTill_Email_POS_Receipt();
 	return $email_classes;
 } );

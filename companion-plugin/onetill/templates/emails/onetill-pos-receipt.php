@@ -57,9 +57,4 @@ if ( $additional_content ) {
 ?>
 
 <?php
-$powered_by_filter = function () {
-	return '<a href="https://onetill.app?utm_source=receipt&utm_medium=email&utm_campaign=powered_by" target="_blank" rel="noopener" style="font-size: 11px; color: #b0b0b0; text-decoration: none;">Powered by OneTill</a>';
-};
-add_filter( 'woocommerce_email_footer_text', $powered_by_filter );
 do_action( 'woocommerce_email_footer', $email );
-remove_filter( 'woocommerce_email_footer_text', $powered_by_filter );

@@ -52,4 +52,3 @@ if ( $additional_content ) {
 }
 
 echo "---\n";
-echo "Powered by OneTill - https://onetill.app\n";

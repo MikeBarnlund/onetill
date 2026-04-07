@@ -55,7 +55,7 @@ class API_Customers {
 			array(
 				'methods'             => 'POST',
 				'callback'            => array( $this, 'create_customer' ),
-				'permission_callback' => array( $this, 'check_permissions' ),
+				'permission_callback' => array( $this, 'check_write_permissions' ),
 			)
 		);
 	}
@@ -68,6 +68,16 @@ class API_Customers {
 	 */
 	public function check_permissions( $request ) {
 		return Authenticator::check( $request );
+	}
+
+	/**
+	 * Check that the request has valid WooCommerce API credentials with write access.
+	 *
+	 * @param \WP_REST_Request $request The request.
+	 * @return bool|\WP_Error
+	 */
+	public function check_write_permissions( $request ) {
+		return Authenticator::check_write( $request );
 	}
 
 	/**
