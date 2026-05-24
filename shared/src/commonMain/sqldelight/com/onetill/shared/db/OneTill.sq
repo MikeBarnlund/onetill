@@ -211,7 +211,9 @@ CREATE TABLE store_config (
     consumer_key TEXT NOT NULL,
     consumer_secret TEXT NOT NULL,
     currency TEXT NOT NULL,
-    register_name TEXT NOT NULL DEFAULT 'Register 1'
+    register_name TEXT NOT NULL DEFAULT 'Register 1',
+    subscription_status TEXT,
+    subscription_expires_at TEXT
 );
 
 -- ============================================================================
@@ -482,6 +484,9 @@ SELECT * FROM store_config WHERE id = 1;
 
 deleteStoreConfig:
 DELETE FROM store_config;
+
+updateSubscriptionStatus:
+UPDATE store_config SET subscription_status = ?, subscription_expires_at = ? WHERE id = 1;
 
 -- ----------------------------------------------------------------------------
 -- Coupons (synced from WooCommerce for local validation)

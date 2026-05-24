@@ -113,7 +113,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
         queries.selectVariableProductIds().executeAsList()
     }
 
-    override suspend fun decrementStock(productId: Long, variantId: Long?, quantity: Int) =
+    override suspend fun decrementStock(productId: Long, variantId: Long?, quantity: Int) {
         withContext(Dispatchers.Default) {
             if (variantId != null) {
                 queries.decrementVariantStock(quantity.toLong(), variantId)
@@ -121,6 +121,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
                 queries.decrementProductStock(quantity.toLong(), productId)
             }
         }
+    }
 
     override suspend fun saveProduct(product: Product) = withContext(Dispatchers.Default) {
         db.transaction {
@@ -262,8 +263,10 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
         }
     }
 
-    override suspend fun deleteAllProducts() = withContext(Dispatchers.Default) {
-        queries.deleteAllProducts()
+    override suspend fun deleteAllProducts() {
+        withContext(Dispatchers.Default) {
+            queries.deleteAllProducts()
+        }
     }
 
     // ========================================================================
@@ -330,15 +333,19 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
             .mapToList(Dispatchers.Default)
             .map { it.size.toLong() }
 
-    override suspend fun updateOrderStatus(localId: Long, status: OrderStatus) = withContext(Dispatchers.Default) {
-        queries.updateOrderStatus(status = status.name, id = localId)
+    override suspend fun updateOrderStatus(localId: Long, status: OrderStatus) {
+        withContext(Dispatchers.Default) {
+            queries.updateOrderStatus(status = status.name, id = localId)
+        }
     }
 
-    override suspend fun updateOrderStatusByIdempotencyKey(key: String, status: OrderStatus) = withContext(Dispatchers.Default) {
-        queries.updateOrderStatusByIdempotencyKey(status = status.name, idempotency_key = key)
+    override suspend fun updateOrderStatusByIdempotencyKey(key: String, status: OrderStatus) {
+        withContext(Dispatchers.Default) {
+            queries.updateOrderStatusByIdempotencyKey(status = status.name, idempotency_key = key)
+        }
     }
 
-    override suspend fun updateOrderRemoteId(localId: Long, remoteId: Long, orderNumber: String) =
+    override suspend fun updateOrderRemoteId(localId: Long, remoteId: Long, orderNumber: String) {
         withContext(Dispatchers.Default) {
             queries.updateOrderRemoteId(
                 remote_id = remoteId,
@@ -346,22 +353,25 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
                 id = localId,
             )
         }
+    }
 
-    override suspend fun updateOrderStripeTransactionId(localId: Long, stripeTransactionId: String) =
+    override suspend fun updateOrderStripeTransactionId(localId: Long, stripeTransactionId: String) {
         withContext(Dispatchers.Default) {
             queries.updateOrderStripeTransactionId(
                 stripe_transaction_id = stripeTransactionId,
                 id = localId,
             )
         }
+    }
 
-    override suspend fun updateOrderCustomerEmail(localId: Long, email: String) =
+    override suspend fun updateOrderCustomerEmail(localId: Long, email: String) {
         withContext(Dispatchers.Default) {
             queries.updateOrderCustomerEmail(
                 customer_email = email,
                 id = localId,
             )
         }
+    }
 
     override suspend fun getOrderByIdempotencyKey(key: String): Order? = withContext(Dispatchers.Default) {
         queries.selectOrderByIdempotencyKey(key).executeAsOneOrNull()?.let { assembleOrder(it) }
@@ -481,7 +491,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
             .mapToList(Dispatchers.Default)
             .map { rows -> rows.map { assembleOrder(it) } }
 
-    override suspend fun markOrderRefunded(remoteId: Long, refundedAt: Instant, stripeRefundId: String?) =
+    override suspend fun markOrderRefunded(remoteId: Long, refundedAt: Instant, stripeRefundId: String?) {
         withContext(Dispatchers.Default) {
             queries.updateOrderRefundStatus(
                 refunded_at = refundedAt.toEpochMilliseconds(),
@@ -489,6 +499,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
                 remote_id = remoteId,
             )
         }
+    }
 
     // ========================================================================
     // Tax Rates
@@ -536,10 +547,11 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
             ?.let { Instant.fromEpochMilliseconds(it.last_synced_at) }
     }
 
-    override suspend fun updateLastSyncedAt(entityType: String, timestamp: Instant) =
+    override suspend fun updateLastSyncedAt(entityType: String, timestamp: Instant) {
         withContext(Dispatchers.Default) {
             queries.upsertSyncState(entityType, timestamp.toEpochMilliseconds())
         }
+    }
 
     // ========================================================================
     // Store Config
@@ -555,18 +567,28 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
         queries.selectStoreConfig().executeAsOneOrNull()?.let { mapStoreConfigRow(it) }
     }
 
-    override suspend fun saveStoreConfig(config: StoreConfig) = withContext(Dispatchers.Default) {
-        queries.upsertStoreConfig(
-            site_url = config.siteUrl,
-            consumer_key = config.consumerKey,
-            consumer_secret = config.consumerSecret,
-            currency = config.currency,
-            register_name = config.registerName,
-        )
+    override suspend fun saveStoreConfig(config: StoreConfig) {
+        withContext(Dispatchers.Default) {
+            queries.upsertStoreConfig(
+                site_url = config.siteUrl,
+                consumer_key = config.consumerKey,
+                consumer_secret = config.consumerSecret,
+                currency = config.currency,
+                register_name = config.registerName,
+            )
+        }
     }
 
-    override suspend fun deleteStoreConfig() = withContext(Dispatchers.Default) {
-        queries.deleteStoreConfig()
+    override suspend fun deleteStoreConfig() {
+        withContext(Dispatchers.Default) {
+            queries.deleteStoreConfig()
+        }
+    }
+
+    override suspend fun updateSubscriptionStatus(status: String, expiresAt: String?) {
+        withContext(Dispatchers.Default) {
+            queries.updateSubscriptionStatus(status, expiresAt)
+        }
     }
 
     // ========================================================================
@@ -720,8 +742,10 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
         queries.selectAppSetting("device_id").executeAsOneOrNull()
     }
 
-    override suspend fun saveDeviceId(deviceId: String) = withContext(Dispatchers.Default) {
-        queries.upsertAppSetting("device_id", deviceId)
+    override suspend fun saveDeviceId(deviceId: String) {
+        withContext(Dispatchers.Default) {
+            queries.upsertAppSetting("device_id", deviceId)
+        }
     }
 
     // ========================================================================
@@ -753,15 +777,17 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
     // Consent Audit Log
     // ========================================================================
 
-    override suspend fun logOfflinePaymentConsent(entry: ConsentLogEntry) = withContext(Dispatchers.Default) {
-        queries.insertConsentLogEntry(
-            device_id = entry.deviceId,
-            action = entry.action.name,
-            per_transaction_limit_cents = entry.perTransactionLimitCents,
-            total_limit_cents = entry.totalLimitCents,
-            risk_text_version = entry.riskTextVersion,
-            created_at = entry.createdAt.toEpochMilliseconds(),
-        )
+    override suspend fun logOfflinePaymentConsent(entry: ConsentLogEntry) {
+        withContext(Dispatchers.Default) {
+            queries.insertConsentLogEntry(
+                device_id = entry.deviceId,
+                action = entry.action.name,
+                per_transaction_limit_cents = entry.perTransactionLimitCents,
+                total_limit_cents = entry.totalLimitCents,
+                risk_text_version = entry.riskTextVersion,
+                created_at = entry.createdAt.toEpochMilliseconds(),
+            )
+        }
     }
 
     override suspend fun getConsentLog(): List<ConsentLogEntry> = withContext(Dispatchers.Default) {
@@ -796,5 +822,7 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
         consumerSecret = row.consumer_secret,
         currency = row.currency,
         registerName = row.register_name,
+        subscriptionStatus = row.subscription_status,
+        subscriptionExpiresAt = row.subscription_expires_at,
     )
 }

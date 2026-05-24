@@ -9,4 +9,6 @@ data class StoreConfig(
     val consumerSecret: String,
     val currency: String,
     val registerName: String = "Register 1",
+    val subscriptionStatus: String? = null,
+    val subscriptionExpiresAt: String? = null,
 )

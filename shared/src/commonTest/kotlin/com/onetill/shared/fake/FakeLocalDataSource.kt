@@ -218,6 +218,14 @@ class FakeLocalDataSource : LocalDataSource {
         _storeConfigFlow.value = null
     }
 
+    override suspend fun updateSubscriptionStatus(status: String, expiresAt: String?) {
+        val current = _storeConfigFlow.value ?: return
+        _storeConfigFlow.value = current.copy(
+            subscriptionStatus = status,
+            subscriptionExpiresAt = expiresAt,
+        )
+    }
+
     // Coupons
 
     override suspend fun saveCoupons(coupons: List<Coupon>) {

@@ -60,6 +60,7 @@ interface LocalDataSource {
     suspend fun getStoreConfig(): StoreConfig?
     suspend fun saveStoreConfig(config: StoreConfig)
     suspend fun deleteStoreConfig()
+    suspend fun updateSubscriptionStatus(status: String, expiresAt: String?)
 
     // Staff Users
     fun observeStaffUsers(): Flow<List<StaffUser>>
