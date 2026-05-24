@@ -19,6 +19,7 @@ import com.onetill.shared.pairing.PairingClient
 import com.onetill.shared.setup.SetupManager
 import com.onetill.shared.sync.OrderSyncManager
 import com.onetill.shared.sync.ProductSyncManager
+import com.onetill.shared.sync.SubscriptionClient
 import com.onetill.shared.sync.SyncOrchestrator
 import org.koin.dsl.module
 
@@ -53,7 +54,8 @@ val syncModule = module {
         )
     }
     single { OrderSyncManager(get(), get()) }
-    single { SyncOrchestrator(get(), get(), get(), get(), get(), get(), get()) }
+    single { SubscriptionClient() }
+    single { SyncOrchestrator(get(), get(), get(), get(), get(), get(), get(), get()) }
     single { OrderAnalytics(get()) }
     single { RefundManager(get(), get(), get()) }
 }
