@@ -286,6 +286,13 @@ class FakeLocalDataSource : LocalDataSource {
     override suspend fun getUnreconciledOfflineOrders(): List<Order> =
         orders.filter { it.paymentCreatedOffline && (it.stripeTransactionId.isNullOrEmpty()) }
 
+    override suspend fun markOrderRefunded(remoteId: Long, refundedAt: Instant, stripeRefundId: String?) {
+        val index = orders.indexOfFirst { it.id == remoteId }
+        if (index != -1) {
+            orders[index] = orders[index].copy(status = OrderStatus.REFUNDED)
+        }
+    }
+
     fun reset() {
         products.clear()
         orders.clear()
