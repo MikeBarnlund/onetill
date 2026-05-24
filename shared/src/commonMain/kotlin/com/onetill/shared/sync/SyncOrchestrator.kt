@@ -28,6 +28,7 @@ class SyncOrchestrator(
     private val pluginClient: OneTillPluginClient,
     private val localDataSource: LocalDataSource,
     private val cartManager: CartManager,
+    private val subscriptionClient: SubscriptionClient,
 ) {
     private val _syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
     val syncStatus: StateFlow<SyncStatus> = _syncStatus.asStateFlow()
@@ -175,17 +176,18 @@ class SyncOrchestrator(
 
     suspend fun checkHeartbeat(): HeartbeatResponseDto? {
         return try {
-            val response = pluginClient.heartbeat()
-            val sub = response.subscription
-            if (sub != null) {
-                localDataSource.updateSubscriptionStatus(sub.status, sub.expiresAt)
-                _subscriptionValid.value = SubscriptionValidator.isValid(sub.status, sub.expiresAt)
-            }
-            response
+            pluginClient.heartbeat()
         } catch (e: Exception) {
             Napier.w("Heartbeat failed: ${e.message}")
             null
         }
+    }
+
+    suspend fun checkSubscription() {
+        val storeUrl = localDataSource.getStoreConfig()?.siteUrl ?: return
+        val sub = subscriptionClient.checkSubscription(storeUrl) ?: return
+        localDataSource.updateSubscriptionStatus(sub.status, sub.expiresAt)
+        _subscriptionValid.value = SubscriptionValidator.isValid(sub.status, sub.expiresAt)
     }
 
 
@@ -200,8 +202,8 @@ class SyncOrchestrator(
     }
 
     private suspend fun runDeltaSync() {
-        // Check heartbeat (includes subscription status).
         checkHeartbeat()
+        checkSubscription()
 
         if (!syncMutex.tryLock()) {
             Napier.d("Background sync skipped — sync already in progress")
