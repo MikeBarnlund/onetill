@@ -302,6 +302,8 @@ class Pairing {
 		// Build store settings.
 		$store = $this->get_store_settings();
 
+		$subscription = $this->register_trial();
+
 		return new \WP_REST_Response( array(
 			'success'        => true,
 			'credentials'    => array(
@@ -309,6 +311,7 @@ class Pairing {
 				'consumer_secret' => $credentials['consumer_secret'],
 			),
 			'store'          => $store,
+			'subscription'   => $subscription,
 			'plugin_version' => ONETILL_VERSION,
 			'api_base'       => '/wp-json/' . self::NAMESPACE,
 		), 200 );
@@ -434,6 +437,62 @@ class Pairing {
 			'status'     => 'pending',
 			'expires_in' => max( 0, strtotime( $row['expires_at'] ) - time() ),
 		);
+	}
+
+	/**
+	 * Register a trial for this store in Supabase.
+	 *
+	 * @return array{status: string, expires_at: string|null}
+	 */
+	private function register_trial() {
+		$supabase_url = get_option( 'onetill_supabase_url', '' );
+		$service_key  = get_option( 'onetill_supabase_service_key', '' );
+
+		if ( empty( $supabase_url ) || empty( $service_key ) ) {
+			return array(
+				'status'     => 'active',
+				'expires_at' => null,
+			);
+		}
+
+		$store_url = get_site_url();
+		$endpoint  = rtrim( $supabase_url, '/' ) . '/functions/v1/register-trial';
+
+		$response = wp_remote_post( $endpoint, array(
+			'headers' => array(
+				'Authorization' => 'Bearer ' . $service_key,
+				'Content-Type'  => 'application/json',
+			),
+			'body'    => wp_json_encode( array( 'store_url' => $store_url ) ),
+			'timeout' => 10,
+		) );
+
+		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+			return array(
+				'status'     => 'active',
+				'expires_at' => null,
+			);
+		}
+
+		$body   = wp_remote_retrieve_body( $response );
+		$result = json_decode( $body, true );
+
+		if ( ! is_array( $result ) || ! isset( $result['status'] ) ) {
+			return array(
+				'status'     => 'active',
+				'expires_at' => null,
+			);
+		}
+
+		$subscription = array(
+			'status'     => sanitize_text_field( $result['status'] ),
+			'expires_at' => isset( $result['expires_at'] ) ? sanitize_text_field( $result['expires_at'] ) : null,
+		);
+
+		// Warm the transient cache so the first heartbeat doesn't need to call Supabase.
+		set_transient( 'onetill_subscription_status', $subscription, 4 * HOUR_IN_SECONDS );
+
+		return $subscription;
 	}
 
 	/**
