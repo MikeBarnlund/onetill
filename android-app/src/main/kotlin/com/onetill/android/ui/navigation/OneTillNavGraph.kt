@@ -40,7 +40,11 @@ import com.onetill.android.ui.settings.SettingsScreen
 import com.onetill.android.ui.setup.SetupWizardScreen
 import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.android.stripe.StripeTerminalManager
+import com.onetill.android.ui.subscription.SubscriptionExpiredScreen
 import com.onetill.shared.sync.SyncOrchestrator
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import org.koin.compose.koinInject
 
 object Routes {
@@ -55,6 +59,7 @@ object Routes {
     const val QR_SCAN = "qr_scan"
     const val SETTINGS = "settings"
     const val OFFLINE_PAYMENT_SETTINGS = "offline_payment_settings"
+    const val SUBSCRIPTION_EXPIRED = "subscription_expired"
 
     fun receiptEmail(orderId: Long, amount: String, method: String, change: String? = null): String {
         val base = "receipt_email/$orderId/$amount/$method"
@@ -97,6 +102,26 @@ fun OneTillNavGraph(
             } catch (_: Exception) {
                 // Not yet available — will initialize on first use
             }
+
+            // Check subscription status from cache.
+            val subStatus = config.subscriptionStatus
+            val subExpiry = config.subscriptionExpiresAt
+            val validStatuses = setOf("trialing", "active", "past_due")
+            val cachedValid = when {
+                subStatus == null -> false
+                subStatus == "canceled" && subExpiry != null -> try {
+                    Instant.parse(subExpiry) > Clock.System.now()
+                } catch (_: Exception) { false }
+                else -> subStatus in validStatuses
+            }
+
+            if (!cachedValid) {
+                try {
+                    org.koin.core.context.GlobalContext.get()
+                        .getOrNull<SyncOrchestrator>()?.checkHeartbeat()
+                } catch (_: Exception) {}
+            }
+
             startDestination = Routes.CATALOG
         } else {
             startDestination = Routes.SETUP
@@ -124,6 +149,32 @@ fun OneTillNavGraph(
     }
 
     val navController: NavHostController = rememberNavController()
+
+    val syncOrchestrator: SyncOrchestrator? = remember {
+        try {
+            org.koin.core.context.GlobalContext.get().getOrNull<SyncOrchestrator>()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    val subscriptionValid by (syncOrchestrator?.subscriptionValid
+        ?: MutableStateFlow(true)).collectAsState()
+
+    // Redirect to/from expired screen based on subscription status.
+    LaunchedEffect(subscriptionValid) {
+        if (dest == Routes.SETUP) return@LaunchedEffect
+        val currentRoute = navController.currentDestination?.route
+        if (!subscriptionValid && currentRoute != Routes.SUBSCRIPTION_EXPIRED) {
+            navController.navigate(Routes.SUBSCRIPTION_EXPIRED) {
+                popUpTo(Routes.CATALOG)
+            }
+        } else if (subscriptionValid && currentRoute == Routes.SUBSCRIPTION_EXPIRED) {
+            navController.navigate(Routes.CATALOG) {
+                popUpTo(Routes.SUBSCRIPTION_EXPIRED) { inclusive = true }
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
     NavHost(
@@ -176,6 +227,19 @@ fun OneTillNavGraph(
                 onNavigateToSettings = { navController.navigate(Routes.SETTINGS) },
                 onNavigateToQrScan = { navController.navigate(Routes.QR_SCAN) },
                 onNavigateToOfflinePayments = { navController.navigate(Routes.OFFLINE_PAYMENT_SETTINGS) },
+            )
+        }
+
+        // Subscription Expired — blocks new sales, allows orders/settings/pairing
+        composable(Routes.SUBSCRIPTION_EXPIRED) {
+            SubscriptionExpiredScreen(
+                onCheckAgain = {
+                    syncOrchestrator?.checkHeartbeat()
+                    syncOrchestrator?.subscriptionValid?.value ?: true
+                },
+                onNavigateToOrders = { navController.navigate(Routes.ORDER_HISTORY) },
+                onNavigateToSettings = { navController.navigate(Routes.SETTINGS) },
+                onNavigateToQrScan = { navController.navigate(Routes.QR_SCAN) },
             )
         }
 
