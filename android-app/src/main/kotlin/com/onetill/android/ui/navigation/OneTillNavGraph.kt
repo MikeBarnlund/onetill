@@ -41,10 +41,9 @@ import com.onetill.android.ui.setup.SetupWizardScreen
 import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.android.stripe.StripeTerminalManager
 import com.onetill.android.ui.subscription.SubscriptionExpiredScreen
+import com.onetill.shared.sync.SubscriptionValidator
 import com.onetill.shared.sync.SyncOrchestrator
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import org.koin.compose.koinInject
 
 object Routes {
@@ -103,26 +102,16 @@ fun OneTillNavGraph(
                 // Not yet available — will initialize on first use
             }
 
-            // Check subscription status from cache.
-            val subStatus = config.subscriptionStatus
-            val subExpiry = config.subscriptionExpiresAt
-            val validStatuses = setOf("trialing", "active", "past_due")
-            val cachedValid = when {
-                subStatus == null -> false
-                subStatus == "canceled" && subExpiry != null -> try {
-                    Instant.parse(subExpiry) > Clock.System.now()
-                } catch (_: Exception) { false }
-                else -> subStatus in validStatuses
-            }
-
-            if (!cachedValid) {
-                try {
-                    org.koin.core.context.GlobalContext.get()
-                        .getOrNull<SyncOrchestrator>()?.checkHeartbeat()
-                } catch (_: Exception) {}
-            }
-
             startDestination = Routes.CATALOG
+
+            if (!SubscriptionValidator.isValid(config.subscriptionStatus, config.subscriptionExpiresAt)) {
+                launch {
+                    try {
+                        org.koin.core.context.GlobalContext.get()
+                            .getOrNull<SyncOrchestrator>()?.checkHeartbeat()
+                    } catch (_: Exception) {}
+                }
+            }
         } else {
             startDestination = Routes.SETUP
         }

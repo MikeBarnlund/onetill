@@ -7,8 +7,6 @@ import com.onetill.shared.ecommerce.woocommerce.OneTillPluginClient
 import com.onetill.shared.ecommerce.woocommerce.dto.HeartbeatResponseDto
 import com.onetill.shared.ecommerce.woocommerce.dto.toDomain
 import io.github.aakira.napier.Napier
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -181,7 +179,7 @@ class SyncOrchestrator(
             val sub = response.subscription
             if (sub != null) {
                 localDataSource.updateSubscriptionStatus(sub.status, sub.expiresAt)
-                _subscriptionValid.value = isSubscriptionValid(sub.status, sub.expiresAt)
+                _subscriptionValid.value = SubscriptionValidator.isValid(sub.status, sub.expiresAt)
             }
             response
         } catch (e: Exception) {
@@ -190,17 +188,6 @@ class SyncOrchestrator(
         }
     }
 
-    private fun isSubscriptionValid(status: String, expiresAt: String?): Boolean {
-        val validStatuses = setOf("trialing", "active", "past_due")
-        if (status == "canceled" && expiresAt != null) {
-            return try {
-                Instant.parse(expiresAt) > Clock.System.now()
-            } catch (_: Exception) {
-                false
-            }
-        }
-        return status in validStatuses
-    }
 
     /**
      * Stop all background sync jobs.

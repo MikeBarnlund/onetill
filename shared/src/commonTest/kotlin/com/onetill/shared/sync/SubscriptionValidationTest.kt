@@ -8,66 +8,59 @@ import kotlin.time.Duration.Companion.days
 
 class SubscriptionValidationTest {
 
-    private fun isSubscriptionValid(status: String, expiresAt: String?): Boolean {
-        val validStatuses = setOf("trialing", "active", "past_due")
-        if (status == "canceled" && expiresAt != null) {
-            return try {
-                kotlinx.datetime.Instant.parse(expiresAt) > Clock.System.now()
-            } catch (_: Exception) {
-                false
-            }
-        }
-        return status in validStatuses
-    }
-
     @Test
     fun trialingStatusIsValid() {
-        assertTrue(isSubscriptionValid("trialing", futureTimestamp()))
+        assertTrue(SubscriptionValidator.isValid("trialing", futureTimestamp()))
     }
 
     @Test
     fun activeStatusIsValid() {
-        assertTrue(isSubscriptionValid("active", futureTimestamp()))
+        assertTrue(SubscriptionValidator.isValid("active", futureTimestamp()))
     }
 
     @Test
     fun pastDueStatusIsValid() {
-        assertTrue(isSubscriptionValid("past_due", futureTimestamp()))
+        assertTrue(SubscriptionValidator.isValid("past_due", futureTimestamp()))
     }
 
     @Test
     fun canceledWithFutureExpiryIsValid() {
-        assertTrue(isSubscriptionValid("canceled", futureTimestamp()))
+        assertTrue(SubscriptionValidator.isValid("canceled", futureTimestamp()))
     }
 
     @Test
     fun canceledWithPastExpiryIsInvalid() {
-        assertFalse(isSubscriptionValid("canceled", pastTimestamp()))
+        assertFalse(SubscriptionValidator.isValid("canceled", pastTimestamp()))
     }
 
     @Test
     fun canceledWithNullExpiryIsInvalid() {
-        assertFalse(isSubscriptionValid("canceled", null))
+        assertFalse(SubscriptionValidator.isValid("canceled", null))
     }
 
     @Test
     fun expiredStatusIsInvalid() {
-        assertFalse(isSubscriptionValid("expired", null))
+        assertFalse(SubscriptionValidator.isValid("expired", null))
     }
 
     @Test
     fun expiredStatusWithFutureExpiryIsStillInvalid() {
-        assertFalse(isSubscriptionValid("expired", futureTimestamp()))
+        assertFalse(SubscriptionValidator.isValid("expired", futureTimestamp()))
     }
 
     @Test
     fun unknownStatusIsInvalid() {
-        assertFalse(isSubscriptionValid("unknown", futureTimestamp()))
+        assertFalse(SubscriptionValidator.isValid("unknown", futureTimestamp()))
     }
 
     @Test
     fun activeWithNullExpiryIsValid() {
-        assertTrue(isSubscriptionValid("active", null))
+        assertTrue(SubscriptionValidator.isValid("active", null))
+    }
+
+    @Test
+    fun nullStatusIsInvalid() {
+        assertFalse(SubscriptionValidator.isValid(null, futureTimestamp()))
     }
 
     private fun futureTimestamp(): String =
