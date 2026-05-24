@@ -73,6 +73,9 @@ class QrPairingViewModel(
 
                     // Save config and reload modules
                     setupManager.saveQrPairingConfig(config)
+                    result.data.subscription?.let { sub ->
+                        localDataSource.updateSubscriptionStatus(sub.status, sub.expiresAt)
+                    }
                     reloadPostWizardModules(config)
                     localDataSource.deleteAllProducts()
 

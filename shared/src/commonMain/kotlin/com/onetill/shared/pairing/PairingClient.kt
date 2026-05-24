@@ -14,6 +14,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
+import com.onetill.shared.ecommerce.woocommerce.dto.SubscriptionDto
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -30,6 +31,7 @@ data class PairingRequest(
 data class PairingResponse(
     @SerialName("credentials") val credentials: PairingCredentials,
     @SerialName("store") val store: PairingStoreInfo,
+    @SerialName("subscription") val subscription: SubscriptionDto? = null,
 )
 
 @Serializable

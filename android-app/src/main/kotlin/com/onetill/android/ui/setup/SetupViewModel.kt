@@ -95,6 +95,9 @@ class SetupViewModel(
                     )
 
                     setupManager.saveQrPairingConfig(config)
+                    result.data.subscription?.let { sub ->
+                        localDataSource.updateSubscriptionStatus(sub.status, sub.expiresAt)
+                    }
                     loadPostWizardModules(config)
 
                     // Transition to sync step
