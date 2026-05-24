@@ -119,7 +119,6 @@ class API_Sync {
 			'ok'              => true,
 			'server_time'     => gmdate( 'c' ),
 			'pending_changes' => $pending_changes,
-			'subscription'    => $this->get_subscription_status(),
 		), 200 );
 	}
 
@@ -241,64 +240,6 @@ class API_Sync {
 			return $variation_id;
 		}
 		return $product_id;
-	}
-
-	/**
-	 * Get the subscription status for this store, with 4-hour caching.
-	 *
-	 * @return array{status: string, expires_at: string|null}
-	 */
-	private function get_subscription_status() {
-		$cached = get_transient( 'onetill_subscription_status' );
-		if ( false !== $cached ) {
-			return $cached;
-		}
-
-		$supabase_url = get_option( 'onetill_supabase_url', '' );
-		$service_key  = get_option( 'onetill_supabase_service_key', '' );
-
-		if ( empty( $supabase_url ) || empty( $service_key ) ) {
-			return array(
-				'status'     => 'active',
-				'expires_at' => null,
-			);
-		}
-
-		$store_url = get_site_url();
-		$endpoint  = rtrim( $supabase_url, '/' ) . '/functions/v1/check-subscription?store_url=' . rawurlencode( $store_url );
-
-		$response = wp_remote_get( $endpoint, array(
-			'headers' => array(
-				'Authorization' => 'Bearer ' . $service_key,
-			),
-			'timeout' => 10,
-		) );
-
-		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
-			return array(
-				'status'     => 'active',
-				'expires_at' => null,
-			);
-		}
-
-		$body   = wp_remote_retrieve_body( $response );
-		$result = json_decode( $body, true );
-
-		if ( ! is_array( $result ) || ! isset( $result['status'] ) ) {
-			return array(
-				'status'     => 'active',
-				'expires_at' => null,
-			);
-		}
-
-		$subscription = array(
-			'status'     => sanitize_text_field( $result['status'] ),
-			'expires_at' => isset( $result['expires_at'] ) ? sanitize_text_field( $result['expires_at'] ) : null,
-		);
-
-		set_transient( 'onetill_subscription_status', $subscription, 4 * HOUR_IN_SECONDS );
-
-		return $subscription;
 	}
 
 	/**

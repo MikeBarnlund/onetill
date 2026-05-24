@@ -66,54 +66,5 @@ if ( ! empty( $stripe_key ) ) {
 				<?php submit_button( __( 'Save Stripe Key', 'onetill' ), 'primary' ); ?>
 			</form>
 		</div>
-
-		<?php if ( isset( $_GET['supabase_saved'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
-			<div class="notice notice-success is-dismissible">
-				<p><?php esc_html_e( 'Supabase settings saved.', 'onetill' ); ?></p>
-			</div>
-		<?php endif; ?>
-
-		<!-- Supabase Settings -->
-		<div class="onetill-card">
-			<h2><?php esc_html_e( 'Supabase (Subscription Validation)', 'onetill' ); ?></h2>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-				<?php wp_nonce_field( 'onetill_save_supabase', 'onetill_supabase_nonce' ); ?>
-				<input type="hidden" name="action" value="onetill_save_supabase" />
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row">
-							<label for="onetill_supabase_url"><?php esc_html_e( 'Project URL', 'onetill' ); ?></label>
-						</th>
-						<td>
-							<input
-								type="url"
-								id="onetill_supabase_url"
-								name="onetill_supabase_url"
-								value="<?php echo esc_attr( get_option( 'onetill_supabase_url', '' ) ); ?>"
-								class="regular-text"
-								placeholder="https://xxxx.supabase.co"
-							/>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label for="onetill_supabase_service_key"><?php esc_html_e( 'Service Role Key', 'onetill' ); ?></label>
-						</th>
-						<td>
-							<input
-								type="password"
-								id="onetill_supabase_service_key"
-								name="onetill_supabase_service_key"
-								value="<?php echo esc_attr( get_option( 'onetill_supabase_service_key', '' ) ); ?>"
-								class="regular-text"
-								placeholder="eyJhbGciOiJ..."
-								autocomplete="off"
-							/>
-						</td>
-					</tr>
-				</table>
-				<?php submit_button( __( 'Save Supabase Settings', 'onetill' ), 'primary' ); ?>
-			</form>
-		</div>
 	</div>
 </div>

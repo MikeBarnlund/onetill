@@ -170,7 +170,6 @@ class OneTill {
 
 		// Admin post handlers.
 		add_action( 'admin_post_onetill_save_stripe_key', array( $this->admin, 'save_stripe_key' ) );
-		add_action( 'admin_post_onetill_save_supabase', array( $this->admin, 'save_supabase' ) );
 
 		// AJAX handlers for admin pairing UI.
 		add_action( 'wp_ajax_onetill_initiate_pairing', array( $this->pairing, 'ajax_initiate_pairing' ) );

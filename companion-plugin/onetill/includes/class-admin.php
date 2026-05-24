@@ -391,26 +391,6 @@ class Admin {
 	}
 
 	/**
-	 * Handle saving the Supabase settings from admin form.
-	 */
-	public function save_supabase() {
-		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			wp_die( esc_html__( 'Permission denied.', 'onetill' ) );
-		}
-
-		check_admin_referer( 'onetill_save_supabase', 'onetill_supabase_nonce' );
-
-		$url = isset( $_POST['onetill_supabase_url'] ) ? esc_url_raw( wp_unslash( $_POST['onetill_supabase_url'] ) ) : '';
-		$key = isset( $_POST['onetill_supabase_service_key'] ) ? sanitize_text_field( wp_unslash( $_POST['onetill_supabase_service_key'] ) ) : '';
-
-		update_option( 'onetill_supabase_url', $url );
-		update_option( 'onetill_supabase_service_key', $key );
-
-		wp_safe_redirect( admin_url( 'admin.php?page=onetill-settings&supabase_saved=1' ) );
-		exit;
-	}
-
-	/**
 	 * Render the barcode field on the product Inventory tab.
 	 */
 	public function render_barcode_field() {
