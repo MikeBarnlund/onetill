@@ -10,6 +10,7 @@ import com.onetill.shared.pairing.PairingClient
 import com.onetill.shared.pairing.PairingRequest
 import com.onetill.shared.pairing.parseQrCode
 import com.onetill.shared.setup.SetupManager
+import com.onetill.shared.sync.SubscriptionClient
 import com.onetill.shared.sync.SyncOrchestrator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -73,10 +74,12 @@ class QrPairingViewModel(
 
                     // Save config and reload modules
                     setupManager.saveQrPairingConfig(config)
-                    result.data.subscription?.let { sub ->
+                    reloadPostWizardModules(config)
+
+                    val subscriptionClient: SubscriptionClient by inject()
+                    subscriptionClient.registerTrial(config.siteUrl)?.let { sub ->
                         localDataSource.updateSubscriptionStatus(sub.status, sub.expiresAt)
                     }
-                    reloadPostWizardModules(config)
                     localDataSource.deleteAllProducts()
 
                     // Perform initial sync

@@ -11,6 +11,7 @@ import com.onetill.shared.pairing.PairingRequest
 import com.onetill.shared.pairing.parseQrCode
 import com.onetill.shared.setup.SetupManager
 import com.onetill.shared.setup.SetupState
+import com.onetill.shared.sync.SubscriptionClient
 import com.onetill.shared.sync.SyncOrchestrator
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -95,10 +96,12 @@ class SetupViewModel(
                     )
 
                     setupManager.saveQrPairingConfig(config)
-                    result.data.subscription?.let { sub ->
+                    loadPostWizardModules(config)
+
+                    val subscriptionClient: SubscriptionClient by inject()
+                    subscriptionClient.registerTrial(config.siteUrl)?.let { sub ->
                         localDataSource.updateSubscriptionStatus(sub.status, sub.expiresAt)
                     }
-                    loadPostWizardModules(config)
 
                     // Transition to sync step
                     _state.update { it.copy(isQrProcessing = false, currentStep = SetupStep.CatalogSync) }
