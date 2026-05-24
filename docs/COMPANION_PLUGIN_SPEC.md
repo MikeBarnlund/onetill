@@ -292,10 +292,16 @@ Called by the S700 app after scanning the QR code. This is the only endpoint tha
     "prices_include_tax": false,
     "timezone": "America/New_York"
   },
+  "subscription": {
+    "status": "trialing",
+    "expires_at": "2026-06-06T10:00:00+00:00"
+  },
   "plugin_version": "1.0.0",
   "api_base": "/wp-json/onetill/v1"
 }
 ```
+
+`subscription`: Object with `status` and `expires_at`. Returned after trial registration in Supabase. May be `null` if Supabase is not configured.
 
 **Response (failure):**
 
@@ -896,11 +902,19 @@ Lightweight connectivity check. The S700 pings this every 30 seconds when online
 {
   "ok": true,
   "server_time": "2026-03-07T14:30:00Z",
-  "pending_changes": 3
+  "pending_changes": 3,
+  "subscription": {
+    "status": "trialing",
+    "expires_at": "2026-06-06T10:00:00+00:00"
+  }
 }
 ```
 
 `pending_changes` indicates how many product/order changes have occurred since the device's last delta sync. If > 0, the S700 triggers a delta sync. This avoids constant polling of the full delta endpoint.
+
+`subscription.status`: One of `trialing`, `active`, `past_due`, `canceled`, `expired`. Checked against Supabase with a 4-hour WordPress transient cache. Returns `active` if Supabase is not configured.
+
+`subscription.expires_at`: ISO 8601 timestamp — trial end date or billing period end date. `null` if expired.
 
 ### `POST /wp-json/onetill/v1/sync/stock`
 
