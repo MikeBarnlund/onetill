@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   }
 
   const authHeader = req.headers.get("Authorization");
-  const expectedKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const expectedKey = Deno.env.get("ONETILL_API_KEY");
   if (!authHeader || authHeader !== `Bearer ${expectedKey}`) {
     return new Response(JSON.stringify({ error: "unauthorized" }), {
       status: 401,
