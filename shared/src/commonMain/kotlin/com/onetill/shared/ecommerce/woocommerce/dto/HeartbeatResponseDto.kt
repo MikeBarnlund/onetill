@@ -8,7 +8,6 @@ data class HeartbeatResponseDto(
     @SerialName("ok") val ok: Boolean,
     @SerialName("server_time") val serverTime: String,
     @SerialName("pending_changes") val pendingChanges: Int,
-    @SerialName("subscription") val subscription: SubscriptionDto? = null,
 )
 
 @Serializable
