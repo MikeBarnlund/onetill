@@ -8,6 +8,7 @@ import com.onetill.shared.ecommerce.woocommerce.dto.OneTillSettingsDto
 import com.onetill.shared.ecommerce.woocommerce.dto.StaffUserDto
 import com.onetill.shared.ecommerce.woocommerce.dto.StripeConnectionTokenResponse
 import com.onetill.shared.ecommerce.woocommerce.dto.TaxEstimateRequestDto
+import com.onetill.shared.ecommerce.woocommerce.dto.HeartbeatResponseDto
 import com.onetill.shared.ecommerce.woocommerce.dto.TaxEstimateResponseDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -60,6 +61,9 @@ class OneTillPluginClient(private val httpClient: HttpClient) {
             contentType(ContentType.Application.Json)
             setBody(request)
         }.body()
+
+    suspend fun heartbeat(): HeartbeatResponseDto =
+        httpClient.get("sync/heartbeat").body()
 
     fun close() {
         httpClient.close()
