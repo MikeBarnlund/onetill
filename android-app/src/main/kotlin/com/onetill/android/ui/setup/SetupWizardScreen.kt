@@ -44,6 +44,8 @@ import com.onetill.android.ui.components.OneTillButton
 import com.onetill.android.ui.components.OneTillTextField
 import com.onetill.android.ui.scanner.QrScannerScreen
 import com.onetill.android.ui.theme.OneTillTheme
+import com.onetill.shared.sync.ConnectivityMonitor
+import org.koin.compose.koinInject
 import com.onetill.android.ui.theme.Success
 import com.onetill.android.ui.theme.screenGradientBackground
 
@@ -53,6 +55,8 @@ fun SetupWizardScreen(
     viewModel: SetupViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+    val connectivityMonitor: ConnectivityMonitor = koinInject()
+    val isOnline by connectivityMonitor.isOnline.collectAsState()
 
     Crossfade(
         targetState = state.currentStep,
@@ -63,13 +67,21 @@ fun SetupWizardScreen(
             SetupStep.Welcome -> WelcomeStep(
                 onGetStarted = { viewModel.onGetStarted() },
             )
-            SetupStep.QrScan -> QrScannerScreen(
-                isProcessing = state.isQrProcessing,
-                error = state.qrError,
-                onQrScanned = { viewModel.onQrScanned(it) },
-                onManualEntry = { viewModel.onManualEntry() },
-                onRetry = { viewModel.onQrRetry() },
-            )
+            // Block QR pairing when the device is offline — the call to the
+            // store will fail, and the camera can't help anyway. Show a
+            // dedicated screen that guides the merchant to Wi-Fi settings.
+            // The Crossfade above auto-restores the scanner when isOnline flips.
+            SetupStep.QrScan -> if (isOnline) {
+                QrScannerScreen(
+                    isProcessing = state.isQrProcessing,
+                    error = state.qrError,
+                    onQrScanned = { viewModel.onQrScanned(it) },
+                    onManualEntry = { viewModel.onManualEntry() },
+                    onRetry = { viewModel.onQrRetry() },
+                )
+            } else {
+                NoConnectionScreen()
+            }
             SetupStep.StoreConnection -> StoreConnectionStep(
                 siteUrl = state.siteUrl,
                 consumerKey = state.consumerKey,

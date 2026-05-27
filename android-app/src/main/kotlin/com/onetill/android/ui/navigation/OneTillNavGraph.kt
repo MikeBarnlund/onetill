@@ -36,6 +36,8 @@ import com.onetill.android.ui.orders.DailySummaryScreen
 import com.onetill.android.ui.orders.OrderHistoryScreen
 import com.onetill.android.ui.scanner.QrPairingViewModel
 import com.onetill.android.ui.scanner.QrScannerScreen
+import com.onetill.android.ui.setup.NoConnectionScreen
+import com.onetill.shared.sync.ConnectivityMonitor
 import com.onetill.android.ui.settings.OfflinePaymentSettingsScreen
 import com.onetill.android.ui.settings.SettingsScreen
 import com.onetill.android.ui.setup.SetupWizardScreen
@@ -361,10 +363,13 @@ fun OneTillNavGraph(
             )
         }
 
-        // QR Scanner (post-setup re-pairing)
+        // QR Scanner (post-setup re-pairing). Same offline gate as the setup
+        // wizard — pairing can't succeed without a network call to the store.
         composable(Routes.QR_SCAN) {
             val viewModel: QrPairingViewModel = org.koin.androidx.compose.koinViewModel()
             val pairingState by viewModel.state.collectAsState()
+            val connectivityMonitor: ConnectivityMonitor = org.koin.compose.koinInject()
+            val isOnline by connectivityMonitor.isOnline.collectAsState()
 
             // Navigate back to catalog on successful pairing
             LaunchedEffect(pairingState.pairingComplete) {
@@ -375,18 +380,22 @@ fun OneTillNavGraph(
                 }
             }
 
-            QrScannerScreen(
-                isProcessing = pairingState.isProcessing,
-                error = pairingState.error,
-                onQrScanned = { viewModel.onQrScanned(it) },
-                onManualEntry = {
-                    navController.popBackStack()
-                    navController.navigate(Routes.SETTINGS)
-                },
-                onRetry = { viewModel.onRetry() },
-                showBackButton = true,
-                onBack = { navController.popBackStack() },
-            )
+            if (isOnline) {
+                QrScannerScreen(
+                    isProcessing = pairingState.isProcessing,
+                    error = pairingState.error,
+                    onQrScanned = { viewModel.onQrScanned(it) },
+                    onManualEntry = {
+                        navController.popBackStack()
+                        navController.navigate(Routes.SETTINGS)
+                    },
+                    onRetry = { viewModel.onRetry() },
+                    showBackButton = true,
+                    onBack = { navController.popBackStack() },
+                )
+            } else {
+                NoConnectionScreen()
+            }
         }
 
         // Settings

@@ -74,6 +74,7 @@ import com.onetill.android.audio.ScanBeepPlayer
 import com.onetill.android.input.VolumeKeyEvent
 import com.onetill.android.input.VolumeKeyEventBus
 import com.onetill.android.ui.components.BarcodeIcon
+import com.onetill.android.ui.components.WifiPasscodeDialog
 import com.onetill.android.ui.components.ButtonVariant
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -393,27 +394,9 @@ fun CatalogScreen(
 
         // WiFi passcode dialog
         if (showWifiPasscodeDialog) {
-            AlertDialog(
-                onDismissRequest = { showWifiPasscodeDialog = false },
-                title = { Text("Device Settings Passcode") },
-                text = {
-                    Text("The admin passcode for this terminal is:\n\n07139\n\nEnter this passcode on the next screen to access WiFi and other device settings.")
-                },
-                confirmButton = {
-                    TextButton(onClick = {
-                        showWifiPasscodeDialog = false
-                        viewModel.closeDrawer()
-                        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("stripe://settings/"))
-                        try { context.startActivity(intent) } catch (_: Exception) {}
-                    }) {
-                        Text("Continue")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showWifiPasscodeDialog = false }) {
-                        Text("Cancel")
-                    }
-                },
+            WifiPasscodeDialog(
+                onDismiss = { showWifiPasscodeDialog = false },
+                onBeforeLaunch = { viewModel.closeDrawer() },
             )
         }
     }
