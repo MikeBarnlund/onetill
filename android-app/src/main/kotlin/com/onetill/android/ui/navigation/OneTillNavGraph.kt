@@ -12,6 +12,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -139,21 +140,34 @@ fun OneTillNavGraph(
 
     val navController: NavHostController = rememberNavController()
 
-    val syncOrchestrator: SyncOrchestrator? = remember {
-        try {
-            org.koin.core.context.GlobalContext.get().getOrNull<SyncOrchestrator>()
-        } catch (_: Exception) {
-            null
+    // Poll Koin until the post-wizard modules are loaded. Modules may not exist yet
+    // when the user is mid-setup; once `loadPostWizardModules` runs (on wizard
+    // completion or app restart with saved config), the orchestrator becomes
+    // available and we capture it. Without this, a `remember` block evaluated
+    // during setup would cache `null` forever and the subscription gate would
+    // bind to a dead fallback StateFlow.
+    val syncOrchestrator: SyncOrchestrator? by produceState<SyncOrchestrator?>(initialValue = null) {
+        while (value == null) {
+            value = try {
+                org.koin.core.context.GlobalContext.get().getOrNull<SyncOrchestrator>()
+            } catch (_: Exception) {
+                null
+            }
+            if (value == null) delay(200)
         }
     }
 
+    val fallbackSubscriptionFlow = remember { MutableStateFlow(true) }
     val subscriptionValid by (syncOrchestrator?.subscriptionValid
-        ?: MutableStateFlow(true)).collectAsState()
+        ?: fallbackSubscriptionFlow).collectAsState()
 
-    // Redirect to/from expired screen based on subscription status.
+    // Redirect to/from expired screen based on subscription status. Skip while
+    // the user is still on the setup wizard — their subscription state isn't
+    // settled until pairing completes. Use the current route (not `dest`, which
+    // is the initial start destination and never changes after launch).
     LaunchedEffect(subscriptionValid) {
-        if (dest == Routes.SETUP) return@LaunchedEffect
-        val currentRoute = navController.currentDestination?.route
+        val currentRoute = navController.currentDestination?.route ?: return@LaunchedEffect
+        if (currentRoute == Routes.SETUP) return@LaunchedEffect
         if (!subscriptionValid && currentRoute != Routes.SUBSCRIPTION_EXPIRED) {
             navController.navigate(Routes.SUBSCRIPTION_EXPIRED) {
                 popUpTo(Routes.CATALOG)
