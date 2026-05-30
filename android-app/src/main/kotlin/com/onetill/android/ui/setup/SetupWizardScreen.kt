@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
@@ -42,6 +43,7 @@ import com.onetill.android.R
 import org.koin.androidx.compose.koinViewModel
 import com.onetill.android.ui.components.OneTillButton
 import com.onetill.android.ui.components.OneTillTextField
+import com.onetill.android.ui.settings.OfflinePaymentSettingsScreen
 import com.onetill.android.ui.scanner.QrScannerScreen
 import com.onetill.android.ui.theme.OneTillTheme
 import com.onetill.shared.sync.ConnectivityMonitor
@@ -97,6 +99,10 @@ fun SetupWizardScreen(
             SetupStep.CatalogSync -> CatalogSyncStep(
                 productsSynced = state.productsSynced,
                 isComplete = state.syncComplete,
+            )
+            SetupStep.OfflinePayments -> OfflinePaymentSettingsScreen(
+                onBack = { viewModel.onOfflinePaymentsStepDone() },
+                isOnboarding = true,
             )
             SetupStep.Ready -> ReadyStep(
                 productsSynced = state.productsSynced,
@@ -337,10 +343,18 @@ private fun CatalogSyncStep(productsSynced: Int, isComplete: Boolean) {
                         scaleY = scale.value
                     }
                     .drawBehind {
-                        val glowColor = Success.copy(alpha = 0.06f)
-                        drawCircle(color = glowColor, radius = size.width / 2f + 20.dp.toPx())
-                        drawCircle(color = glowColor, radius = size.width / 2f + 12.dp.toPx())
-                        drawCircle(color = glowColor, radius = size.width / 2f + 6.dp.toPx())
+                        // Smooth radial halo — avoids the banding produced by stacking
+                        // discrete same-alpha circles. Matches OrderCompleteScreen.
+                        val glowRadius = size.width / 2f + 24.dp.toPx()
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                0f to Success.copy(alpha = 0.18f),
+                                0.7f to Success.copy(alpha = 0.04f),
+                                1f to Color.Transparent,
+                                radius = glowRadius,
+                            ),
+                            radius = glowRadius,
+                        )
                     }
                     .background(colors.success, CircleShape),
                 contentAlignment = Alignment.Center,
@@ -440,10 +454,18 @@ private fun ReadyStep(
                         scaleY = scale.value
                     }
                     .drawBehind {
-                        val glowColor = Success.copy(alpha = 0.06f)
-                        drawCircle(color = glowColor, radius = size.width / 2f + 20.dp.toPx())
-                        drawCircle(color = glowColor, radius = size.width / 2f + 12.dp.toPx())
-                        drawCircle(color = glowColor, radius = size.width / 2f + 6.dp.toPx())
+                        // Smooth radial halo — avoids the banding produced by stacking
+                        // discrete same-alpha circles. Matches OrderCompleteScreen.
+                        val glowRadius = size.width / 2f + 24.dp.toPx()
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                0f to Success.copy(alpha = 0.18f),
+                                0.7f to Success.copy(alpha = 0.04f),
+                                1f to Color.Transparent,
+                                radius = glowRadius,
+                            ),
+                            radius = glowRadius,
+                        )
                     }
                     .background(colors.success, CircleShape),
                 contentAlignment = Alignment.Center,

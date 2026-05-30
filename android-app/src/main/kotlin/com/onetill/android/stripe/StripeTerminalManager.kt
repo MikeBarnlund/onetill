@@ -258,11 +258,15 @@ class StripeTerminalManager(
                 return PaymentResult.Cancelled
             }
             Napier.e("Payment failed: ${e.errorMessage}", tag = "Stripe")
-            val message = if (e.errorMessage.contains("not configured to operate offline", ignoreCase = true)) {
-                "This device isn't configured for offline payments yet. " +
-                    "Enable offline mode in the Stripe Dashboard under Terminal → Locations → your location."
+            val msg = e.errorMessage
+            val message = if (
+                msg.contains("not configured to operate offline", ignoreCase = true) ||
+                msg.contains("does not allow creating PaymentIntents offline", ignoreCase = true)
+            ) {
+                "Offline payments aren't enabled yet. Turn them on in " +
+                    "Settings → Offline Payments to accept cards without internet."
             } else {
-                e.errorMessage
+                msg
             }
             return PaymentResult.Failed(message)
         } catch (e: Exception) {

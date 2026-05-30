@@ -3,6 +3,7 @@ package com.onetill.android.ui.setup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.onetill.android.di.loadPostWizardModules
+import com.onetill.android.stripe.StripeTerminalManager
 import com.onetill.shared.data.AppResult
 import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.shared.data.model.StoreConfig
@@ -29,6 +30,7 @@ enum class SetupStep {
     QrScan,
     StoreConnection,
     CatalogSync,
+    OfflinePayments,
     Ready,
 }
 
@@ -199,6 +201,10 @@ class SetupViewModel(
         }
     }
 
+    fun onOfflinePaymentsStepDone() {
+        _state.update { it.copy(currentStep = SetupStep.Ready) }
+    }
+
     private suspend fun runInitialSync() {
         // Get SyncOrchestrator from Koin (now available after loadPostWizardModules)
         val syncOrchestrator: SyncOrchestrator by inject()
@@ -239,9 +245,14 @@ class SetupViewModel(
                 // Start background delta sync
                 syncOrchestrator.startSync()
 
+                // Pre-connect the Terminal reader so the first card payment in
+                // this freshly-paired session doesn't pay the cold-start cost.
+                val terminal: StripeTerminalManager by inject()
+                viewModelScope.launch { terminal.warmUp() }
+
                 // Auto-advance after brief pause
                 delay(1500)
-                _state.update { it.copy(currentStep = SetupStep.Ready) }
+                _state.update { it.copy(currentStep = SetupStep.OfflinePayments) }
             }
             is AppResult.Error -> {
                 _state.update {

@@ -58,6 +58,7 @@ fun CartScreen(
     onBack: () -> Unit,
     onCashPayment: () -> Unit,
     onCardPaymentComplete: (orderId: Long, amount: String) -> Unit,
+    onNavigateToOfflinePaymentSetup: () -> Unit,
     onCardPaymentFailed: (message: String) -> Unit = {},
     viewModel: CartViewModel = koinViewModel(),
     checkoutViewModel: CheckoutViewModel = koinViewModel(),
@@ -73,6 +74,31 @@ fun CartScreen(
     val couponError by viewModel.couponError.collectAsState()
     var showCouponField by remember { mutableStateOf(false) }
     var couponInput by remember { mutableStateOf("") }
+    val pendingCardPayment by checkoutViewModel.pendingCardPayment.collectAsState()
+
+    // If the merchant left for the offline-payments setup screen and came back
+    // with the feature enabled, auto-resume the card payment they were trying
+    // to take. If they came back without enabling, the flag stays pending until
+    // they either succeed or the cart empties (handled below).
+    LaunchedEffect(pendingCardPayment, offlinePaymentsEnabled) {
+        if (pendingCardPayment && offlinePaymentsEnabled && !isSubmitting && !state.isEmpty) {
+            checkoutViewModel.clearPendingCardPayment()
+            checkoutViewModel.selectPaymentMethod(PaymentMethodUi.Card)
+            checkoutViewModel.submitCardPayment(
+                onComplete = { orderId, amount -> onCardPaymentComplete(orderId, amount) },
+                onFailed = { message -> onCardPaymentFailed(message) },
+            )
+        }
+    }
+
+    // Clear any stale pending flag once the cart empties (after a payment or
+    // when the merchant abandons the workflow), so we never auto-resume a
+    // card payment that was implicitly cancelled.
+    LaunchedEffect(state.isEmpty) {
+        if (state.isEmpty && pendingCardPayment) {
+            checkoutViewModel.clearPendingCardPayment()
+        }
+    }
 
     // Auto-navigate back when cart becomes empty (after remove or clear).
     // Guard: if a payment method was selected, the cart was cleared by a sale —
@@ -357,6 +383,16 @@ fun CartScreen(
                 onClick = {
                     if (isSubmitting || state.isEmpty) return@PaymentMethodCard
                     checkoutViewModel.selectPaymentMethod(PaymentMethodUi.Card)
+                    // Offline + not yet enabled: route through the full offline
+                    // payments setup screen so the merchant accepts consent and
+                    // sets spending limits before any offline transaction. We
+                    // mark the payment as pending so CartScreen auto-resumes it
+                    // when they return with the feature enabled.
+                    if (!isOnline && !offlinePaymentsEnabled) {
+                        checkoutViewModel.markPendingCardPayment()
+                        onNavigateToOfflinePaymentSetup()
+                        return@PaymentMethodCard
+                    }
                     checkoutViewModel.submitCardPayment(
                         onComplete = { orderId, amount -> onCardPaymentComplete(orderId, amount) },
                         onFailed = { message -> onCardPaymentFailed(message) },
@@ -382,6 +418,7 @@ fun CartScreen(
             )
         }
     }
+
 }
 
 @Composable

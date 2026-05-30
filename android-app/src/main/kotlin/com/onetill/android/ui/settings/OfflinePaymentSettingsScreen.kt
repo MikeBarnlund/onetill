@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -28,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.onetill.android.ui.components.AppStatusBar
 import com.onetill.android.ui.components.ButtonVariant
 import com.onetill.android.ui.components.HeaderNavAction
+import com.onetill.android.ui.components.OfflinePaymentConsentDialog
 import com.onetill.android.ui.components.OneTillButton
 import com.onetill.android.ui.components.OneTillTextField
 import com.onetill.android.ui.components.ScreenHeader
@@ -38,6 +38,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun OfflinePaymentSettingsScreen(
     onBack: () -> Unit,
+    isOnboarding: Boolean = false,
     viewModel: OfflinePaymentSettingsViewModel = koinViewModel(),
 ) {
     val colors = OneTillTheme.colors
@@ -51,9 +52,11 @@ fun OfflinePaymentSettingsScreen(
     ) {
         AppStatusBar()
 
+        // During onboarding the back arrow is hidden — exit is via the
+        // Skip button below or by saving limits, both routed through onBack.
         ScreenHeader(
             title = "Offline Payments",
-            navAction = HeaderNavAction.Back,
+            navAction = if (isOnboarding) null else HeaderNavAction.Back,
             onNavAction = onBack,
         )
 
@@ -95,7 +98,7 @@ fun OfflinePaymentSettingsScreen(
                     color = colors.textPrimary,
                 )
                 Switch(
-                    checked = state.enabled,
+                    checked = state.enabled || state.consentAccepted,
                     onCheckedChange = { viewModel.onToggle(it) },
                     colors = SwitchDefaults.colors(
                         checkedTrackColor = colors.accent,
@@ -103,7 +106,7 @@ fun OfflinePaymentSettingsScreen(
                 )
             }
 
-            if (state.enabled) {
+            if (state.enabled || state.consentAccepted) {
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
@@ -178,81 +181,30 @@ fun OfflinePaymentSettingsScreen(
                 }
             }
         }
+
+        // Skip CTA — only shown during the setup wizard, lets the merchant
+        // continue without enabling offline payments. They can come back via
+        // Settings later.
+        if (isOnboarding) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = dimens.lg, end = dimens.lg, top = 10.dp, bottom = 14.dp),
+            ) {
+                OneTillButton(
+                    text = "Skip for now",
+                    onClick = onBack,
+                    variant = ButtonVariant.Secondary,
+                )
+            }
+        }
     }
 
     // Consent dialog
     if (state.showConsentDialog) {
-        ConsentDialog(
+        OfflinePaymentConsentDialog(
             onAccept = { viewModel.onConsentAccepted() },
             onDecline = { viewModel.onConsentDeclined() },
-        )
-    }
-}
-
-@Composable
-private fun ConsentDialog(
-    onAccept: () -> Unit,
-    onDecline: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDecline,
-        title = {
-            Text(
-                text = "Enable Offline Payments",
-                fontWeight = FontWeight.Bold,
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = "When enabled, this terminal will accept card payments without internet. " +
-                        "Payments are stored on the device and forwarded to the bank when connectivity returns.",
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
-                )
-                Text(
-                    text = "You assume full liability for all offline payments. This means:",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    lineHeight = 20.sp,
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    BulletPoint("Payments may be declined when forwarded — there is no recovery")
-                    BulletPoint("You will have already provided goods/services for these payments")
-                    BulletPoint("Stolen or fraudulent cards cannot be detected while offline")
-                }
-                Text(
-                    text = "By enabling this feature, you acknowledge and accept these risks.",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    lineHeight = 20.sp,
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onAccept) {
-                Text("I Accept the Risks & Enable")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDecline) {
-                Text("Cancel")
-            }
-        },
-    )
-}
-
-@Composable
-private fun BulletPoint(text: String) {
-    Row {
-        Text(
-            text = "\u2022  ",
-            fontSize = 14.sp,
-        )
-        Text(
-            text = text,
-            fontSize = 14.sp,
-            lineHeight = 20.sp,
         )
     }
 }

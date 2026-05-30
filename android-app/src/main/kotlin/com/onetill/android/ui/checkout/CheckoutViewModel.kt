@@ -92,6 +92,22 @@ class CheckoutViewModel(
     private val _cardPaymentError = MutableStateFlow<String?>(null)
     val cardPaymentError: StateFlow<String?> = _cardPaymentError.asStateFlow()
 
+    // Set when the merchant taps Card while offline + offline payments are not
+    // enabled yet. We navigate them to the offline-payments setup screen; if
+    // they come back with the feature enabled, CartScreen resumes the payment
+    // automatically. Cleared on success or when the cart empties (so a stale
+    // pending flag can't trigger a payment in a later session).
+    private val _pendingCardPayment = MutableStateFlow(false)
+    val pendingCardPayment: StateFlow<Boolean> = _pendingCardPayment.asStateFlow()
+
+    fun markPendingCardPayment() {
+        _pendingCardPayment.value = true
+    }
+
+    fun clearPendingCardPayment() {
+        _pendingCardPayment.value = false
+    }
+
     fun selectPaymentMethod(method: PaymentMethodUi) {
         _selectedPaymentMethod.value = method
     }
@@ -100,7 +116,9 @@ class CheckoutViewModel(
         if (_isSubmitting.value) return
         viewModelScope.launch {
             _isSubmitting.value = true
-            val totalFormatted = orderTotalFormatted.value
+            // Read from live cart state, not the WhileSubscribed orderTotalFormatted
+            // flow, which only has a real value while CashPaymentModal is collecting it.
+            val totalFormatted = cartManager.cartState.value.estimatedTotal.formatDisplay()
             val currency = cartManager.cartState.value.currency
             val draft = cartManager.buildOrderDraft(PaymentMethod.CASH, staffName = staffAuthManager.currentStaffName)
             val localId = orderSyncManager.submitOrder(draft, currency, OrderStatus.PENDING_RECEIPT)
@@ -110,53 +128,64 @@ class CheckoutViewModel(
         }
     }
 
-    @OptIn(ExperimentalUuidApi::class)
     fun submitCardPayment(onComplete: (Long, String) -> Unit, onFailed: (String) -> Unit) {
         if (_isSubmitting.value) return
         _cardPaymentError.value = null
-        viewModelScope.launch {
+        viewModelScope.launch { runCardPayment(onComplete, onFailed) }
+    }
+
+    @OptIn(ExperimentalUuidApi::class)
+    private suspend fun runCardPayment(onComplete: (Long, String) -> Unit, onFailed: (String) -> Unit) {
+        run {
             _isSubmitting.value = true
             val amountCents = orderTotalCents.value
             val currency = cartManager.cartState.value.currency
             val idempotencyKey = Uuid.random().toString()
 
-            // Determine offline behavior
+            // Enforce offline spending limits when both offline payments are
+            // enabled AND the device is actually offline. When online (or when
+            // offline payments are disabled), we don't gate on limits — the
+            // just-in-time prompt in CartScreen ensures we never reach this
+            // path while offline + disabled.
             val config = localDataSource.getOfflinePaymentConfig()
             val online = connectivityMonitor.isOnline.value
-            val offlineBehavior: OfflineBehavior
 
-            if (config.enabled) {
-                // Check limits when actually offline
-                if (!online) {
-                    if (config.perTransactionLimitCents > 0 && amountCents > config.perTransactionLimitCents) {
+            if (config.enabled && !online) {
+                if (config.perTransactionLimitCents > 0 && amountCents > config.perTransactionLimitCents) {
+                    _isSubmitting.value = false
+                    val txLimit = Money(config.perTransactionLimitCents, currency).formatDisplay()
+                    _cardPaymentError.value = "Exceeds offline limit of $txLimit per transaction"
+                    onFailed(_cardPaymentError.value!!)
+                    return@run
+                }
+                if (config.totalLimitCents > 0) {
+                    val pendingAmount = stripeTerminalManager.offlineStatus.value
+                        ?.sdk?.offlinePaymentAmountsByCurrency?.values?.sum() ?: 0L
+                    if (pendingAmount + amountCents > config.totalLimitCents) {
                         _isSubmitting.value = false
-                        val txLimit = Money(config.perTransactionLimitCents, currency).formatDisplay()
-                        _cardPaymentError.value = "Exceeds offline limit of $txLimit per transaction"
+                        val totalLimit = Money(config.totalLimitCents, currency).formatDisplay()
+                        _cardPaymentError.value = "Would exceed total offline limit of $totalLimit"
                         onFailed(_cardPaymentError.value!!)
-                        return@launch
-                    }
-                    if (config.totalLimitCents > 0) {
-                        val pendingAmount = stripeTerminalManager.offlineStatus.value
-                            ?.sdk?.offlinePaymentAmountsByCurrency?.values?.sum() ?: 0L
-                        if (pendingAmount + amountCents > config.totalLimitCents) {
-                            _isSubmitting.value = false
-                            val totalLimit = Money(config.totalLimitCents, currency).formatDisplay()
-                            _cardPaymentError.value = "Would exceed total offline limit of $totalLimit"
-                            onFailed(_cardPaymentError.value!!)
-                            return@launch
-                        }
+                        return@run
                     }
                 }
-                offlineBehavior = OfflineBehavior.PREFER_ONLINE
-            } else {
-                offlineBehavior = OfflineBehavior.REQUIRE_ONLINE
             }
+
+            // Always PREFER_ONLINE: the SDK tries online first and only falls
+            // back to offline if it genuinely can't reach Stripe. REQUIRE_ONLINE
+            // is brittle here — the SDK rejects creation if its own connectivity
+            // check can't immediately confirm Stripe is reachable, even when
+            // the OS network is up.
+            val offlineBehavior = OfflineBehavior.PREFER_ONLINE
 
             when (val result = stripeTerminalManager.collectPayment(
                 amountCents, currency, offlineBehavior, idempotencyKey,
             )) {
                 is PaymentResult.Success -> {
-                    val totalFormatted = orderTotalFormatted.value
+                    // Read from live cart state (see submitCashPayment note) — the card
+                    // path has no subscriber to orderTotalFormatted, so its .value would
+                    // be stuck at the "$0.00" initial.
+                    val totalFormatted = cartManager.cartState.value.estimatedTotal.formatDisplay()
                     val draft = cartManager.buildOrderDraft(
                         PaymentMethod.CARD,
                         stripeTransactionId = result.paymentIntentId,

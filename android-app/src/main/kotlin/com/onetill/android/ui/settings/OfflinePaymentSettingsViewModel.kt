@@ -20,6 +20,11 @@ const val RISK_TEXT_VERSION = "v1"
 
 data class OfflinePaymentSettingsUiState(
     val enabled: Boolean = false,
+    // True after the merchant accepts the consent dialog but before they save
+    // limits. While set, the limits inputs are revealed but the feature is NOT
+    // yet enabled in the DB — only saveLimits() flips that, so we can never
+    // exit this screen in an "enabled without limits" state.
+    val consentAccepted: Boolean = false,
     val perTransactionLimitFormatted: String = "",
     val totalLimitFormatted: String = "",
     val pendingOfflineCount: Int = 0,
@@ -81,24 +86,24 @@ class OfflinePaymentSettingsViewModel(
 
     fun onToggle(enabled: Boolean) {
         if (enabled) {
+            // Don't toggle anything in the DB yet — show the consent dialog. The
+            // actual enable only happens via saveLimits() so we can never leave
+            // this screen with `enabled = true` but no limits configured.
             _state.update { it.copy(showConsentDialog = true) }
         } else {
             viewModelScope.launch {
                 currentConfig = currentConfig.copy(enabled = false)
                 localDataSource.saveOfflinePaymentConfig(currentConfig)
                 logConsent(ConsentAction.DISABLED)
-                _state.update { it.copy(enabled = false) }
+                _state.update { it.copy(enabled = false, consentAccepted = false) }
             }
         }
     }
 
     fun onConsentAccepted() {
-        viewModelScope.launch {
-            currentConfig = currentConfig.copy(enabled = true)
-            localDataSource.saveOfflinePaymentConfig(currentConfig)
-            logConsent(ConsentAction.ENABLED)
-            _state.update { it.copy(enabled = true, showConsentDialog = false) }
-        }
+        // Reveal the limits inputs but DO NOT enable yet — that happens atomically
+        // in saveLimits() once both limits are filled.
+        _state.update { it.copy(consentAccepted = true, showConsentDialog = false) }
     }
 
     fun onConsentDeclined() {
@@ -117,12 +122,18 @@ class OfflinePaymentSettingsViewModel(
         viewModelScope.launch {
             val perTxCents = parseDollarsToCents(_state.value.perTransactionLimitFormatted)
             val totalCents = parseDollarsToCents(_state.value.totalLimitFormatted)
+            // If consent was just accepted in this session, this Save is the
+            // atomic enable+limits step; record it as ENABLED. Otherwise the
+            // merchant is editing existing limits on an already-enabled config.
+            val firstEnable = _state.value.consentAccepted && !currentConfig.enabled
             currentConfig = currentConfig.copy(
+                enabled = currentConfig.enabled || firstEnable,
                 perTransactionLimitCents = perTxCents,
                 totalLimitCents = totalCents,
             )
             localDataSource.saveOfflinePaymentConfig(currentConfig)
-            logConsent(ConsentAction.LIMITS_CHANGED)
+            logConsent(if (firstEnable) ConsentAction.ENABLED else ConsentAction.LIMITS_CHANGED)
+            _state.update { it.copy(enabled = currentConfig.enabled, consentAccepted = false) }
             onSaved()
         }
     }

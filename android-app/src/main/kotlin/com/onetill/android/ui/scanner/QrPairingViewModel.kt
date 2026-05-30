@@ -3,6 +3,7 @@ package com.onetill.android.ui.scanner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.onetill.android.di.reloadPostWizardModules
+import com.onetill.android.stripe.StripeTerminalManager
 import com.onetill.shared.data.AppResult
 import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.shared.data.model.StoreConfig
@@ -88,6 +89,10 @@ class QrPairingViewModel(
                         is AppResult.Success -> {
                             syncOrchestrator.syncUsers()
                             syncOrchestrator.startSync()
+                            // Pre-connect the Terminal reader so the first card
+                            // payment after re-pairing isn't slow.
+                            val terminal: StripeTerminalManager by inject()
+                            launch { terminal.warmUp() }
                             _state.update { it.copy(isProcessing = false, pairingComplete = true) }
                         }
                         is AppResult.Error -> {

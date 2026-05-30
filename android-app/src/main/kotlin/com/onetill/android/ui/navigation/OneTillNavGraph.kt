@@ -258,6 +258,9 @@ fun OneTillNavGraph(
                         popUpTo(Routes.CATALOG)
                     }
                 },
+                onNavigateToOfflinePaymentSetup = {
+                    navController.navigate(Routes.OFFLINE_PAYMENT_SETTINGS)
+                },
                 onCardPaymentFailed = { /* Error is shown via subtitle on payment card */ },
             )
         }
