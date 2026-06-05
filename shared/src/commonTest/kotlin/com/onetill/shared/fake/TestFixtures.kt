@@ -8,6 +8,7 @@ import com.onetill.shared.data.model.Order
 import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.data.model.PaymentMethod
 import com.onetill.shared.data.model.Product
+import com.onetill.shared.data.model.ProductImage
 import com.onetill.shared.data.model.ProductStatus
 import com.onetill.shared.data.model.ProductType
 import com.onetill.shared.data.model.ProductVariant
@@ -25,18 +26,23 @@ fun testProduct(
     barcode: String? = null,
     type: ProductType = ProductType.SIMPLE,
     variants: List<ProductVariant> = emptyList(),
+    regularPrice: Long? = null,
+    salePrice: Long? = null,
+    stockQuantity: Int? = null,
+    manageStock: Boolean = false,
+    images: List<ProductImage> = emptyList(),
 ) = Product(
     id = id,
     name = name,
     sku = sku,
     barcode = barcode,
     price = Money(price, currency),
-    regularPrice = null,
-    salePrice = null,
-    stockQuantity = null,
-    manageStock = false,
+    regularPrice = regularPrice?.let { Money(it, currency) },
+    salePrice = salePrice?.let { Money(it, currency) },
+    stockQuantity = stockQuantity,
+    manageStock = manageStock,
     status = ProductStatus.PUBLISHED,
-    images = emptyList(),
+    images = images,
     categories = emptyList(),
     tags = emptyList(),
     variants = variants,
@@ -53,6 +59,11 @@ fun testVariant(
     currency: String = "USD",
     sku: String? = "SKU-001-L",
     attributes: List<VariantAttribute> = listOf(VariantAttribute("Size", "Large")),
+    regularPrice: Long? = null,
+    salePrice: Long? = null,
+    stockQuantity: Int? = null,
+    manageStock: Boolean = false,
+    image: ProductImage? = null,
 ) = ProductVariant(
     id = id,
     productId = productId,
@@ -60,11 +71,12 @@ fun testVariant(
     sku = sku,
     barcode = null,
     price = Money(price, currency),
-    regularPrice = null,
-    salePrice = null,
-    stockQuantity = null,
-    manageStock = false,
+    regularPrice = regularPrice?.let { Money(it, currency) },
+    salePrice = salePrice?.let { Money(it, currency) },
+    stockQuantity = stockQuantity,
+    manageStock = manageStock,
     attributes = attributes,
+    image = image,
 )
 
 fun testOrder(

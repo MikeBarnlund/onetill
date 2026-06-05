@@ -11,6 +11,7 @@ import com.onetill.shared.data.local.LocalDataSource
 import com.onetill.shared.data.model.Money
 import com.onetill.shared.data.model.Product
 import com.onetill.shared.data.model.ProductType
+import com.onetill.shared.data.model.catalogImageUrl
 import com.onetill.shared.sync.SyncOrchestrator
 import com.onetill.shared.util.formatDisplay
 import kotlinx.coroutines.Dispatchers
@@ -304,7 +305,7 @@ private fun Product.toUiModel(): ProductUiModel {
             price.formatDisplay()
         },
         stockText = "$stock left",
-        imageUrl = images.firstOrNull()?.url,
+        imageUrl = catalogImageUrl(),
         isOutOfStock = hasStockManagement && stock <= 0,
         product = this,
     )

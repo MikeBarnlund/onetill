@@ -51,17 +51,27 @@ class WooCommerceBackend(
         URLBuilder(url).apply { encodedPathSegments = listOf("") }.buildString().trimEnd('/')
     }
 
+    private fun rewriteImageUrl(url: String): String {
+        val imgUrl = Url(url)
+        val imgOrigin = URLBuilder(imgUrl).apply { encodedPathSegments = listOf("") }.buildString().trimEnd('/')
+        return if (imgOrigin != siteOrigin) url.replaceFirst(imgOrigin, siteOrigin) else url
+    }
+
     private fun rewriteImageUrls(product: Product): Product {
-        val rewritten = product.images.map { image ->
-            val imgUrl = Url(image.url)
-            val imgOrigin = URLBuilder(imgUrl).apply { encodedPathSegments = listOf("") }.buildString().trimEnd('/')
-            if (imgOrigin != siteOrigin) {
-                image.copy(url = image.url.replaceFirst(imgOrigin, siteOrigin))
+        val rewrittenImages = product.images.map { image ->
+            val newUrl = rewriteImageUrl(image.url)
+            if (newUrl !== image.url) image.copy(url = newUrl) else image
+        }
+        val rewrittenVariants = product.variants.map { variant ->
+            val variantImage = variant.image ?: return@map variant
+            val newUrl = rewriteImageUrl(variantImage.url)
+            if (newUrl !== variantImage.url) {
+                variant.copy(image = variantImage.copy(url = newUrl))
             } else {
-                image
+                variant
             }
         }
-        return if (rewritten !== product.images) product.copy(images = rewritten) else product
+        return product.copy(images = rewrittenImages, variants = rewrittenVariants)
     }
 
     // -- Catalog --

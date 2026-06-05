@@ -30,6 +30,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -51,6 +53,9 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.onetill.android.ui.components.CartIcon
 import com.onetill.android.ui.components.VariationChip
 import com.onetill.android.ui.theme.OneTillTheme
@@ -72,7 +77,10 @@ data class PickerOption(
 
 data class PickerVariant(
     val attributes: Map<String, String>,
+    val imageUrl: String?,
     val priceFormatted: String,
+    val regularPriceFormatted: String?,
+    val salePriceFormatted: String?,
     val stockCount: Int,
     val manageStock: Boolean,
 )
@@ -124,6 +132,18 @@ fun VariationPickerSheet(
             }
         }
     }
+
+    // The variant matching the current selections, derived so image/price/stock stay in sync.
+    val selectedVariant by remember(product) {
+        derivedStateOf {
+            product.variants.firstOrNull { variant ->
+                selections.all { (attrName, attrValue) ->
+                    variant.attributes[attrName] == attrValue
+                }
+            }
+        }
+    }
+    val displayImageUrl = selectedVariant?.imageUrl ?: product.imageUrl
 
     // Animatable offset: 0f = fully shown, 1f = fully hidden
     val offsetAnimatable = remember { Animatable(1f) }
@@ -239,10 +259,13 @@ fun VariationPickerSheet(
                             .aspectRatio(16f / 10f)
                             .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
                     ) {
-                        // Image
-                        if (product.imageUrl != null) {
+                        // Image — reactive to the currently selected variant
+                        if (displayImageUrl != null) {
                             AsyncImage(
-                                model = product.imageUrl,
+                                model = ImageRequest.Builder(LocalPlatformContext.current)
+                                    .data(displayImageUrl)
+                                    .crossfade(true)
+                                    .build(),
                                 contentDescription = product.name,
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop,
@@ -355,14 +378,9 @@ fun VariationPickerSheet(
                         }
                     }
 
-                    // Selected variant summary strip
-                    val matchedVariant = product.variants.firstOrNull { variant ->
-                        selections.all { (attrName, attrValue) ->
-                            variant.attributes[attrName] == attrValue
-                        }
-                    }
-                    val resolvedStock = matchedVariant?.stockCount ?: product.stockCount
-                    val resolvedPrice = matchedVariant?.priceFormatted ?: product.resolvedPriceFormatted
+                    // Selected variant summary strip — reads from the shared derived state above
+                    val resolvedStock = selectedVariant?.stockCount ?: product.stockCount
+                    val resolvedPrice = selectedVariant?.priceFormatted ?: product.resolvedPriceFormatted
 
                     HorizontalDivider(thickness = 1.dp, color = colors.border)
                     Row(

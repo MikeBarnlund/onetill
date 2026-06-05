@@ -161,6 +161,8 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
                     currency_code = variant.price.currencyCode,
                     stock_quantity = variant.stockQuantity?.toLong(),
                     manage_stock = if (variant.manageStock) 1L else 0L,
+                    image_id = variant.image?.id,
+                    image_url = variant.image?.url,
                 )
                 queries.deleteAttributesByVariantId(variant.id)
                 for (attr in variant.attributes) {
@@ -233,6 +235,8 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
                         currency_code = variant.price.currencyCode,
                         stock_quantity = variant.stockQuantity?.toLong(),
                         manage_stock = if (variant.manageStock) 1L else 0L,
+                        image_id = variant.image?.id,
+                        image_url = variant.image?.url,
                     )
                     queries.deleteAttributesByVariantId(variant.id)
                     for (attr in variant.attributes) {
@@ -612,6 +616,9 @@ class SqlDelightLocalDataSource(private val db: OneTillDb) : LocalDataSource {
                 stockQuantity = v.stock_quantity?.toInt(),
                 manageStock = v.manage_stock != 0L,
                 attributes = attrs,
+                image = v.image_id?.let { imgId ->
+                    v.image_url?.let { url -> ProductImage(id = imgId, url = url) }
+                },
             )
         }
 

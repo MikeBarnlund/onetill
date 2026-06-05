@@ -1,7 +1,12 @@
 package com.onetill.android.ui.catalog
 
 import com.onetill.shared.data.model.Product
+import com.onetill.shared.data.model.resolvedImageUrl
+import com.onetill.shared.data.model.resolvedRegularPrice
+import com.onetill.shared.data.model.resolvedSalePrice
+import com.onetill.shared.data.model.resolvedStockQuantity
 import com.onetill.shared.util.formatCents
+import com.onetill.shared.util.formatDisplay
 
 fun Product.toPickerProduct(): PickerProduct {
     val baseCents = price.amountCents
@@ -23,11 +28,12 @@ fun Product.toPickerProduct(): PickerProduct {
                     delta < 0 -> "-${formatCents(-delta)}"
                     else -> null
                 }
+                val resolvedStock = variant.resolvedStockQuantity(this@toPickerProduct) ?: 0
                 PickerOption(
                     label = attr.value,
-                    available = (variant.stockQuantity ?: 0) > 0,
+                    available = resolvedStock > 0,
                     priceAdjustment = priceAdjustment,
-                    stockCount = variant.stockQuantity ?: 0,
+                    stockCount = resolvedStock,
                 )
             }
             PickerAttributeGroup(name = attrName, options = options)
@@ -36,13 +42,18 @@ fun Product.toPickerProduct(): PickerProduct {
     val pickerVariants = variants.map { v ->
         PickerVariant(
             attributes = v.attributes.associate { it.name to it.value },
+            imageUrl = v.resolvedImageUrl(this@toPickerProduct),
             priceFormatted = formatCents(v.price.amountCents),
-            stockCount = v.stockQuantity ?: 0,
+            regularPriceFormatted = v.resolvedRegularPrice(this@toPickerProduct)?.formatDisplay(),
+            salePriceFormatted = v.resolvedSalePrice(this@toPickerProduct)?.formatDisplay(),
+            stockCount = v.resolvedStockQuantity(this@toPickerProduct) ?: 0,
             manageStock = v.manageStock,
         )
     }
 
-    val firstAvailable = variants.firstOrNull { (it.stockQuantity ?: 0) > 0 }
+    val firstAvailable = variants.firstOrNull {
+        (it.resolvedStockQuantity(this@toPickerProduct) ?: 0) > 0
+    }
 
     return PickerProduct(
         name = name,
@@ -52,7 +63,7 @@ fun Product.toPickerProduct(): PickerProduct {
         resolvedPriceFormatted = formatCents(
             firstAvailable?.price?.amountCents ?: baseCents,
         ),
-        stockCount = firstAvailable?.stockQuantity ?: 0,
+        stockCount = firstAvailable?.resolvedStockQuantity(this@toPickerProduct) ?: 0,
         variants = pickerVariants,
     )
 }

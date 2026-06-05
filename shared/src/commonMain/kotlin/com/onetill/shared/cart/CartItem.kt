@@ -4,6 +4,8 @@ import com.onetill.shared.data.model.LineItem
 import com.onetill.shared.data.model.Money
 import com.onetill.shared.data.model.Product
 import com.onetill.shared.data.model.ProductVariant
+import com.onetill.shared.data.model.resolvedImageUrl
+import com.onetill.shared.data.model.resolvedStockQuantity
 
 data class CustomSaleItem(
     val id: String,
@@ -55,7 +57,7 @@ fun ProductVariant.toCartItem(product: Product, quantity: Int = 1): CartItem = C
     sku = sku ?: product.sku,
     unitPrice = price,
     quantity = quantity,
-    imageUrl = product.images.firstOrNull()?.url,
-    maxQuantity = if (manageStock) stockQuantity else null,
+    imageUrl = resolvedImageUrl(product),
+    maxQuantity = if (manageStock || product.manageStock) resolvedStockQuantity(product) else null,
     taxClass = product.taxClass,
 )

@@ -63,6 +63,7 @@ fun WooVariationDto.toDomain(productId: Long, currency: String): ProductVariant 
         stockQuantity = stockQuantity,
         manageStock = manageStock,
         attributes = attributes.map { VariantAttribute(name = it.name, value = it.option) },
+        image = image?.takeIf { it.src.isNotEmpty() }?.let { ProductImage(id = it.id, url = it.src) },
     )
 }
 

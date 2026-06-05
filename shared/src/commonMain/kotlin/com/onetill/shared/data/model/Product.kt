@@ -38,7 +38,29 @@ data class ProductVariant(
     val stockQuantity: Int?,
     val manageStock: Boolean,
     val attributes: List<VariantAttribute>,
+    val image: ProductImage? = null,
 )
+
+/** Catalog tile: product image, or first variant image if product has none. */
+fun Product.catalogImageUrl(): String? =
+    images.firstOrNull()?.url
+        ?: variants.firstNotNullOfOrNull { it.image?.url }
+
+/** Picker sheet & cart line: variant's own image if present, else product's first image. */
+fun ProductVariant.resolvedImageUrl(product: Product): String? =
+    image?.url ?: product.images.firstOrNull()?.url
+
+/** Variant's own regular price if present, else parent product's. */
+fun ProductVariant.resolvedRegularPrice(product: Product): Money? =
+    regularPrice ?: product.regularPrice
+
+/** Variant's own sale price if present, else parent product's. */
+fun ProductVariant.resolvedSalePrice(product: Product): Money? =
+    salePrice ?: product.salePrice
+
+/** Variant's own stock quantity if present, else parent product's. */
+fun ProductVariant.resolvedStockQuantity(product: Product): Int? =
+    stockQuantity ?: product.stockQuantity
 
 @Serializable
 data class VariantAttribute(

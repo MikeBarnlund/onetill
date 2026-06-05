@@ -46,6 +46,8 @@ CREATE TABLE product_variant (
     currency_code TEXT NOT NULL,
     stock_quantity INTEGER,
     manage_stock INTEGER NOT NULL DEFAULT 0,
+    image_id INTEGER,
+    image_url TEXT,
     FOREIGN KEY (product_id) REFERENCES product_cache(id) ON DELETE CASCADE
 );
 
@@ -268,8 +270,9 @@ WHERE id = ? AND manage_stock = 1 AND stock_quantity IS NOT NULL;
 insertOrReplaceVariant:
 INSERT OR REPLACE INTO product_variant(
     id, product_id, name, sku, barcode, price_cents, regular_price_cents,
-    sale_price_cents, currency_code, stock_quantity, manage_stock
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    sale_price_cents, currency_code, stock_quantity, manage_stock,
+    image_id, image_url
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 selectVariantsByProductId:
 SELECT * FROM product_variant WHERE product_id = ?;
