@@ -43,7 +43,6 @@ fun NavigationDrawer(
     onOrdersTap: () -> Unit,
     onSummaryTap: () -> Unit,
     onScanQrTap: () -> Unit,
-    onEditShopTap: () -> Unit,
     onOfflinePaymentsTap: () -> Unit = {},
     onWifiSettingsTap: () -> Unit = {},
     onResyncTap: () -> Unit = {},
@@ -151,15 +150,9 @@ fun NavigationDrawer(
         ) {
             Column {
                 DrawerNavItem(
-                    label = "Scan QR Code",
+                    label = "Link Shop",
                     icon = { color -> QrCodeIcon(color = color, modifier = Modifier.size(dimens.headerIconSize)) },
                     onClick = onScanQrTap,
-                    modifier = Modifier.padding(start = 34.dp),
-                )
-                DrawerNavItem(
-                    label = "Edit Shop Info",
-                    icon = { color -> EditIcon(color = color, modifier = Modifier.size(dimens.headerIconSize)) },
-                    onClick = onEditShopTap,
                     modifier = Modifier.padding(start = 34.dp),
                 )
                 DrawerNavItem(

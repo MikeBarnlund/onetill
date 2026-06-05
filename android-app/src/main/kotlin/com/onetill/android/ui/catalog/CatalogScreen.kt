@@ -203,10 +203,6 @@ fun CatalogScreen(
                 viewModel.closeDrawer()
                 onNavigateToQrScan()
             },
-            onEditShopTap = {
-                viewModel.closeDrawer()
-                onNavigateToSettings()
-            },
             onOfflinePaymentsTap = {
                 viewModel.closeDrawer()
                 onNavigateToOfflinePayments()
