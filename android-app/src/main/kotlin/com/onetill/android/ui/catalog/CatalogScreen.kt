@@ -25,12 +25,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -278,13 +276,7 @@ fun CatalogScreen(
                             onCustomSale = { viewModel.openCustomSaleSheet() },
                         )
                     } else {
-                        @OptIn(ExperimentalFoundationApi::class)
-                        val gridState = rememberLazyGridState(
-                            cacheWindow = LazyLayoutCacheWindow(
-                                ahead = 200.dp,
-                                behind = 100.dp,
-                            ),
-                        )
+                        val gridState = rememberLazyGridState()
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(2),
                             state = gridState,
