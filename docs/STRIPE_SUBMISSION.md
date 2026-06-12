@@ -47,9 +47,10 @@ The reviewer needs access to a WooCommerce store with the OneTill companion plug
 4. Confirm — order completes immediately and syncs.
 
 ### 4. Offline behavior (optional but recommended)
-1. Toggle the device to airplane mode.
-2. Run a card payment with the test card. The payment succeeds via Stripe's offline payment flow on the Terminal.
-3. Restore connectivity. The order syncs back to WooCommerce within ~30 seconds.
+1. First enable offline card payments: Settings → Offline Payments, acknowledge the risk dialog, set limits. (Without this, only cash payments work offline.)
+2. Toggle the device to airplane mode.
+3. Run a card payment with the test card. The payment succeeds via Stripe's offline payment flow on the Terminal.
+4. Restore connectivity. The order syncs back to WooCommerce within ~30 seconds.
 
 ### 5. Staff PIN lock
 1. From any screen, leave the device idle for 60 seconds.
@@ -75,7 +76,7 @@ The app does **not** request:
 ## Known limitations / not in scope for V1
 
 - Multi-store: one device pairs to one WooCommerce store at a time.
-- Refunds: in-app refunds for cash orders only. Card refunds go through the merchant's Stripe Dashboard.
+- Refunds: full refunds only (no partial refunds). Card refunds return to the original payment method via Stripe; some methods (e.g., Interac) must be refunded from the Stripe Dashboard.
 - Multiple registers on the same device: not supported.
 
 ## What I'd like reviewers NOT to do
@@ -85,27 +86,15 @@ The app does **not** request:
 
 ## Contact during review
 
-- **Primary contact:** Mike Barnlund — mike.barnlund@gmail.com
+- **Primary contact:** Mike Barnlund — mike@onetill.app
 - Response SLA during review window: same-day for any reviewer questions.
 
 ---
 
-## ⚠️ Build status before submission
+## Build status
 
-**Important:** The release APK currently on disk (`android-app-release.apk`, dated 2026-05-23) predates significant security and stability work that landed in `main` between 2026-05-23 and 2026-05-26:
+**APK rebuilt 2026-06-12** from `main` at `01b7783`, signed with the release keystore (signature verified with apksigner). This build includes everything missing from the stale May 26 build: the direct app↔Supabase subscription gate and same-session pairing fix, the May 29 checkout/payment bug fixes from DevKit testing, the catalog-search LazyGrid crash fix, variant-specific image/price/stock support, and the QR-pairing connectivity gate.
 
-- Direct app↔Supabase subscription validation (replaces the bypassable WordPress plugin check)
-- In-app subscription gate that blocks checkout when status is canceled/expired
-- Fix for a navigation bug that prevented the gate from firing in same-session pairing flows
-
-**Rebuild before submission:**
-
-```
-cd ~/code/OneTill
-./gradlew :android-app:assembleRelease
-```
-
-After rebuild, verify:
-1. APK appears at `android-app/build/outputs/apk/release/android-app-release.apk` with a recent mtime.
-2. `versionCode` and `versionName` match what you intend to submit (bump in `android-app/build.gradle.kts` if needed).
-3. Re-test the critical flows above on the DevKit before submission. The subscription gate flow especially — see `docs/superpowers/specs/2026-05-24-direct-subscription-validation-design.md` for what to validate.
+**Remaining before submission:**
+1. Smoke-test the critical flows above on the DevKit — checkout code changed since the last DevKit test (2026-05-26).
+2. Submit via the Stripe Dashboard with the reviewer instructions (`operations/stripe-apk-reviewer-instructions.md` in the brain repo has the full reviewer-facing walkthrough; this doc has the test environment and credentials).
