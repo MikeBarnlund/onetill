@@ -28,12 +28,16 @@ fun Product.toPickerProduct(): PickerProduct {
                     delta < 0 -> "-${formatCents(-delta)}"
                     else -> null
                 }
-                val resolvedStock = variant.resolvedStockQuantity(this@toPickerProduct) ?: 0
+                val resolvedStockOrNull = variant.resolvedStockQuantity(this@toPickerProduct)
+                val tracksStock = resolvedStockOrNull != null
+                val resolvedStock = resolvedStockOrNull ?: 0
                 PickerOption(
                     label = attr.value,
-                    available = resolvedStock > 0,
+                    // Untracked stock = always sellable; tracked = needs > 0 on hand.
+                    available = !tracksStock || resolvedStock > 0,
                     priceAdjustment = priceAdjustment,
                     stockCount = resolvedStock,
+                    tracksStock = tracksStock,
                 )
             }
             PickerAttributeGroup(name = attrName, options = options)
@@ -51,9 +55,14 @@ fun Product.toPickerProduct(): PickerProduct {
         )
     }
 
-    val firstAvailable = variants.firstOrNull {
-        (it.resolvedStockQuantity(this@toPickerProduct) ?: 0) > 0
+    // Default to the first sellable variant (untracked stock or qty > 0) so the
+    // picker doesn't open on a sold-out combination. Falls back to the first
+    // variant only when every variant is out of stock.
+    val firstSellable = variants.firstOrNull { v ->
+        val stock = v.resolvedStockQuantity(this@toPickerProduct)
+        stock == null || stock > 0
     }
+    val defaultVariant = firstSellable ?: variants.firstOrNull()
 
     return PickerProduct(
         name = name,
@@ -61,9 +70,12 @@ fun Product.toPickerProduct(): PickerProduct {
         startingPriceFormatted = formatCents(baseCents),
         attributes = attributeGroups,
         resolvedPriceFormatted = formatCents(
-            firstAvailable?.price?.amountCents ?: baseCents,
+            defaultVariant?.price?.amountCents ?: baseCents,
         ),
-        stockCount = firstAvailable?.resolvedStockQuantity(this@toPickerProduct) ?: 0,
+        stockCount = defaultVariant?.resolvedStockQuantity(this@toPickerProduct) ?: 0,
         variants = pickerVariants,
+        defaultSelections = defaultVariant?.attributes
+            ?.associate { it.name to it.value }
+            ?: emptyMap(),
     )
 }

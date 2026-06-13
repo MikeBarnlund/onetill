@@ -346,8 +346,11 @@ fun CatalogScreen(
         // Variation picker sheet overlay
         val currentPickerProduct = pickerProduct
         if (currentPickerProduct != null) {
+            val pickerUiProduct = remember(currentPickerProduct) {
+                currentPickerProduct.toPickerProduct()
+            }
             VariationPickerSheet(
-                product = currentPickerProduct.toPickerProduct(),
+                product = pickerUiProduct,
                 visible = isPickerVisible,
                 onDismiss = { viewModel.dismissPicker() },
                 onAddToCart = { selections -> viewModel.onVariantAddToCart(selections) },

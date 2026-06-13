@@ -4,8 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -14,7 +14,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -31,6 +30,8 @@ fun VariationChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     priceAdjustment: String? = null,
+    stockCount: Int = 0,
+    tracksStock: Boolean = true,
 ) {
     val colors = OneTillTheme.colors
     val shape = RoundedCornerShape(10.dp)
@@ -47,13 +48,25 @@ fun VariationChip(
         colors.textTertiary
     }
 
-    Row(
+    // Stock indicator: only shown when the variant tracks inventory. Surfaces the
+    // count so it's clear why a sold-out option can't be selected.
+    val stockLabel = when {
+        !tracksStock -> null
+        stockCount <= 0 -> "Sold out"
+        else -> "$stockCount left"
+    }
+    val stockColor = when {
+        stockCount <= 0 -> colors.error
+        isSelected -> colors.textOnAccent.copy(alpha = 0.7f)
+        else -> colors.textTertiary
+    }
+
+    Column(
         modifier = modifier
-            .height(36.dp)
             .clip(shape)
             .border(1.dp, borderColor, shape)
             .background(bgColor)
-            .alpha(if (isAvailable) 1f else 0.35f)
+            .alpha(if (isAvailable) 1f else 0.4f)
             .then(
                 if (isAvailable) {
                     Modifier.clickable(onClick = onClick)
@@ -61,33 +74,46 @@ fun VariationChip(
                     Modifier
                 },
             )
-            .padding(horizontal = 14.dp)
+            .padding(horizontal = 14.dp, vertical = 6.dp)
             .semantics {
                 contentDescription = buildString {
                     append(label)
                     if (priceAdjustment != null) append(" $priceAdjustment")
-                    if (!isAvailable) append(", out of stock")
+                    if (stockLabel != null) append(", $stockLabel")
                     if (isSelected) append(", selected")
                 }
             },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalAlignment = Alignment.Start,
     ) {
-        Text(
-            text = label,
-            fontSize = 13.sp,
-            fontWeight = fontWeight,
-            color = textColor,
-            textDecoration = textDecoration,
-        )
-
-        // Price adjustment suffix (e.g. "+$50")
-        if (priceAdjustment != null && isAvailable) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
             Text(
-                text = priceAdjustment,
+                text = label,
+                fontSize = 13.sp,
+                fontWeight = fontWeight,
+                color = textColor,
+                textDecoration = textDecoration,
+            )
+
+            // Price adjustment suffix (e.g. "+$50")
+            if (priceAdjustment != null && isAvailable) {
+                Text(
+                    text = priceAdjustment,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = priceColor,
+                )
+            }
+        }
+
+        if (stockLabel != null) {
+            Text(
+                text = stockLabel,
                 fontSize = 10.sp,
-                fontWeight = FontWeight.Normal,
-                color = priceColor,
+                fontWeight = FontWeight.Medium,
+                color = stockColor,
             )
         }
     }

@@ -73,6 +73,7 @@ data class PickerOption(
     val available: Boolean,
     val priceAdjustment: String? = null,
     val stockCount: Int = 0,
+    val tracksStock: Boolean = true,
 )
 
 data class PickerVariant(
@@ -93,6 +94,8 @@ data class PickerProduct(
     val resolvedPriceFormatted: String,
     val stockCount: Int,
     val variants: List<PickerVariant> = emptyList(),
+    // Attribute selections of the first in-stock variant; the picker opens on these.
+    val defaultSelections: Map<String, String> = emptyMap(),
 )
 
 /**
@@ -123,12 +126,19 @@ fun VariationPickerSheet(
     val sheetTopPx = with(LocalDensity.current) { sheetTopDp.roundToPx() }
     val sheetShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
 
-    // Track selected option per attribute group
+    // Track selected option per attribute group. Open on the first in-stock
+    // variant (defaultSelections); fall back to per-group first-available only
+    // when no default is supplied.
     val selections = remember {
         mutableStateMapOf<String, String>().apply {
-            product.attributes.forEach { group ->
-                val default = group.options.firstOrNull { it.available }
-                if (default != null) put(group.name, default.label)
+            if (product.defaultSelections.isNotEmpty()) {
+                putAll(product.defaultSelections)
+            } else {
+                product.attributes.forEach { group ->
+                    val default = group.options.firstOrNull { it.available }
+                        ?: group.options.firstOrNull()
+                    if (default != null) put(group.name, default.label)
+                }
             }
         }
     }
@@ -367,6 +377,8 @@ fun VariationPickerSheet(
                                         isSelected = selections[group.name] == option.label,
                                         isAvailable = option.available,
                                         priceAdjustment = option.priceAdjustment,
+                                        stockCount = option.stockCount,
+                                        tracksStock = option.tracksStock,
                                         onClick = {
                                             selections[group.name] = option.label
                                         },

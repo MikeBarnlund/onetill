@@ -8,6 +8,9 @@ import com.onetill.shared.data.model.Money
 import com.onetill.shared.data.model.Order
 import com.onetill.shared.data.model.OrderStatus
 import com.onetill.shared.data.model.PaymentMethod
+import com.onetill.shared.data.model.Product
+import com.onetill.shared.data.model.catalogImageUrl
+import com.onetill.shared.data.model.resolvedImageUrl
 import com.onetill.shared.orders.OrderAnalytics
 import com.onetill.shared.orders.OrderFilter
 import com.onetill.shared.orders.RefundManager
@@ -41,6 +44,7 @@ data class OrderLineItem(
     val name: String,
     val quantity: Int,
     val totalFormatted: String,
+    val imageUrl: String? = null,
 )
 
 data class OrderUiModel(
@@ -92,6 +96,12 @@ class OrdersViewModel(
         localDataSource.observeRecentOrders(100)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // Catalog cache, keyed by product id, so order line items can resolve thumbnails.
+    private val productsById: StateFlow<Map<Long, Product>> =
+        localDataSource.observeAllProducts()
+            .map { products -> products.associateBy { it.id } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
@@ -101,9 +111,14 @@ class OrdersViewModel(
     val isOnline: StateFlow<Boolean> = connectivityMonitor.isOnline
 
     val orders: StateFlow<List<OrderUiModel>> =
-        combine(recentOrders, _selectedFilter, connectivityMonitor.isOnline) { orders, filter, online ->
+        combine(
+            recentOrders,
+            _selectedFilter,
+            connectivityMonitor.isOnline,
+            productsById,
+        ) { orders, filter, online, products ->
             val tz = TimeZone.currentSystemDefault()
-            orderAnalytics.filterOrders(orders, filter).map { it.toUiModel(tz, online) }
+            orderAnalytics.filterOrders(orders, filter).map { it.toUiModel(tz, online, products) }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _selectedOrder = MutableStateFlow<OrderUiModel?>(null)
@@ -200,7 +215,11 @@ class OrdersViewModel(
     }
 }
 
-private fun Order.toUiModel(tz: TimeZone, isOnline: Boolean): OrderUiModel {
+private fun Order.toUiModel(
+    tz: TimeZone,
+    isOnline: Boolean,
+    productsById: Map<Long, Product>,
+): OrderUiModel {
     val localTime = createdAt.toLocalDateTime(tz)
     val hour = localTime.hour
     val minute = localTime.minute
@@ -257,10 +276,20 @@ private fun Order.toUiModel(tz: TimeZone, isOnline: Boolean): OrderUiModel {
         currencyCode = total.currencyCode,
         syncStatus = syncStatus,
         lineItems = lineItems.map { li ->
+            val product = productsById[li.productId]
+            val imageUrl = when {
+                product == null -> null
+                li.variantId != null ->
+                    product.variants.firstOrNull { it.id == li.variantId }
+                        ?.resolvedImageUrl(product)
+                        ?: product.catalogImageUrl()
+                else -> product.catalogImageUrl()
+            }
             OrderLineItem(
                 name = li.name,
                 quantity = li.quantity,
                 totalFormatted = li.totalPrice.formatDisplay(),
+                imageUrl = imageUrl,
             )
         },
         isEligibleForRefund = eligibleForRefund,

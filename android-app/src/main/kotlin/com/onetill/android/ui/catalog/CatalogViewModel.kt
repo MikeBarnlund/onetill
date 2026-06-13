@@ -103,8 +103,18 @@ class CatalogViewModel(
     private val _isSearchVisible = MutableStateFlow(false)
     val isSearchVisible: StateFlow<Boolean> = _isSearchVisible.asStateFlow()
 
-    private val _pickerProduct = MutableStateFlow<Product?>(null)
-    val pickerProduct: StateFlow<Product?> = _pickerProduct.asStateFlow()
+    private val _pickerProductId = MutableStateFlow<Long?>(null)
+
+    /**
+     * The product shown in the variation picker, resolved live from the catalog
+     * by id. Holding the Product directly would freeze the open sheet on the
+     * snapshot captured at tap time, so a background sync that restocks a variant
+     * wouldn't re-enable it until the sheet was reopened.
+     */
+    val pickerProduct: StateFlow<Product?> =
+        combine(allProducts, _pickerProductId) { products, id ->
+            id?.let { pid -> products.firstOrNull { it.id == pid } }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     private val _isPickerVisible = MutableStateFlow(false)
     val isPickerVisible: StateFlow<Boolean> = _isPickerVisible.asStateFlow()
@@ -191,7 +201,7 @@ class CatalogViewModel(
                 }
             }
             ProductType.VARIABLE -> {
-                _pickerProduct.value = product
+                _pickerProductId.value = product.id
                 _isPickerVisible.value = true
             }
         }
@@ -202,7 +212,7 @@ class CatalogViewModel(
     }
 
     fun onVariantAddToCart(selections: Map<String, String>) {
-        val product = _pickerProduct.value ?: return
+        val product = pickerProduct.value ?: return
         val matchingVariant = product.variants.find { variant ->
             selections.all { (attrName, attrValue) ->
                 variant.attributes.any { it.name == attrName && it.value == attrValue }

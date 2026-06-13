@@ -23,9 +23,12 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.onetill.android.ui.components.ChipVariant
 import com.onetill.android.ui.components.StatusChip
 import com.onetill.android.ui.theme.OneTillTheme
@@ -110,10 +113,27 @@ fun OrderDetailSheet(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 3.dp),
+                        .padding(vertical = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    // Thumbnail — matches the cart's product image treatment
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(colors.surface),
+                    ) {
+                        if (item.imageUrl != null) {
+                            AsyncImage(
+                                model = item.imageUrl,
+                                contentDescription = item.name,
+                                modifier = Modifier.size(40.dp),
+                                contentScale = ContentScale.Crop,
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = "${item.quantity}x ${item.name}",
                         fontSize = 13.sp,
